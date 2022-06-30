@@ -5,6 +5,7 @@
 	"main": "index.js",
 	"scripts": {
 		"build": "webpack --config ./bundler/webpack.prod.js",
+		"serve": "serve -s public",
 		"dev": "webpack-dev-server --config ./bundler/webpack.dev.js --hot"
 	},
 	"keywords": [],

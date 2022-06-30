@@ -1,6 +1,5 @@
 .DS_Store
 node_modules
-bundler/dist
 package-lock.json
 .cache
 
