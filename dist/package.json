@@ -13,8 +13,8 @@
 	],
 	"author": "0beqz",
 	"license": "MIT",
-	"dependencies": {
-		"postprocessing": "^6.28.0",
-		"three": "^0.141.0"
+	"peerDependencies": {
+		"three": ">= 0.139.0 <= 0.142.0",
+		"postprocessing": ">= 6.26.3 <= 6.28.1"
 	}
 }
