@@ -4,10 +4,12 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
+		"dist": "webpack --config ./bundler/webpack.dist.js",
 		"build": "webpack --config ./bundler/webpack.prod.js",
 		"serve": "serve -s public",
 		"dev": "webpack-dev-server --config ./bundler/webpack.dev.js --hot"
 	},
+	"type": "module",
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
@@ -33,9 +35,9 @@
 		"webpack-merge": "^5.8.0"
 	},
 	"dependencies": {
-		"three": "^0.141.0",
 		"postprocessing": "^6.28.0",
 		"stats.js": "^0.17.0",
+		"three": "^0.141.0",
 		"tweakpane": "^3.1.0"
 	},
 	"prettier": {

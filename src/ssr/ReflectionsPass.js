@@ -2,7 +2,7 @@
 import { WebGLMultipleRenderTargets, Uniform, WebGLRenderTarget } from "three"
 import { NormalDepthRoughnessMaterial } from "./material/NormalDepthRoughnessMaterial.js"
 import { SSRMaterial } from "./material/SSRMaterial.js"
-import WEBGL from "three/examples/jsm/capabilities/WebGL"
+import WEBGL from "three/examples/jsm/capabilities/WebGL.js"
 import { NearestMipmapNearestFilter } from "three"
 import { NearestFilter } from "three"
 
