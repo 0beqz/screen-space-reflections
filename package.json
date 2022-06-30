@@ -1,6 +1,6 @@
 {
 	"name": "screen-space-reflections",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "",
 	"main": "index.js",
 	"scripts": {
@@ -10,7 +10,14 @@
 		"dev": "webpack-dev-server --config ./bundler/webpack.dev.js --hot"
 	},
 	"type": "module",
-	"keywords": [],
+	"keywords": [
+		"three",
+		"threejs",
+		"reflections",
+		"postprocessing",
+		"screen-space-reflections",
+		"3d"
+	],
 	"author": "0beqz",
 	"license": "MIT",
 	"files": [
@@ -38,14 +45,13 @@
 		"webpack-dev-server": "^4.0.0",
 		"webpack-merge": "^5.8.0",
 		"rollup": "^2.75.7",
-		"@rollup/plugin-babel": "^5.3.1"
+		"@rollup/plugin-babel": "^5.3.1",
+		"stats.js": "^0.17.0",
+		"tweakpane": "^3.1.0"
 	},
 	"dependencies": {
 		"postprocessing": "^6.28.0",
-		"screen-space-reflections": "^1.0.0",
-		"stats.js": "^0.17.0",
-		"three": "^0.141.0",
-		"tweakpane": "^3.1.0"
+		"three": "^0.141.0"
 	},
 	"prettier": {
 		"semi": false,
