@@ -1,0 +1,17 @@
+{
+	"name": "three-screen-space-reflections",
+	"version": "1.0.0",
+	"description": "",
+	"main": "SSRPass.js",
+	"type": "module",
+	"keywords": [],
+	"author": "0beqz",
+	"license": "MIT",
+	"files": [
+		"SSRPass.js"
+	],
+	"dependencies": {
+		"postprocessing": "^6.28.0",
+		"three": "^0.141.0"
+	}
+}

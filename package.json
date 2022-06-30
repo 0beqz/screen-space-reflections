@@ -11,8 +11,11 @@
 	},
 	"type": "module",
 	"keywords": [],
-	"author": "",
-	"license": "ISC",
+	"author": "0beqz",
+	"license": "MIT",
+	"files": [
+		"dist/*.js"
+	],
 	"devDependencies": {
 		"@babel/core": "^7.9.6",
 		"@babel/plugin-proposal-class-properties": "^7.17.12",
