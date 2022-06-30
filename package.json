@@ -1,0 +1,57 @@
+{
+	"name": "three-screen-space-reflections",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"build": "webpack --config ./bundler/webpack.prod.js",
+		"dev": "webpack-dev-server --config ./bundler/webpack.dev.js --hot"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@babel/core": "^7.9.6",
+		"@babel/plugin-proposal-class-properties": "^7.17.12",
+		"@babel/preset-env": "^7.9.6",
+		"babel-loader": "^8.1.0",
+		"clean-webpack-plugin": "^4.0.0",
+		"copy-webpack-plugin": "^10.2.4",
+		"css-loader": "^6.6.0",
+		"eslint": "^8.18.0",
+		"eslint-config-google": "^0.14.0",
+		"file-loader": "^6.0.0",
+		"html-loader": "^3.1.0",
+		"html-webpack-plugin": "^5.5.0",
+		"prettier": "2.7.1",
+		"raw-loader": "^4.0.1",
+		"style-loader": "^1.2.1",
+		"webpack": "^5.69.1",
+		"webpack-cli": "^4.9.2",
+		"webpack-dev-server": "^4.0.0",
+		"webpack-merge": "^5.8.0"
+	},
+	"dependencies": {
+		"three": "^0.141.0",
+		"postprocessing": "^6.28.0",
+		"stats.js": "^0.17.0",
+		"tweakpane": "^3.1.0"
+	},
+	"prettier": {
+		"semi": false,
+		"tabWidth": 2,
+		"useTabs": true,
+		"trailingComma": "none",
+		"arrowParens": "avoid",
+		"overrides": [
+			{
+				"files": [
+					"*.frag"
+				],
+				"options": {
+					"parser": "glsl-parser"
+				}
+			}
+		]
+	}
+}

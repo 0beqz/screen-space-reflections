@@ -1,0 +1,14 @@
+.DS_Store
+node_modules
+bundler/dist
+package-lock.json
+.cache
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
