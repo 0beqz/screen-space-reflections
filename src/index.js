@@ -1,12 +1,12 @@
 import "./style/main.css"
 import * as THREE from "three"
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
-import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
 import * as POSTPROCESSING from "postprocessing"
 import { Pane } from "tweakpane"
 import Stats from "stats.js"
-import { SSRPass } from "./ssr/SSRPass"
+import { SSRPass } from "./ssr/SSRPass.js"
 
 const sizes = {}
 sizes.width = window.innerWidth

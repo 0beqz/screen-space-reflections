@@ -1,8 +1,11 @@
-const CopyWebpackPlugin = require("copy-webpack-plugin")
-const HtmlWebpackPlugin = require("html-webpack-plugin")
-const path = require("path")
+import CopyWebpackPlugin from "copy-webpack-plugin"
+import HtmlWebpackPlugin from "html-webpack-plugin"
+import path from "path"
+import { fileURLToPath } from "url"
 
-module.exports = {
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+export default {
 	entry: path.resolve(__dirname, "../src/index.js"),
 	target: "web",
 	output: {

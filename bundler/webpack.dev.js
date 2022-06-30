@@ -1,18 +1,13 @@
-const { merge } = require('webpack-merge');
-const commonConfiguration = require('./webpack.common.js')
-const path = require('path')
+import { merge } from "webpack-merge"
+import commonConfiguration from "./webpack.common.js"
 
-module.exports = merge(
-    commonConfiguration,
-    {
-        mode: 'development',
-        devServer:
-        {
-            open: true,
-            static: "./dist",
-            hot: true,
-            liveReload: true
-        },
-        cache: false
-    }
-)
+export default merge(commonConfiguration, {
+	mode: "development",
+	devServer: {
+		open: true,
+		static: "./dist",
+		hot: true,
+		liveReload: true
+	},
+	cache: false
+})
