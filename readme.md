@@ -33,10 +33,17 @@ npm run dev
 
 ## Usage
 
-If you want to use screen space reflections in your project, make sure [`postprocessing.js`](https://github.com/pmndrs/postprocessing) is installed.
-Then just add it to your code like this:
+Install the package first:
+
+```
+npm i screen-space-reflections
+```
+
+Then add it to your code like so:
 
 ```javascript
+import { SSRPass } from "screen-space-reflections"
+
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 
 const ssrPass = new SSRPass(composer, scene, camera, options?);

@@ -1,0 +1,20 @@
+{
+	"name": "screen-space-reflections",
+	"version": "1.0.4",
+	"description": "Screen Space Reflections implementation in three.js",
+	"main": "SSRPass.js",
+	"keywords": [
+		"three",
+		"threejs",
+		"reflections",
+		"postprocessing",
+		"screen-space-reflections",
+		"3d"
+	],
+	"author": "0beqz",
+	"license": "MIT",
+	"dependencies": {
+		"postprocessing": "^6.28.0",
+		"three": "^0.141.0"
+	}
+}
