@@ -201,6 +201,8 @@ gltflLoader.load(useDesert ? "desert.glb" : "scene.glb", asset => {
 
 		if (c.name === "Cube") {
 			emitterMesh = c
+			c.material.emissiveMap = null
+			c.material.emissive.setScalar(0)
 			c.material.roughness = 3
 
 			c.material.side = THREE.FrontSide
