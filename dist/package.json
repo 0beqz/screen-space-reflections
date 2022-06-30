@@ -1,5 +1,5 @@
 {
-	"name": "three-screen-space-reflections",
+	"name": "screen-space-reflections",
 	"version": "1.0.0",
 	"description": "",
 	"main": "SSRPass.js",

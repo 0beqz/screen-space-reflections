@@ -2,31 +2,31 @@
 
 Implements performant Screen Space Reflections in three.js.
 <br></br>
-[<img src="screenshots/1.png">](https://three-screen-space-reflections.vercel.app/?dancer=true)
+[<img src="screenshots/1.png">](https://screen-space-reflections.vercel.app/?dancer=true)
 Glossy Reflections
 <br></br>
-[<img src="screenshots/2.png">](https://three-screen-space-reflections.vercel.app/?dancer=true)
+[<img src="screenshots/2.png">](https://screen-space-reflections.vercel.app/?dancer=true)
 Clean Reflections
 <br></br>
-[<img src="screenshots/3.png">](https://three-screen-space-reflections.vercel.app/?desert=true)
+[<img src="screenshots/3.png">](https://screen-space-reflections.vercel.app/?desert=true)
 
 <br>
 
 ## Demo
 
-- [Dancer with Animated Background](https://three-screen-space-reflections.vercel.app/?dancer=true)
+- [Dancer with Animated Background](https://screen-space-reflections.vercel.app/?dancer=true)
 
-- [Basic](https://three-screen-space-reflections.vercel.app/)
+- [Basic](https://screen-space-reflections.vercel.app/)
 
-- [Desert](https://three-screen-space-reflections.vercel.app/?desert=true)
+- [Desert](https://screen-space-reflections.vercel.app/?desert=true)
 
 ## Run Locally
 
 If you'd like to test this project and run it locally, run these commands:
 
 ```
-git clone https://github.com/0beqz/three-screen-space-reflections
-cd three-screen-space-reflections
+git clone https://github.com/0beqz/screen-space-reflections
+cd screen-space-reflections
 npm i
 npm run dev
 ```
