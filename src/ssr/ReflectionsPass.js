@@ -1,10 +1,14 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { WebGLMultipleRenderTargets, Uniform, WebGLRenderTarget } from "three"
+import {
+	NearestFilter,
+	NearestMipmapNearestFilter,
+	Uniform,
+	WebGLMultipleRenderTargets,
+	WebGLRenderTarget
+} from "three"
+import WEBGL from "three/examples/jsm/capabilities/WebGL.js"
 import { NormalDepthRoughnessMaterial } from "./material/NormalDepthRoughnessMaterial.js"
 import { SSRMaterial } from "./material/SSRMaterial.js"
-import WEBGL from "three/examples/jsm/capabilities/WebGL.js"
-import { NearestMipmapNearestFilter } from "three"
-import { NearestFilter } from "three"
 
 export class ReflectionsPass extends Pass {
 	#defaultMaterials = {}

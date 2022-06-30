@@ -1,5 +1,4 @@
 ﻿import { Matrix4, ShaderMaterial, Uniform } from "three"
-
 import helperFunctions from "./shader/helperFunctions.frag"
 import fragmentShader from "./shader/ssrMaterial.frag"
 import vertexShader from "./shader/ssrMaterial.vert"

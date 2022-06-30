@@ -1,4 +1,4 @@
-﻿import * as POSTPROCESSING from "postprocessing"
+﻿import { KawaseBlurPass, KernelSize, Pass } from "postprocessing"
 import { LinearFilter, WebGLRenderTarget } from "three"
 import { SSRCompositeMaterial } from "./material/SSRCompositeMaterial.js"
 import { ReflectionsPass } from "./ReflectionsPass.js"
@@ -7,7 +7,7 @@ const defaultOptions = {
 	width: window.innerWidth,
 	height: window.innerHeight,
 	useBlur: true,
-	blurKernelSize: POSTPROCESSING.KernelSize.SMALL,
+	blurKernelSize: KernelSize.SMALL,
 	blurWidth: window.innerWidth,
 	blurHeight: window.innerHeight,
 	rayStep: 0.1,
@@ -30,7 +30,7 @@ const defaultOptions = {
 	useRoughnessMap: true
 }
 
-export class SSRPass extends POSTPROCESSING.Pass {
+export class SSRPass extends Pass {
 	constructor(composer, scene, camera, options = defaultOptions) {
 		super("SSRPass")
 
@@ -55,7 +55,7 @@ export class SSRPass extends POSTPROCESSING.Pass {
 		}
 
 		// used to smooth out reflections by blurring them (more blur the longer the ray is)
-		this.kawaseBlurPass = new POSTPROCESSING.KawaseBlurPass()
+		this.kawaseBlurPass = new KawaseBlurPass()
 		this.kawaseBlurPass.kernelSize = options.blurKernelSize
 
 		const parameters = {
