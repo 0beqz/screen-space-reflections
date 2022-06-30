@@ -3,7 +3,7 @@
 	"description": "Screen Space Reflections implementation in three.js",
 	"main": "index.js",
 	"scripts": {
-		"dist": "rollup src/ssr/SSRPass.js --file dist/SSRPass.js --config bundler/rollup.config.js",
+		"dist": "rollup src/ssr/SSRPass.js --file dist/ScreenSpaceReflections.js --config bundler/rollup.config.js",
 		"build": "webpack --config ./bundler/webpack.prod.js",
 		"serve": "serve -s public",
 		"dev": "webpack-dev-server --config ./bundler/webpack.dev.js --hot"
