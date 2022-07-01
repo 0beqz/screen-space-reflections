@@ -19,7 +19,6 @@ export class ReflectionsPass extends Pass {
 	constructor(composer, scene, camera, options = {}) {
 		super("ReflectionsPass")
 
-		this.composer = composer
 		this._scene = scene
 		this._camera = camera
 		this.#options = options
