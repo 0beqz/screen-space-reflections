@@ -27,17 +27,19 @@ uniform float jitterRough;
 uniform float jitterSpread;
 #endif
 
-#include <packing>
-
 #define FLOAT_EPSILON 0.00001
 #define EARLY_OUT_COLOR vec4(0., 0., 0., 1.)
 
 const vec2 INVALID_RAY_COORDS = vec2(-1.);
+float _maxDepthDifference;  // maxDepthDifference * 0.01
+
+#include <packing>
+
+// helper functions
+#include <helperFunctions>
 
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
-
-#include <helperFunctions>
 
 void main() {
     vec4 depthTexel = texture2D(depthBuffer, vUv);
@@ -89,6 +91,8 @@ void main() {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }
+
+    _maxDepthDifference = maxDepthDifference * 0.01;
 
     // jitteriing
     vec3 jitt = vec3(0.);
@@ -255,7 +259,7 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
     // filter out sky
     if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
 
-    if (abs(rayHitDepthDifference) > maxDepthDifference) return INVALID_RAY_COORDS;
+    if (abs(rayHitDepthDifference) > _maxDepthDifference) return INVALID_RAY_COORDS;
 
     projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
     projectedCoord.xy /= projectedCoord.w;

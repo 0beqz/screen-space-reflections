@@ -1,12 +1,12 @@
-import "./style/main.css"
-import * as THREE from "three"
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
 import * as POSTPROCESSING from "postprocessing"
-import { Pane } from "tweakpane"
 import Stats from "stats.js"
+import * as THREE from "three"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
+import { Pane } from "tweakpane"
 import { SSRPass } from "./ssr/SSRPass.js"
+import "./style/main.css"
 
 const sizes = {}
 sizes.width = window.innerWidth
@@ -106,13 +106,13 @@ let params = {
 	jitterSpread: 0.59,
 	jitterRough: 0.8,
 	roughnessFadeOut: 1,
-	maxDepth: 0.996,
+	maxDepth: 1,
 	thickness: 3.5,
 	ior: 1.45,
 	rayFadeOut: 0,
 	MAX_STEPS: 25,
 	NUM_BINARY_SEARCH_STEPS: 7,
-	maxDepthDifference: 1,
+	maxDepthDifference: 3,
 	stretchMissedRays: false,
 	useMRT: true,
 	useNormalMap: true,
@@ -145,7 +145,7 @@ const paramsDesert = {
 	NUM_BINARY_SEARCH_STEPS: 6,
 	maxDepth: 1,
 	stretchMissedRays: true,
-	maxDepthDifference: 5,
+	maxDepthDifference: 500,
 	thickness: 22.83,
 	ior: 1.68,
 	useMRT: true,
@@ -360,8 +360,8 @@ optionsFolder.addInput(params, "power", { min: 0.1, max: 5, step: 0.1 })
 optionsFolder.addInput(params, "depthBlur", { min: 0, max: 0.5, step: 0.01 })
 optionsFolder.addInput(params, "maxDepthDifference", {
 	min: 0,
-	max: useDesert ? 10 : 1,
-	step: 0.0001
+	max: useDesert ? 40 : 3,
+	step: 0.01
 })
 optionsFolder.addInput(params, "maxDepth", {
 	min: 0.99,
@@ -486,7 +486,7 @@ if (!useDesert) {
 			params.height = 804
 			params.blurKernelSize = 1
 			params.enableJittering = false
-			params.maxDepthDifference = 1
+			params.maxDepthDifference = 3
 
 			params.rayFadeOut = 2.72
 
