@@ -34,7 +34,6 @@ export class SSRPass extends Pass {
 	constructor(composer, scene, camera, options = defaultOptions) {
 		super("SSRPass")
 
-		this.composer = composer
 		this._camera = camera
 		options = { ...defaultOptions, ...options }
 

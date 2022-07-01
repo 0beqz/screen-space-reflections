@@ -276,7 +276,6 @@ class ReflectionsPass extends Pass {
       value: false
     });
 
-    this.composer = composer;
     this._scene = scene;
     this._camera = camera;
 
@@ -445,7 +444,6 @@ const defaultOptions = {
 class SSRPass extends Pass {
   constructor(composer, scene, camera, options = defaultOptions) {
     super("SSRPass");
-    this.composer = composer;
     this._camera = camera;
     options = _objectSpread(_objectSpread({}, defaultOptions), options);
     this.fullscreenMaterial = new SSRCompositeMaterial(); // returns just the calculates reflections
