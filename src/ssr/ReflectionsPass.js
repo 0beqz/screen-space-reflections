@@ -1,5 +1,4 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { MeshDepthMaterial } from "three"
 import {
 	NearestFilter,
 	NearestMipmapNearestFilter,
