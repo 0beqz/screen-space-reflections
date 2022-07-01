@@ -180,7 +180,7 @@ if (useDesert) {
 
 const defaultParams = { ...params }
 
-const ssrPass = new SSRPass(composer, scene, camera, params)
+const ssrPass = new SSRPass(scene, camera, params)
 composer.addPass(ssrPass)
 window.ssrPass = ssrPass
 

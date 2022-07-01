@@ -1,4 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+import { MeshDepthMaterial } from "three"
 import {
 	NearestFilter,
 	NearestMipmapNearestFilter,
@@ -15,8 +16,9 @@ export class ReflectionsPass extends Pass {
 	#normalDepthMaterials = {}
 	#options = {}
 	#useMRT = false
+	#webgl1DepthPass = null
 
-	constructor(composer, scene, camera, options = {}) {
+	constructor(scene, camera, options = {}) {
 		super("ReflectionsPass")
 
 		this._scene = scene
@@ -72,16 +74,18 @@ export class ReflectionsPass extends Pass {
 			this.fullscreenMaterial.defines.USE_ROUGHNESSMAP = true
 		} else {
 			// depth pass
-			const depthPass = new DepthPass(scene, camera)
-			depthPass.renderTarget.minFilter = NearestMipmapNearestFilter
-			depthPass.renderTarget.magFilter = NearestMipmapNearestFilter
-			depthPass.renderTarget.generateMipmaps = true
+			this.#webgl1DepthPass = new DepthPass(scene, camera)
+			this.#webgl1DepthPass.renderTarget.minFilter = NearestMipmapNearestFilter
+			this.#webgl1DepthPass.renderTarget.magFilter = NearestMipmapNearestFilter
+			this.#webgl1DepthPass.renderTarget.generateMipmaps = true
 
-			depthPass.renderTarget.texture.minFilter = NearestMipmapNearestFilter
-			depthPass.renderTarget.texture.magFilter = NearestMipmapNearestFilter
-			depthPass.renderTarget.texture.generateMipmaps = true
+			this.#webgl1DepthPass.renderTarget.texture.minFilter =
+				NearestMipmapNearestFilter
+			this.#webgl1DepthPass.renderTarget.texture.magFilter =
+				NearestMipmapNearestFilter
+			this.#webgl1DepthPass.renderTarget.texture.generateMipmaps = true
 
-			composer.addPass(depthPass)
+			this.#webgl1DepthPass.setSize(window.innerWidth, window.innerHeight)
 
 			this.gBuffersRenderTarget = new WebGLRenderTarget(width, height, {
 				minFilter: NearestFilter,
@@ -89,7 +93,7 @@ export class ReflectionsPass extends Pass {
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture
-			this.depthTexture = depthPass.texture
+			this.depthTexture = this.#webgl1DepthPass.texture
 		}
 	}
 
@@ -166,6 +170,13 @@ export class ReflectionsPass extends Pass {
 	}
 
 	render(renderer, inputBuffer) {
+		if (this.#webgl1DepthPass !== null) {
+			this.#webgl1DepthPass.renderPass.render(
+				renderer,
+				this.#webgl1DepthPass.renderTarget
+			)
+		}
+
 		this.#setNormalDepthRoughnessMaterialInScene()
 
 		renderer.setRenderTarget(this.gBuffersRenderTarget)
