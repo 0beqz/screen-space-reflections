@@ -12,13 +12,19 @@ Clean Reflections
 
 <br>
 
-## Demo
+## Demos
 
 - [Dancer with Animated Background](https://screen-space-reflections.vercel.app/?dancer=true)
 
 - [Basic](https://screen-space-reflections.vercel.app/)
 
 - [Desert](https://screen-space-reflections.vercel.app/?desert=true)
+
+react-three-fiber demos:
+
+- [Rover](https://codesandbox.io/s/ssr-rover-leixne?file=/src/Sophia-v1.js)
+
+- [three.js journey scene](https://codesandbox.io/s/ssr-threejs-journey-84he6c)
 
 ## Run Locally
 
@@ -32,6 +38,11 @@ npm run dev
 ```
 
 ## Usage
+
+If you are using [react-three-fiber](https://github.com/pmndrs/react-three-fiber), you can also use the `SSR` component from [react-postprocessing](https://github.com/pmndrs/react-postprocessing). Check out the react-three-fiber demos to see how it's used there.
+<br>
+
+### Basic usage:
 
 Install the package first:
 
@@ -111,6 +122,8 @@ Description:
 
 - `jitterSpread`: how much the jittered rays should be spread; higher values will give a rougher look regarding the reflections but are more expensive to compute with
 
+- `jitterRough`: how intense jittering should be in relation to a material's roughness
+
 - `MAX_STEPS`: the number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects)
 
 - `NUM_BINARY_SEARCH_STEPS`: once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
@@ -122,6 +135,8 @@ Description:
 - `thickness`: the maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; lower values will result in better performance
 
 - `ior`: Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter set how much the intensity varies
+
+- `stretchMissedRays`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
 
 - `useMRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run
 
@@ -135,6 +150,54 @@ Description:
 - Using three.js' WebGLMultipleRenderTarget (WebGL2 only) to improve performance when rendering scene normals, depth and roughness
 - Early out cases to compute only possible reflections and boost performance
 - Blurring reflections using Kawase Blur Pass for better performance over a Gaussian Blur Pass
+
+## Tips
+
+### Getting the right look
+
+SSR usually needs a lot of tweaking before it looks alright in a scene, so using a GUI where you can easily modify all values is highly recommended.
+The demo uses [tweakpane](https://cocopon.github.io/tweakpane/) as the GUI. If you want to use it, check out how it's initalized and used in the demo: https://github.com/0beqz/screen-space-reflections/blob/main/src/index.js.
+<br>
+
+### Handling noise
+
+To smooth out noise from jittering, set the `blurKernelSize` to 2 or 3 and increase `depthBlur` precisely while using rather low values for `blurWidth` and `blurHeight`. This will blur out reflections the "deeper" they are.
+<br>
+
+### Getting rid of artifacts
+
+If you are getting artifacts, for example:
+<br>
+<img src="screenshots/artifacts.png" width="50%">
+
+Then try the following:
+
+- increase `thickness`
+- increase `maxDepthDifference`
+- increase `maxDepth` or set it directly to 1
+- decrease `rayStep` and increase `MAX_STEPS` if reflections are cutting off now
+- increase `NUM_BINARY_SEARCH_STEPS`
+
+Keep in mind that increasing these values will have an impact on performance.
+<br>
+
+### Hiding missing reflections
+
+Since SSR only works with screen-space information, there'll be artifacts when there's no scene information for a reflection ray.
+This usually happens when another objects occludes a reflecting object behind it.
+<br>
+To make missing reflections less apparent, use an env-map that can then be used as a fallback when there is no reflection.
+Ideally use a box-projected env-map.
+
+Here are two implementations for three.js and react-three-fiber:
+
+- [Gist to include box-projected env-maps in three.js](https://gist.github.com/0beqz/8d51b4ae16d68021a09fb504af708fca)
+- [useBoxProjectedEnv in react-three-fiber](https://github.com/pmndrs/drei#useboxprojectedenv)
+  <br>
+
+## Todos
+
+- [ ] Add Temporal Filtering to reduce noise
 
 ## Credits
 
