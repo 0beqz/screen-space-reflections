@@ -25,6 +25,7 @@ const defaultOptions = {
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
+	stretchMissedRays: false,
 	useMRT: true,
 	useNormalMap: true,
 	useRoughnessMap: true
