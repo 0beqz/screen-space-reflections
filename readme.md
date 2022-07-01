@@ -57,7 +57,7 @@ import { SSRPass } from "screen-space-reflections"
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 
-const ssrPass = new SSRPass(composer, scene, camera, options?);
+const ssrPass = new SSRPass(scene, camera, options?)
 composer.addPass(ssrPass)
 ```
 
