@@ -31,8 +31,10 @@ const defaultOptions = {
 }
 
 export class SSRPass extends Pass {
-	constructor(composer, scene, camera, options = defaultOptions) {
+	constructor(scene, camera, options = defaultOptions) {
 		super("SSRPass")
+
+		this.needsDepthTexture = true
 
 		this._camera = camera
 		options = { ...defaultOptions, ...options }
@@ -40,7 +42,7 @@ export class SSRPass extends Pass {
 		this.fullscreenMaterial = new SSRCompositeMaterial()
 
 		// returns just the calculates reflections
-		this.reflectionsPass = new ReflectionsPass(composer, scene, camera, options)
+		this.reflectionsPass = new ReflectionsPass(scene, camera, options)
 
 		this.reflectionsPass.setSize(options.width, options.height)
 
