@@ -191,7 +191,7 @@ class NormalDepthRoughnessMaterial extends ShaderMaterial {
 
 var helperFunctions = "#define GLSLIFY 1\nvec3 getViewPosition(const float depth){float clipW=_projectionMatrix[2][3]*depth+_projectionMatrix[3][3];vec4 clipPosition=vec4((vec3(vUv,depth)-0.5)*2.0,1.0);clipPosition*=clipW;return(_inverseProjectionMatrix*clipPosition).xyz;}float getViewZ(const float depth){return perspectiveDepthToViewZ(depth,cameraNear,cameraFar);}vec3 screenSpaceToWorldSpace(const vec2 uv,const float depth){vec4 ndc=vec4((uv.x-0.5)*2.0,(uv.y-0.5)*2.0,(depth-0.5)*2.0,1.0);vec4 clip=_inverseProjectionMatrix*ndc;vec4 view=cameraMatrixWorld*(clip/clip.w);return view.xyz;}\n#define Scale (vec3(0.8, 0.8, 0.8))\n#define K (19.19)\nvec3 hash(vec3 a){a=fract(a*Scale);a+=dot(a,a.yxz+K);return fract((a.xxy+a.yxx)*a.zyx);}float fresnel_dielectric_cos(float cosi,float eta){float c=abs(cosi);float g=eta*eta-1.0+c*c;float result;if(g>0.0){g=sqrt(g);float A=(g-c)/(g+c);float B=(c*(g+c)-1.0)/(c*(g-c)+1.0);result=0.5*A*A*(1.0+B*B);}else{result=1.0;}return result;}float fresnel_dielectric(vec3 Incoming,vec3 Normal,float eta){float cosine=dot(Incoming,Normal);return min(1.0,5.0*fresnel_dielectric_cos(cosine,eta));}"; // eslint-disable-line
 
-var fragmentShader = "#define GLSLIFY 1\nvarying vec2 vUv;uniform sampler2D inputBuffer;uniform sampler2D normalBuffer;uniform sampler2D depthBuffer;uniform mat4 _projectionMatrix;uniform mat4 _inverseProjectionMatrix;uniform mat4 cameraMatrixWorld;uniform float cameraNear;uniform float cameraFar;uniform float rayStep;uniform float intensity;uniform float power;uniform float maxDepthDifference;uniform float roughnessFadeOut;uniform float depthBlur;uniform float maxDepth;uniform float rayFadeOut;uniform float thickness;uniform float ior;\n#ifdef USE_JITTERING\nuniform float jitter;uniform float jitterRough;uniform float jitterSpread;\n#endif\n#include <packing>\n#define FLOAT_EPSILON 0.00001\n#define EARLY_OUT_COLOR vec4(0., 0., 0., 1.)\nconst vec2 INVALID_RAY_COORDS=vec2(-1.);vec2 BinarySearch(inout vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);vec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);\n#include <helperFunctions>\nvoid main(){vec4 depthTexel=texture2D(depthBuffer,vUv);if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON){gl_FragColor=EARLY_OUT_COLOR;return;}float unpackedDepth=unpackRGBAToDepth(depthTexel);if(unpackedDepth>maxDepth){gl_FragColor=EARLY_OUT_COLOR;return;}vec4 normalTexel=texture2D(normalBuffer,vUv);float roughness=normalTexel.a;if(roughness>1.-FLOAT_EPSILON&&roughnessFadeOut>1.-FLOAT_EPSILON){gl_FragColor=EARLY_OUT_COLOR;return;}float specular=1.-roughness;specular*=specular;normalTexel.rgb=unpackRGBToNormal(normalTexel.rgb);float depth=getViewZ(unpackedDepth);vec3 viewNormal=normalTexel.xyz;vec3 viewPos=getViewPosition(depth);vec3 worldPos=screenSpaceToWorldSpace(vUv,unpackedDepth);vec3 reflected=normalize(reflect(normalize(viewPos),normalize(viewNormal)));if(viewNormal.z-reflected.z<0.005){gl_FragColor=EARLY_OUT_COLOR;return;}vec3 jitt=vec3(0.);\n#ifdef USE_JITTERING\nvec3 randomJitter=hash(5.*(worldPos+viewNormal))-vec3(0.5,0.5,0.5);float spread=((2.-specular)+0.05*roughness*jitterRough)*jitterSpread;float jitterMix=jitter+jitterRough*roughness;if(jitterMix>1.)jitterMix=1.;jitt=mix(vec3(0.),randomJitter*spread,jitterMix);\n#endif\nvec3 hitPos=viewPos;float rayHitDepthDifference;vec2 coords=RayMarch(jitt+reflected*-viewPos.z,hitPos,rayHitDepthDifference);if(coords.x==-1.){gl_FragColor=EARLY_OUT_COLOR;return;}vec2 coordsNDC=(coords*2.0-1.0);float screenFade=0.1;float maxDimension=min(1.0,max(abs(coordsNDC.x),abs(coordsNDC.y)));float screenEdgefactor=1.0-(max(0.0,maxDimension-screenFade)/(1.0-screenFade));float reflectionMultiplier=max(0.,screenEdgefactor);vec3 SSR=texture2D(inputBuffer,coords.xy).rgb;if(power!=1.)SSR=pow(SSR,vec3(power));float roughnessFactor=mix(specular,1.,max(0.,1.-roughnessFadeOut));vec3 finalSSR=SSR*reflectionMultiplier*roughnessFactor;vec3 hitWorldPos=screenSpaceToWorldSpace(coords,rayHitDepthDifference);float reflectionDistance=distance(hitWorldPos,worldPos);reflectionDistance+=1.;if(rayFadeOut!=0.){float opacity=1./((reflectionDistance*reflectionDistance)*rayFadeOut*0.01);if(opacity>1.)opacity=1.;finalSSR*=opacity;}float blurMix=0.;\n#ifdef USE_BLUR\nblurMix=reflectionDistance*depthBlur;if(blurMix>1.)blurMix=1.;\n#endif\nfloat fresnelFactor=fresnel_dielectric(normalize(viewPos),viewNormal,ior);finalSSR=finalSSR*fresnelFactor*intensity;finalSSR=min(vec3(1.),finalSSR);gl_FragColor=vec4(vec3(finalSSR),blurMix);\n#include <encodings_fragment>\n}vec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){dir=normalize(dir);dir*=rayStep;float depth;int steps;vec4 projectedCoord;vec4 lastProjectedCoord;float unpackedDepth;float stepMultiplier=1.;vec4 depthTexel;for(int i=0;i<MAX_STEPS;i++){hitPos+=dir*stepMultiplier;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;if(projectedCoord.x>1.||projectedCoord.y>1.){hitPos-=dir*stepMultiplier;stepMultiplier*=0.5;continue;}depthTexel=textureLod(depthBuffer,projectedCoord.xy,0.);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=getViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;if(rayHitDepthDifference>=0.){if(rayHitDepthDifference>thickness)return INVALID_RAY_COORDS;\n#if NUM_BINARY_SEARCH_STEPS == 0\nif(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;\n#else\nprojectedCoord.xy=BinarySearch(dir,hitPos,rayHitDepthDifference);\n#endif\nreturn projectedCoord.xy;}steps++;lastProjectedCoord=projectedCoord;}\n#ifndef STRETCH_MISSED_RAYS\nreturn INVALID_RAY_COORDS;\n#endif\nrayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}vec2 BinarySearch(inout vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){float depth;vec4 projectedCoord;vec2 lastMinProjectedCoordXY;float unpackedDepth;vec4 depthTexel;for(int i=0;i<NUM_BINARY_SEARCH_STEPS;i++){projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;if((lastMinProjectedCoordXY.x>1.||lastMinProjectedCoordXY.y>1.)&&(projectedCoord.x>1.||projectedCoord.y>1.))return INVALID_RAY_COORDS;depthTexel=textureLod(depthBuffer,projectedCoord.xy,0.);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=getViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;dir*=0.5;if(rayHitDepthDifference>0.0){hitPos-=dir;}else{hitPos+=dir;lastMinProjectedCoordXY=projectedCoord.xy;}}if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;if(abs(rayHitDepthDifference)>maxDepthDifference)return INVALID_RAY_COORDS;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;\n#ifndef STRETCH_MISSED_RAYS\nif(projectedCoord.x>1.||projectedCoord.y>1.)return INVALID_RAY_COORDS;\n#endif\nrayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}"; // eslint-disable-line
+var fragmentShader = "#define GLSLIFY 1\nvarying vec2 vUv;uniform sampler2D inputBuffer;uniform sampler2D normalBuffer;uniform sampler2D depthBuffer;uniform mat4 _projectionMatrix;uniform mat4 _inverseProjectionMatrix;uniform mat4 cameraMatrixWorld;uniform float cameraNear;uniform float cameraFar;uniform float rayStep;uniform float intensity;uniform float power;uniform float maxDepthDifference;uniform float roughnessFadeOut;uniform float depthBlur;uniform float maxDepth;uniform float rayFadeOut;uniform float thickness;uniform float ior;\n#ifdef USE_JITTERING\nuniform float jitter;uniform float jitterRough;uniform float jitterSpread;\n#endif\n#define FLOAT_EPSILON 0.00001\n#define EARLY_OUT_COLOR vec4(0., 0., 0., 1.)\nconst vec2 INVALID_RAY_COORDS=vec2(-1.);float _maxDepthDifference;\n#include <packing>\n#include <helperFunctions>\nvec2 BinarySearch(inout vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);vec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);void main(){vec4 depthTexel=texture2D(depthBuffer,vUv);if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON){gl_FragColor=EARLY_OUT_COLOR;return;}float unpackedDepth=unpackRGBAToDepth(depthTexel);if(unpackedDepth>maxDepth){gl_FragColor=EARLY_OUT_COLOR;return;}vec4 normalTexel=texture2D(normalBuffer,vUv);float roughness=normalTexel.a;if(roughness>1.-FLOAT_EPSILON&&roughnessFadeOut>1.-FLOAT_EPSILON){gl_FragColor=EARLY_OUT_COLOR;return;}float specular=1.-roughness;specular*=specular;normalTexel.rgb=unpackRGBToNormal(normalTexel.rgb);float depth=getViewZ(unpackedDepth);vec3 viewNormal=normalTexel.xyz;vec3 viewPos=getViewPosition(depth);vec3 worldPos=screenSpaceToWorldSpace(vUv,unpackedDepth);vec3 reflected=normalize(reflect(normalize(viewPos),normalize(viewNormal)));if(viewNormal.z-reflected.z<0.005){gl_FragColor=EARLY_OUT_COLOR;return;}_maxDepthDifference=maxDepthDifference*0.01;vec3 jitt=vec3(0.);\n#ifdef USE_JITTERING\nvec3 randomJitter=hash(5.*(worldPos+viewNormal))-vec3(0.5,0.5,0.5);float spread=((2.-specular)+0.05*roughness*jitterRough)*jitterSpread;float jitterMix=jitter+jitterRough*roughness;if(jitterMix>1.)jitterMix=1.;jitt=mix(vec3(0.),randomJitter*spread,jitterMix);\n#endif\nvec3 hitPos=viewPos;float rayHitDepthDifference;vec2 coords=RayMarch(jitt+reflected*-viewPos.z,hitPos,rayHitDepthDifference);if(coords.x==-1.){gl_FragColor=EARLY_OUT_COLOR;return;}vec2 coordsNDC=(coords*2.0-1.0);float screenFade=0.1;float maxDimension=min(1.0,max(abs(coordsNDC.x),abs(coordsNDC.y)));float screenEdgefactor=1.0-(max(0.0,maxDimension-screenFade)/(1.0-screenFade));float reflectionMultiplier=max(0.,screenEdgefactor);vec3 SSR=texture2D(inputBuffer,coords.xy).rgb;if(power!=1.)SSR=pow(SSR,vec3(power));float roughnessFactor=mix(specular,1.,max(0.,1.-roughnessFadeOut));vec3 finalSSR=SSR*reflectionMultiplier*roughnessFactor;vec3 hitWorldPos=screenSpaceToWorldSpace(coords,rayHitDepthDifference);float reflectionDistance=distance(hitWorldPos,worldPos);reflectionDistance+=1.;if(rayFadeOut!=0.){float opacity=1./((reflectionDistance*reflectionDistance)*rayFadeOut*0.01);if(opacity>1.)opacity=1.;finalSSR*=opacity;}float blurMix=0.;\n#ifdef USE_BLUR\nblurMix=reflectionDistance*depthBlur;if(blurMix>1.)blurMix=1.;\n#endif\nfloat fresnelFactor=fresnel_dielectric(normalize(viewPos),viewNormal,ior);finalSSR=finalSSR*fresnelFactor*intensity;finalSSR=min(vec3(1.),finalSSR);gl_FragColor=vec4(finalSSR,blurMix);\n#include <encodings_fragment>\n}vec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){dir=normalize(dir);dir*=rayStep;float depth;int steps;vec4 projectedCoord;vec4 lastProjectedCoord;float unpackedDepth;float stepMultiplier=1.;vec4 depthTexel;for(int i=0;i<MAX_STEPS;i++){hitPos+=dir*stepMultiplier;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;if(projectedCoord.x>1.||projectedCoord.y>1.){hitPos-=dir*stepMultiplier;stepMultiplier*=0.5;continue;}depthTexel=textureLod(depthBuffer,projectedCoord.xy,0.);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=getViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;if(rayHitDepthDifference>=0.){if(rayHitDepthDifference>thickness)return INVALID_RAY_COORDS;\n#if NUM_BINARY_SEARCH_STEPS == 0\nif(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;\n#else\nprojectedCoord.xy=BinarySearch(dir,hitPos,rayHitDepthDifference);\n#endif\nreturn projectedCoord.xy;}steps++;lastProjectedCoord=projectedCoord;}\n#ifndef STRETCH_MISSED_RAYS\nreturn INVALID_RAY_COORDS;\n#endif\nrayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}vec2 BinarySearch(inout vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){float depth;vec4 projectedCoord;vec2 lastMinProjectedCoordXY;float unpackedDepth;vec4 depthTexel;for(int i=0;i<NUM_BINARY_SEARCH_STEPS;i++){projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;if((lastMinProjectedCoordXY.x>1.||lastMinProjectedCoordXY.y>1.)&&(projectedCoord.x>1.||projectedCoord.y>1.))return INVALID_RAY_COORDS;depthTexel=textureLod(depthBuffer,projectedCoord.xy,0.);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=getViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;dir*=0.5;if(rayHitDepthDifference>0.0){hitPos-=dir;}else{hitPos+=dir;lastMinProjectedCoordXY=projectedCoord.xy;}}if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;if(abs(rayHitDepthDifference)>_maxDepthDifference)return INVALID_RAY_COORDS;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;\n#ifndef STRETCH_MISSED_RAYS\nif(projectedCoord.x>1.||projectedCoord.y>1.)return INVALID_RAY_COORDS;\n#endif\nrayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}"; // eslint-disable-line
 
 var vertexShader = "#define GLSLIFY 1\nvarying vec2 vUv;void main(){vUv=position.xy*0.5+0.5;gl_Position=vec4(position.xy,1.0,1.0);}"; // eslint-disable-line
 
@@ -244,12 +244,14 @@ var _options = /*#__PURE__*/new WeakMap();
 
 var _useMRT = /*#__PURE__*/new WeakMap();
 
+var _webgl1DepthPass = /*#__PURE__*/new WeakMap();
+
 var _setNormalDepthRoughnessMaterialInScene = /*#__PURE__*/new WeakSet();
 
 var _unsetNormalDepthRoughnessMaterialInScene = /*#__PURE__*/new WeakSet();
 
 class ReflectionsPass extends Pass {
-  constructor(composer, scene, camera, options = {}) {
+  constructor(scene, camera, options = {}) {
     super("ReflectionsPass");
 
     _classPrivateMethodInitSpec(this, _unsetNormalDepthRoughnessMaterialInScene);
@@ -274,6 +276,11 @@ class ReflectionsPass extends Pass {
     _classPrivateFieldInitSpec(this, _useMRT, {
       writable: true,
       value: false
+    });
+
+    _classPrivateFieldInitSpec(this, _webgl1DepthPass, {
+      writable: true,
+      value: null
     });
 
     this._scene = scene;
@@ -314,20 +321,23 @@ class ReflectionsPass extends Pass {
       this.fullscreenMaterial.defines.USE_ROUGHNESSMAP = true;
     } else {
       // depth pass
-      const depthPass = new DepthPass(scene, camera);
-      depthPass.renderTarget.minFilter = NearestMipmapNearestFilter;
-      depthPass.renderTarget.magFilter = NearestMipmapNearestFilter;
-      depthPass.renderTarget.generateMipmaps = true;
-      depthPass.renderTarget.texture.minFilter = NearestMipmapNearestFilter;
-      depthPass.renderTarget.texture.magFilter = NearestMipmapNearestFilter;
-      depthPass.renderTarget.texture.generateMipmaps = true;
-      composer.addPass(depthPass);
+      _classPrivateFieldSet(this, _webgl1DepthPass, new DepthPass(scene, camera));
+
+      _classPrivateFieldGet(this, _webgl1DepthPass).renderTarget.minFilter = NearestMipmapNearestFilter;
+      _classPrivateFieldGet(this, _webgl1DepthPass).renderTarget.magFilter = NearestMipmapNearestFilter;
+      _classPrivateFieldGet(this, _webgl1DepthPass).renderTarget.generateMipmaps = true;
+      _classPrivateFieldGet(this, _webgl1DepthPass).renderTarget.texture.minFilter = NearestMipmapNearestFilter;
+      _classPrivateFieldGet(this, _webgl1DepthPass).renderTarget.texture.magFilter = NearestMipmapNearestFilter;
+      _classPrivateFieldGet(this, _webgl1DepthPass).renderTarget.texture.generateMipmaps = true;
+
+      _classPrivateFieldGet(this, _webgl1DepthPass).setSize(window.innerWidth, window.innerHeight);
+
       this.gBuffersRenderTarget = new WebGLRenderTarget(width, height, {
         minFilter: NearestFilter,
         magFilter: NearestFilter
       });
       this.normalTexture = this.gBuffersRenderTarget.texture;
-      this.depthTexture = depthPass.texture;
+      this.depthTexture = _classPrivateFieldGet(this, _webgl1DepthPass).texture;
     }
   }
 
@@ -337,6 +347,10 @@ class ReflectionsPass extends Pass {
   }
 
   render(renderer, inputBuffer) {
+    if (_classPrivateFieldGet(this, _webgl1DepthPass) !== null) {
+      _classPrivateFieldGet(this, _webgl1DepthPass).renderPass.render(renderer, _classPrivateFieldGet(this, _webgl1DepthPass).renderTarget);
+    }
+
     _classPrivateMethodGet(this, _setNormalDepthRoughnessMaterialInScene, _setNormalDepthRoughnessMaterialInScene2).call(this);
 
     renderer.setRenderTarget(this.gBuffersRenderTarget);
@@ -432,23 +446,25 @@ const defaultOptions = {
   roughnessFadeOut: 1,
   MAX_STEPS: 20,
   NUM_BINARY_SEARCH_STEPS: 5,
-  maxDepthDifference: 1,
+  maxDepthDifference: 3,
   maxDepth: 1,
   thickness: 10,
   ior: 1.45,
+  stretchMissedRays: false,
   useMRT: true,
   useNormalMap: true,
   useRoughnessMap: true
 };
 
 class SSRPass extends Pass {
-  constructor(composer, scene, camera, options = defaultOptions) {
+  constructor(scene, camera, options = defaultOptions) {
     super("SSRPass");
+    this.needsDepthTexture = true;
     this._camera = camera;
     options = _objectSpread(_objectSpread({}, defaultOptions), options);
     this.fullscreenMaterial = new SSRCompositeMaterial(); // returns just the calculates reflections
 
-    this.reflectionsPass = new ReflectionsPass(composer, scene, camera, options);
+    this.reflectionsPass = new ReflectionsPass(scene, camera, options);
     this.reflectionsPass.setSize(options.width, options.height);
 
     if (options.useBlur) {

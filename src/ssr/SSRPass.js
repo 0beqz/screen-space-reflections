@@ -21,7 +21,7 @@ const defaultOptions = {
 	roughnessFadeOut: 1,
 	MAX_STEPS: 20,
 	NUM_BINARY_SEARCH_STEPS: 5,
-	maxDepthDifference: 1,
+	maxDepthDifference: 3,
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,

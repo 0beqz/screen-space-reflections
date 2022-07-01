@@ -5,7 +5,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
 import { Pane } from "tweakpane"
-import { SSRPass } from "./ssr/SSRPass.js"
+import { SSRPass } from "../dist/ScreenSpaceReflections.js"
 import "./style/main.css"
 
 const sizes = {}
@@ -360,7 +360,7 @@ optionsFolder.addInput(params, "power", { min: 0.1, max: 5, step: 0.1 })
 optionsFolder.addInput(params, "depthBlur", { min: 0, max: 0.5, step: 0.01 })
 optionsFolder.addInput(params, "maxDepthDifference", {
 	min: 0,
-	max: useDesert ? 40 : 3,
+	max: useDesert ? 20 : 8,
 	step: 0.01
 })
 optionsFolder.addInput(params, "maxDepth", {
@@ -486,7 +486,7 @@ if (!useDesert) {
 			params.height = 804
 			params.blurKernelSize = 1
 			params.enableJittering = false
-			params.maxDepthDifference = 3
+			params.maxDepthDifference = 6
 
 			params.rayFadeOut = 2.72
 
