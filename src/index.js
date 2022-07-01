@@ -5,7 +5,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
 import { Pane } from "tweakpane"
-import { SSRPass } from "../dist/ScreenSpaceReflections.js"
+import { SSRPass } from "./ssr/SSRPass.js"
 import "./style/main.css"
 
 const sizes = {}
