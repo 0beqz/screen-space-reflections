@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "postprocessing": "^6.28.1",
-    "screen-space-reflections": "^1.0.7",
     "stats.js": "^0.17.0",
     "three": "^0.142.0",
     "tweakpane": "^3.1.0"
