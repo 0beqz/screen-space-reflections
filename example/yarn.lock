@@ -215,11 +215,6 @@ rollup@^2.59.0:
   optionalDependencies:
     fsevents "~2.3.2"
 
-screen-space-reflections@^1.0.7:
-  version "1.0.7"
-  resolved "https://registry.yarnpkg.com/screen-space-reflections/-/screen-space-reflections-1.0.7.tgz#0ab24ed13f36f877df48c6885e06517c4ace49a6"
-  integrity sha512-wvAUWTeJOTB9z2Wn6+zo061RduTzaS3pfYo2Ag/AcDTH536+OKWkfvEvw03yuGVJmKNGJFUi3BwwBYcO3lKm+g==
-
 source-map-js@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/source-map-js/-/source-map-js-1.0.2.tgz#adbc361d9c62df380125e7f161f71c826f1e490c"
