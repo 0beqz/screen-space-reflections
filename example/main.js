@@ -1,12 +1,13 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
+import { HalfFloatType } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
 import { Pane } from "tweakpane"
-import { SSRPass } from "screen-space-reflections"
-import "./style.css"
+import { SSRPass } from "./ssr/SSRPass.js"
+import "./style/main.css"
 
 const sizes = {}
 sizes.width = window.innerWidth
@@ -69,10 +70,16 @@ renderer.setSize(sizes.width, sizes.height)
 
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
-controls.maxDepth = 15
 window.controls = controls
 
-const composer = new POSTPROCESSING.EffectComposer(renderer)
+controls.addEventListener("change", () => {
+	ssrPass.reflectionsPass.samples = 1
+	// ssrPass.reflectionsPass.createLastFramebufferTexture()
+})
+
+const composer = new POSTPROCESSING.EffectComposer(renderer, {
+	frameBufferType: HalfFloatType
+})
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
@@ -85,19 +92,22 @@ let params = {
 
 	width: window.innerWidth,
 	height: window.innerHeight,
-	useBlur: true,
-	blurKernelSize: POSTPROCESSING.KernelSize.SMALL,
+	temporalResolve: true,
+	staticNoise: false,
+	useBlur: false,
+	blurKernelSize: 3,
 	blurWidth: 935,
-	blurHeight: 304,
+	blurHeight: 391,
 	rayStep: 0.534,
 	intensity: 1,
-	power: 1,
-	depthBlur: 0.11,
-	enableJittering: false,
-	jitter: 0.17,
-	jitterSpread: 0.59,
-	jitterRough: 0.8,
-	roughnessFadeOut: 1,
+	depthBlur: 0.26,
+	maxBlur: 0.85,
+	enableJittering: true,
+	jitter: 0.36,
+	jitterRough: 2,
+	jitterSpread: 3.37,
+	roughnessFadeOut: 0.51,
+	rayFadeOut: 1.03,
 	maxDepth: 1,
 	thickness: 3.5,
 	ior: 1.45,
@@ -106,6 +116,8 @@ let params = {
 	NUM_BINARY_SEARCH_STEPS: 7,
 	maxDepthDifference: 3,
 	stretchMissedRays: false,
+	floorRoughness: 2.6,
+	floorNormalScale: 0,
 	useMRT: true,
 	useNormalMap: true,
 	useRoughnessMap: true
@@ -125,8 +137,8 @@ const paramsDesert = {
 	blurHeight: 370,
 	rayStep: 0.205,
 	intensity: 0.7,
-	power: 1.1,
 	depthBlur: 0.11,
+	maxBlur: 1,
 	enableJittering: true,
 	jitter: 0.17,
 	jitterRough: 0,
@@ -154,7 +166,7 @@ if (useDesert) {
 	camera.position.set(43.41796615579645, -0.989309749754447, 111.06453952471358)
 	controls.target.set(30.557604018998227, -1.0641165515106161, 111.09867225736214)
 } else {
-	camera.position.set(9.830958100630163, 1.0769590725793634, 0.43954473968492885)
+	camera.position.set(11.002333350656253, 2.406571150547438, -2.833099999666251)
 	controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.46503426700631345)
 }
 
@@ -197,7 +209,7 @@ gltflLoader.load(useDesert ? "desert.glb" : "scene.glb", asset => {
 			roughness: 0
 		})
 	)
-	box.position.set(2, 1, 5)
+	box.position.set(4, 1, 4)
 	box.updateMatrixWorld()
 
 	const box2 = new THREE.Mesh(
@@ -251,7 +263,6 @@ const useVideoBackgroundAndDancer = () => {
 	params.jitterRough = 0.36
 	params.jitterSpread = 0.34
 	params.intensity = 2
-	params.power = 1
 	params.roughnessFadeOut = 1
 	params.rayFadeOut = 1.14
 	params.MAX_STEPS = 64
@@ -271,6 +282,7 @@ const useVideoBackgroundAndDancer = () => {
 	video.src = "video.mp4"
 	video.playbackRate = 2
 	video.play()
+	window.video = video
 	const videoTexture = new THREE.VideoTexture(video)
 	emitterMesh.material.map = videoTexture
 
@@ -331,12 +343,26 @@ renderModesList = optionsFolder
 		ssrPass.fullscreenMaterial.needsUpdate = true
 	})
 
+optionsFolder.addInput(params, "temporalResolve").on("change", () => {
+	if (params.temporalResolve) {
+		ssrPass.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE = ""
+	} else {
+		delete ssrPass.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE
+	}
+
+	ssrPass.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
+})
+
+optionsFolder.addInput(params, "staticNoise").on("change", () => {
+	ssrPass.reflectionsPass.staticNoise = params.staticNoise
+})
+
 optionsFolder.addInput(params, "width", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "height", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "rayStep", { min: 0.001, max: 5, step: 0.001 })
 optionsFolder.addInput(params, "intensity", { min: 0.1, max: 5, step: 0.1 })
-optionsFolder.addInput(params, "power", { min: 0.1, max: 5, step: 0.1 })
 optionsFolder.addInput(params, "depthBlur", { min: 0, max: 0.5, step: 0.01 })
+optionsFolder.addInput(params, "maxBlur", { min: 0, max: 1, step: 0.01 })
 optionsFolder.addInput(params, "maxDepthDifference", {
 	min: 0,
 	max: useDesert ? 20 : 8,
@@ -396,9 +422,9 @@ jitterFolder.addInput(params, "enableJittering").on("change", () => {
 	ssrPass.reflectionsPass.fullscreenMaterial.needsUpdate = true
 })
 
-jitterFolder.addInput(params, "jitter", { min: 0, max: 1, step: 0.01 })
+jitterFolder.addInput(params, "jitter", { min: 0, max: 3, step: 0.01 })
 jitterFolder.addInput(params, "jitterRough", { min: 0, max: 2, step: 0.01 })
-jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 2, step: 0.01 })
+jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 5, step: 0.01 })
 
 const definesFolder = pane.addFolder({ title: "Steps", expanded: false })
 
@@ -495,8 +521,20 @@ document.body.appendChild(stats.dom)
 
 const clock = new THREE.Clock()
 
+let lastWidth
+let lastHeight
+
+let goRight = true
+
 const loop = () => {
 	const dt = clock.getDelta()
+
+	// const val = goRight ? 4 : -4
+	// camera.position.z += val * dt * 0.875
+	// if (Math.abs(Math.abs(val) < Math.abs(camera.position.z))) {
+	// 	camera.position.z = val
+	// 	goRight = !goRight
+	// }
 
 	stats.begin()
 
@@ -505,11 +543,17 @@ const loop = () => {
 	if (skinMesh) {
 		mixer.update(dt)
 		skinMesh.updateMatrixWorld()
-		// skinMesh = null
+		skinMesh = null
 	}
 
 	if (ssrPass) {
-		ssrPass.setSize(params.width, params.height)
+		const dpr = window.devicePixelRatio
+
+		if (params.width !== lastWidth || params.height !== lastHeight) {
+			ssrPass.setSize(params.width * dpr, params.height * dpr)
+			lastWidth = params.width
+			lastHeight = params.height
+		}
 
 		for (const key of Object.keys(params)) {
 			if (key in ssrPass.reflectionUniforms) {
@@ -518,7 +562,7 @@ const loop = () => {
 		}
 
 		ssrPass.kawaseBlurPass.kernelSize = params.blurKernelSize
-		ssrPass.kawaseBlurPass.setSize(params.blurWidth, params.blurHeight)
+		ssrPass.kawaseBlurPass.setSize(params.blurWidth * dpr, params.blurHeight * dpr)
 	}
 
 	composer.render()
