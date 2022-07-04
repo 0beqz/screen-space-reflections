@@ -16300,7 +16300,7 @@
 					)
 				}
 				function G(e, t, n) {
-					return !0 === z(e, n) || (e.isFramebufferTexture && e.minFilter !== c && e.minFilter !== d)
+					return !0 === z(e, n) || (e.isLastFrameReflectionsTexture && e.minFilter !== c && e.minFilter !== d)
 						? Math.log2(Math.max(t.width, t.height)) + 1
 						: void 0 !== e.mipmaps && e.mipmaps.length > 0
 						? e.mipmaps.length
@@ -16550,7 +16550,7 @@
 								? (C && n.texStorage3D(32879, A, y, r.width, r.height, r.depth),
 								  n.texSubImage3D(32879, 0, 0, 0, 0, r.width, r.height, r.depth, p, v, r.data))
 								: n.texImage3D(32879, 0, y, r.width, r.height, r.depth, 0, p, v, r.data)
-						else if (i.isFramebufferTexture) {
+						else if (i.isLastFrameReflectionsTexture) {
 							if (C)
 								if (E) n.texStorage2D(3553, A, y, r.width, r.height)
 								else {
@@ -16581,8 +16581,8 @@
 							: n.texImage2D(l, 0, u, r.width, r.height, 0, c, h, null)),
 						n.bindFramebuffer(36160, t),
 						le(r)
-							? A.framebufferTexture2DMultisampleEXT(36160, o, l, i.get(a).__webglTexture, 0, oe(r))
-							: e.framebufferTexture2D(36160, o, l, i.get(a).__webglTexture, 0),
+							? A.lastFrameReflectionsTexture2DMultisampleEXT(36160, o, l, i.get(a).__webglTexture, 0, oe(r))
+							: e.lastFrameReflectionsTexture2D(36160, o, l, i.get(a).__webglTexture, 0),
 						n.bindFramebuffer(36160, null)
 				}
 				function se(t, n, i) {
@@ -16643,13 +16643,13 @@
 								a = oe(r)
 							if (r.depthTexture.format === b)
 								le(r)
-									? A.framebufferTexture2DMultisampleEXT(36160, 36096, 3553, s, 0, a)
-									: e.framebufferTexture2D(36160, 36096, 3553, s, 0)
+									? A.lastFrameReflectionsTexture2DMultisampleEXT(36160, 36096, 3553, s, 0, a)
+									: e.lastFrameReflectionsTexture2D(36160, 36096, 3553, s, 0)
 							else {
 								if (r.depthTexture.format !== w) throw new Error("Unknown depthTexture format")
 								le(r)
-									? A.framebufferTexture2DMultisampleEXT(36160, 33306, 3553, s, 0, a)
-									: e.framebufferTexture2D(36160, 33306, 3553, s, 0)
+									? A.lastFrameReflectionsTexture2DMultisampleEXT(36160, 33306, 3553, s, 0, a)
+									: e.lastFrameReflectionsTexture2D(36160, 33306, 3553, s, 0)
 							}
 						})(r.__webglFramebuffer, t)
 					} else if (s) {
@@ -16915,7 +16915,7 @@
 									n.bindFramebuffer(36160, h.__webglMultisampledFramebuffer),
 										e.framebufferRenderbuffer(36160, 36064 + t, 36161, null),
 										n.bindFramebuffer(36160, h.__webglFramebuffer),
-										e.framebufferTexture2D(36009, 36064 + t, 3553, null, 0)
+										e.lastFrameReflectionsTexture2D(36009, 36064 + t, 3553, null, 0)
 							n.bindFramebuffer(36008, h.__webglMultisampledFramebuffer), n.bindFramebuffer(36009, h.__webglFramebuffer)
 							for (let n = 0; n < r.length; n++) {
 								l.push(36064 + n), t.depthBuffer && l.push(c)
@@ -16927,7 +16927,7 @@
 									u)
 								) {
 									const t = i.get(r[n]).__webglTexture
-									e.framebufferTexture2D(36009, 36064, 3553, t, 0)
+									e.lastFrameReflectionsTexture2D(36009, 36064, 3553, t, 0)
 								}
 								e.blitFramebuffer(0, 0, s, a, 0, 0, s, a, o, 9728), P && e.invalidateFramebuffer(36008, l)
 							}
@@ -16936,7 +16936,8 @@
 									n.bindFramebuffer(36160, h.__webglMultisampledFramebuffer),
 										e.framebufferRenderbuffer(36160, 36064 + t, 36161, h.__webglColorRenderbuffer[t])
 									const s = i.get(r[t]).__webglTexture
-									n.bindFramebuffer(36160, h.__webglFramebuffer), e.framebufferTexture2D(36009, 36064 + t, 3553, s, 0)
+									n.bindFramebuffer(36160, h.__webglFramebuffer),
+										e.lastFrameReflectionsTexture2D(36009, 36064 + t, 3553, s, 0)
 								}
 							n.bindFramebuffer(36009, h.__webglMultisampledFramebuffer)
 						}
@@ -18531,11 +18532,11 @@
 							s)
 						) {
 							const i = ee.get(e.texture)
-							ye.framebufferTexture2D(36160, 36064, 34069 + t, i.__webglTexture, n)
+							ye.lastFrameReflectionsTexture2D(36160, 36064, 34069 + t, i.__webglTexture, n)
 						} else if (a) {
 							const i = ee.get(e.texture),
 								r = t || 0
-							ye.framebufferTextureLayer(36160, 36064, i.__webglTexture, n || 0, r)
+							ye.lastFrameReflectionsTextureLayer(36160, 36064, i.__webglTexture, n || 0, r)
 						}
 						E = -1
 					}),
@@ -25187,7 +25188,7 @@
 						(this.fullscreenMaterial = new Kl())
 					for (const e of Object.keys(n))
 						void 0 !== this.fullscreenMaterial.uniforms[e] && (this.fullscreenMaterial.uniforms[e].value = n[e])
-					!0 === n.enableJittering && (this.fullscreenMaterial.defines.USE_JITTERING = ""),
+					!0 === n.ENABLE_JITTERING && (this.fullscreenMaterial.defines.USE_JITTERING = ""),
 						n.MAX_STEPS && (this.fullscreenMaterial.defines.MAX_STEPS = n.MAX_STEPS),
 						n.NUM_BINARY_SEARCH_STEPS &&
 							(this.fullscreenMaterial.defines.NUM_BINARY_SEARCH_STEPS = n.NUM_BINARY_SEARCH_STEPS)
@@ -25326,7 +25327,7 @@
 				intensity: 1,
 				power: 1,
 				depthBlur: 0.1,
-				enableJittering: !1,
+				ENABLE_JITTERING: !1,
 				jitter: 0.1,
 				jitterSpread: 0.1,
 				jitterRough: 0.1,
@@ -25337,7 +25338,7 @@
 				maxDepth: 1,
 				thickness: 10,
 				ior: 1.45,
-				stretchMissedRays: !1,
+				STRETCH_MISSED_RAYS: !1,
 				useMRT: !0,
 				useNormalMap: !0,
 				useRoughnessMap: !0
@@ -26166,7 +26167,7 @@
 				intensity: 1,
 				power: 1,
 				depthBlur: 0.11,
-				enableJittering: !1,
+				ENABLE_JITTERING: !1,
 				jitter: 0.17,
 				jitterSpread: 0.59,
 				jitterRough: 0.8,
@@ -26178,7 +26179,7 @@
 				MAX_STEPS: 25,
 				NUM_BINARY_SEARCH_STEPS: 7,
 				maxDepthDifference: 3,
-				stretchMissedRays: !1,
+				STRETCH_MISSED_RAYS: !1,
 				useMRT: !0,
 				useNormalMap: !0,
 				useRoughnessMap: !0
@@ -26198,7 +26199,7 @@
 					intensity: 0.7,
 					power: 1.1,
 					depthBlur: 0.11,
-					enableJittering: !0,
+					ENABLE_JITTERING: !0,
 					jitter: 0.17,
 					jitterRough: 0,
 					jitterSpread: 0.98,
@@ -26207,7 +26208,7 @@
 					MAX_STEPS: 32,
 					NUM_BINARY_SEARCH_STEPS: 6,
 					maxDepth: 1,
-					stretchMissedRays: !0,
+					STRETCH_MISSED_RAYS: !0,
 					maxDepthDifference: 500,
 					thickness: 22.83,
 					ior: 1.68,
@@ -26236,7 +26237,7 @@
 							n.useBlur &&
 								((this.fullscreenMaterial.defines.USE_BLUR = ""),
 								(this.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = "")),
-							n.stretchMissedRays && (this.reflectionsPass.fullscreenMaterial.defines.STRETCH_MISSED_RAYS = ""),
+							n.STRETCH_MISSED_RAYS && (this.reflectionsPass.fullscreenMaterial.defines.STRETCH_MISSED_RAYS = ""),
 							(this.kawaseBlurPass = new Do()),
 							(this.kawaseBlurPass.kernelSize = n.blurKernelSize)
 						const i = { minFilter: d, magFilter: d }
@@ -26647,7 +26648,7 @@
 						(lc.blurHeight = 304),
 						(lc.depthBlur = 0.13),
 						(lc.blurKernelSize = 2),
-						(lc.enableJittering = !0),
+						(lc.ENABLE_JITTERING = !0),
 						(lc.jitter = 0.18),
 						(lc.jitterRough = 0.36),
 						(lc.jitterSpread = 0.34),
@@ -26735,8 +26736,8 @@
 				Ec.addInput(lc, "blurWidth", { min: 0, max: 2e3, step: 1 }),
 				Ec.addInput(lc, "blurHeight", { min: 0, max: 2e3, step: 1 })
 			const Tc = yc.addFolder({ title: "Jitter", expanded: !1 })
-			Tc.addInput(lc, "enableJittering").on("change", () => {
-				lc.enableJittering
+			Tc.addInput(lc, "ENABLE_JITTERING").on("change", () => {
+				lc.ENABLE_JITTERING
 					? (pc.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING = "")
 					: delete pc.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING,
 					(pc.reflectionsPass.fullscreenMaterial.needsUpdate = !0)
@@ -26780,7 +26781,7 @@
 							(lc.width = 1359),
 							(lc.height = 804),
 							(lc.blurKernelSize = 1),
-							(lc.enableJittering = !1),
+							(lc.ENABLE_JITTERING = !1),
 							(lc.maxDepthDifference = 6),
 							(lc.rayFadeOut = 2.72),
 							(lc.rayStep = 3.232),

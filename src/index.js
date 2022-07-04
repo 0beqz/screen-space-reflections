@@ -1,3 +1,3 @@
-﻿import { SSRPass } from "./SSRPass"
+﻿import { SSRPass } from "./SSRPass.js"
 
 export { SSRPass }
