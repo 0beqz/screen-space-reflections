@@ -70,7 +70,7 @@ Default values of the optional `options` parameter:
 const options = {
 	width: window.innerWidth,
 	height: window.innerHeight,
-	useBlur: true,
+	ENABLE_BLUR: true,
 	blurKernelSize: POSTPROCESSING.KernelSize.SMALL,
 	blurWidth: window.innerWidth,
 	blurHeight: window.innerHeight,
@@ -102,7 +102,7 @@ Description:
 
 - `height`: height of the SSRPass
 
-- `useBlur`: whether to blur the reflections and blend these blurred reflections depending on the roughness and depth of the reflection ray
+- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections depending on the roughness and depth of the reflection ray
 
 - `blurKernelSize`: the kernel size of the blur pass which is used to blur reflections; higher kernel sizes will result in blurrier reflections with more artifacts
 

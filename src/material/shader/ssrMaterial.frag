@@ -146,7 +146,7 @@ void main() {
     }
 
     float blurMix = 0.;
-#ifdef USE_BLUR
+#ifdef ENABLE_BLUR
     // increase the reflection blur the further away the reflecting object is
     blurMix = sqrt(reflectionDistance) * depthBlur;
     if (blurMix > 1.) blurMix = 1.;

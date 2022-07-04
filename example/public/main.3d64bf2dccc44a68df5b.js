@@ -25319,7 +25319,7 @@
 			const Jl = {
 				width: window.innerWidth,
 				height: window.innerHeight,
-				useBlur: !0,
+				ENABLE_BLUR: !0,
 				blurKernelSize: 1,
 				blurWidth: window.innerWidth,
 				blurHeight: window.innerHeight,
@@ -26159,7 +26159,7 @@
 				antialias: !1,
 				width: window.innerWidth,
 				height: window.innerHeight,
-				useBlur: !0,
+				ENABLE_BLUR: !0,
 				blurKernelSize: 1,
 				blurWidth: 935,
 				blurHeight: 304,
@@ -26191,7 +26191,7 @@
 					antialias: !1,
 					width: window.innerWidth,
 					height: window.innerHeight,
-					useBlur: !0,
+					ENABLE_BLUR: !0,
 					blurKernelSize: 3,
 					blurWidth: 1370,
 					blurHeight: 370,
@@ -26234,7 +26234,7 @@
 							(this.fullscreenMaterial = new Xl()),
 							(this.reflectionsPass = new Zl(e, t, n)),
 							this.reflectionsPass.setSize(n.width, n.height),
-							n.useBlur &&
+							n.ENABLE_BLUR &&
 								((this.fullscreenMaterial.defines.USE_BLUR = ""),
 								(this.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = "")),
 							n.STRETCH_MISSED_RAYS && (this.reflectionsPass.fullscreenMaterial.defines.STRETCH_MISSED_RAYS = ""),
@@ -26643,7 +26643,7 @@
 			const wc = () => {
 					for (const e of Object.keys(dc)) lc[e] = dc[e]
 					if (
-						((lc.useBlur = !0),
+						((lc.ENABLE_BLUR = !0),
 						(lc.blurWidth = 935),
 						(lc.blurHeight = 304),
 						(lc.depthBlur = 0.13),
@@ -26724,8 +26724,8 @@
 				Sc.addInput(lc, "thickness", { min: 0, max: uc ? 30 : 10, step: 0.01 }),
 				Sc.addInput(lc, "ior", { min: 1, max: 2.33333, step: 0.01 })
 			const Ec = yc.addFolder({ title: "Blur" })
-			Ec.addInput(lc, "useBlur").on("change", () => {
-				lc.useBlur
+			Ec.addInput(lc, "ENABLE_BLUR").on("change", () => {
+				lc.ENABLE_BLUR
 					? ((pc.fullscreenMaterial.defines.USE_BLUR = ""),
 					  (pc.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = ""))
 					: (delete pc.fullscreenMaterial.defines.USE_BLUR,
@@ -26774,7 +26774,7 @@
 				uc ||
 					(Pc.addButton({ title: "Fast" }).on("click", () => {
 						for (const e of Object.keys(dc)) lc[e] = dc[e]
-						;(lc.useBlur = !0),
+						;(lc.ENABLE_BLUR = !0),
 							(lc.blurWidth = 1130),
 							(lc.blurHeight = 391),
 							(lc.depthBlur = 0.06),

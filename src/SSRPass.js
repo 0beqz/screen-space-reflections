@@ -9,7 +9,7 @@ const zeroVec2 = new Vector2()
 export const defaultSSROptions = {
 	width: window.innerWidth,
 	height: window.innerHeight,
-	useBlur: true,
+	ENABLE_BLUR: true,
 	blurKernelSize: KernelSize.SMALL,
 	blurWidth: window.innerWidth,
 	blurHeight: window.innerHeight,
@@ -35,7 +35,13 @@ export const defaultSSROptions = {
 	useRoughnessMap: true
 }
 
-const noClearLastFrameReflectionsTextureOptions = ["useBlur", "blurKernelSize", "blurWidth", "blurHeight", "depthBlur"]
+const noClearLastFrameReflectionsTextureOptions = [
+	"ENABLE_BLUR",
+	"blurKernelSize",
+	"blurWidth",
+	"blurHeight",
+	"depthBlur"
+]
 
 export class SSRPass extends Pass {
 	#lastSize
@@ -59,7 +65,7 @@ export class SSRPass extends Pass {
 
 		this.reflectionsPass.setSize(options.width, options.height)
 
-		if (options.useBlur) {
+		if (options.ENABLE_BLUR) {
 			this.fullscreenMaterial.defines.USE_BLUR = ""
 			this.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = ""
 		}
@@ -125,9 +131,6 @@ export class SSRPass extends Pass {
 						case "blurKernelSize":
 							this.kawaseBlurPass.kernelSize = value
 
-						case "useBlur":
-							break
-
 						// defines
 						case "MAX_STEPS":
 							this.reflectionsPass.fullscreenMaterial.defines.MAX_STEPS = parseInt(value)
@@ -144,6 +147,16 @@ export class SSRPass extends Pass {
 								this.reflectionsPass.fullscreenMaterial.defines.ENABLE_JITTERING = ""
 							} else {
 								delete this.reflectionsPass.fullscreenMaterial.defines.ENABLE_JITTERING
+							}
+
+							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
+							break
+
+						case "ENABLE_BLUR":
+							if (value) {
+								this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""
+							} else {
+								delete this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR
 							}
 
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
@@ -218,12 +231,12 @@ export class SSRPass extends Pass {
 
 		renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
 
-		if (this.useBlur) {
+		if (this.ENABLE_BLUR) {
 			renderer.setRenderTarget(this.kawaseBlurPassRenderTarget)
 			this.kawaseBlurPass.render(renderer, this.composeReflectionsPass.renderTarget, this.kawaseBlurPassRenderTarget)
 		}
 
-		const blurredReflectionsBuffer = this.useBlur ? this.kawaseBlurPassRenderTarget.texture : null
+		const blurredReflectionsBuffer = this.ENABLE_BLUR ? this.kawaseBlurPassRenderTarget.texture : null
 
 		this.fullscreenMaterial.uniforms.inputBuffer.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.reflectionsBuffer.value = this.composeReflectionsPass.renderTarget.texture
