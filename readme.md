@@ -2,13 +2,14 @@
 
 Implements performant Screen Space Reflections in three.js.
 <br></br>
-[<img src="screenshots/1.png">](https://screen-space-reflections.vercel.app/?dancer=true)
+[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots/1.png">](https://screen-space-reflections.vercel.app/?dancer=true)
 Glossy Reflections
 <br></br>
-[<img src="screenshots/2.png">](https://screen-space-reflections.vercel.app/?dancer=true)
+[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//2.png">](https://screen-space-reflections.vercel.app/?dancer=true)
 Clean Reflections
 <br></br>
-[<img src="screenshots/3.png">](https://screen-space-reflections.vercel.app/?desert=true)
+[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//3.png">](https://screen-space-reflections.vercel.app/?desert=true)
+Example scene
 
 <br>
 
@@ -32,8 +33,8 @@ If you'd like to test this project and run it locally, run these commands:
 
 ```
 git clone https://github.com/0beqz/screen-space-reflections
-cd screen-space-reflections
-npm i
+cd screen-space-reflections/example
+npm i --force
 npm run dev
 ```
 
@@ -169,7 +170,7 @@ To smooth out noise from jittering, set the `blurKernelSize` to 2 or 3 and incre
 
 If you are getting artifacts, for example:
 <br>
-<img src="screenshots/artifacts.png" width="50%">
+<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//artifacts.png" width="50%">
 
 Then try the following:
 
