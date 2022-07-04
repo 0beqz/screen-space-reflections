@@ -120,8 +120,8 @@ let params = {
 	floorRoughness: 2.6,
 	floorNormalScale: 0,
 	useMRT: false,
-	useNormalMap: true,
-	useRoughnessMap: true
+	USE_NORMALMAP: true,
+	USE_ROUGHNESSMAP: true
 }
 
 const paramsDesert = {
@@ -154,8 +154,8 @@ const paramsDesert = {
 	thickness: 22.83,
 	ior: 1.68,
 	useMRT: true,
-	useNormalMap: false,
-	useRoughnessMap: false
+	USE_NORMALMAP: false,
+	USE_ROUGHNESSMAP: false
 }
 
 const urlParams = new URLSearchParams(window.location.search)
@@ -451,6 +451,9 @@ sceneFolder.addInput(params, "floorRoughness", { min: 0, max: 7, step: 0.05 }).o
 sceneFolder.addInput(params, "floorNormalScale", { min: 0, max: 7, step: 0.05 }).on("change", () => {
 	floorMesh.material.normalScale.setScalar(params.floorNormalScale)
 })
+
+sceneFolder.addInput(params, "USE_NORMALMAP")
+sceneFolder.addInput(params, "USE_ROUGHNESSMAP")
 
 sceneFolder.addInput(params, "antialias").on("change", () => {
 	composer.multisampling = params.antialias ? 8 : 0

@@ -25280,8 +25280,8 @@
 									(n.uniforms.normalMap = new io(null)),
 									(n.uniforms.normalMap.value = t.normalMap),
 									Object.defineProperty(n.uniforms.roughness, "value", { get: () => t.roughness || 0, set(e) {} }),
-									this.#n.useNormalMap && t.normalMap && ((n.normalMap = t.normalMap), (n.defines.USE_NORMALMAP = "")),
-									this.#n.useRoughnessMap &&
+									this.#n.USE_NORMALMAP && t.normalMap && ((n.normalMap = t.normalMap), (n.defines.USE_NORMALMAP = "")),
+									this.#n.USE_ROUGHNESSMAP &&
 										t.roughnessMap &&
 										((n.uniforms.roughnessMap.value = t.roughnessMap), (n.defines.USE_ROUGHNESSMAP = "")),
 									(n.uniforms.normalScale.value = t.normalScale)
@@ -25340,8 +25340,8 @@
 				ior: 1.45,
 				STRETCH_MISSED_RAYS: !1,
 				useMRT: !0,
-				useNormalMap: !0,
-				useRoughnessMap: !0
+				USE_NORMALMAP: !0,
+				USE_ROUGHNESSMAP: !0
 			}
 			n(732)
 			const $l = {}
@@ -26181,8 +26181,8 @@
 				maxDepthDifference: 3,
 				STRETCH_MISSED_RAYS: !1,
 				useMRT: !0,
-				useNormalMap: !0,
-				useRoughnessMap: !0
+				USE_NORMALMAP: !0,
+				USE_ROUGHNESSMAP: !0
 			}
 			const cc = {
 					enabled: !0,
@@ -26213,8 +26213,8 @@
 					thickness: 22.83,
 					ior: 1.68,
 					useMRT: !0,
-					useNormalMap: !1,
-					useRoughnessMap: !1
+					USE_NORMALMAP: !1,
+					USE_ROUGHNESSMAP: !1
 				},
 				hc = new URLSearchParams(window.location.search),
 				uc = "true" === hc.get("desert")
