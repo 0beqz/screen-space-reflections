@@ -1,5 +1,5 @@
 ﻿import { ShaderMaterial, Uniform } from "three"
-import fragmentShader from "./shader/ssrComposite.frag"
+import fragmentShader from "./shader/composeSSRShader.frag"
 
 export class SSRCompositeMaterial extends ShaderMaterial {
 	constructor() {

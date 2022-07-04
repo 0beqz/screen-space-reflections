@@ -10,21 +10,12 @@ import { SSRPass } from "screen-space-reflections"
 import "./style.css"
 import { defaultSSROptions } from "../src/SSRPass"
 
-const sizes = {}
-sizes.width = window.innerWidth
-sizes.height = window.innerHeight
-
 window.addEventListener("resize", () => {
-	// Save sizes
-	sizes.width = window.innerWidth
-	sizes.height = window.innerHeight
-
-	// Update camera
-	camera.aspect = sizes.width / sizes.height
+	camera.aspect = window.innerWidth / window.innerHeight
 	camera.updateProjectionMatrix()
 
-	// Update renderer
-	renderer.setSize(sizes.width, sizes.height)
+	renderer.setSize(window.innerWidth, window.innerHeight)
+	ssrPass.setSize(window.innerWidth, window.innerHeight)
 })
 
 const scene = new THREE.Scene()
@@ -34,7 +25,7 @@ scene.add(new THREE.AmbientLight())
 const hemiLight = new THREE.HemisphereLight(0x443333, 0x111122)
 scene.add(hemiLight)
 
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100)
 
 scene.add(camera)
 scene.autoUpdate = false
@@ -67,7 +58,7 @@ window.renderer = renderer
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.setPixelRatio(window.devicePixelRatio)
-renderer.setSize(sizes.width, sizes.height)
+renderer.setSize(window.innerWidth, window.innerHeight)
 
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))

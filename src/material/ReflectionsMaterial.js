@@ -1,12 +1,12 @@
 ﻿import { Matrix4, ShaderMaterial, Uniform } from "three"
 import helperFunctions from "./shader/helperFunctions.frag"
-import fragmentShader from "./shader/ssrMaterial.frag"
-import vertexShader from "./shader/ssrMaterial.vert"
+import fragmentShader from "./shader/reflectionsShader.frag"
+import vertexShader from "./shader/basicVertexShader.vert"
 
-export class SSRMaterial extends ShaderMaterial {
+export class ReflectionsMaterial extends ShaderMaterial {
 	constructor() {
 		super({
-			type: "SSRMaterial",
+			type: "ReflectionsMaterial",
 
 			uniforms: {
 				inputBuffer: new Uniform(null),
