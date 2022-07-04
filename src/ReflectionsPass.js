@@ -11,7 +11,7 @@ import {
 } from "three"
 import WEBGL from "three/examples/jsm/capabilities/WebGL.js"
 import { NormalDepthRoughnessMaterial } from "./material/NormalDepthRoughnessMaterial.js"
-import { SSRMaterial } from "./material/SSRMaterial.js"
+import { ReflectionsMaterial } from "./material/ReflectionsMaterial.js"
 import { VelocityPass } from "./passes/VelocityPass.js"
 
 export class ReflectionsPass extends Pass {
@@ -33,7 +33,7 @@ export class ReflectionsPass extends Pass {
 		this._camera = ssrPass._camera
 		this.#options = options
 
-		this.fullscreenMaterial = new SSRMaterial()
+		this.fullscreenMaterial = new ReflectionsMaterial()
 
 		const width = options.width || window.innerWidth
 		const height = options.height || window.innerHeight
