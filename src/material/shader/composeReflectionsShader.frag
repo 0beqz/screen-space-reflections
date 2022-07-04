@@ -15,11 +15,14 @@ void main() {
 
 #ifdef TEMPORAL_RESOLVE
     vec2 velUv = texture2D(velocityBuffer, vUv).xy;
+    vec2 reprojectedUv = vUv - velUv;
 
-    vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsBuffer, vUv - velUv);
+    if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
+        vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsBuffer, reprojectedUv);
 
-    lastFrameReflectionsTexel.rgb += lastFrameReflectionsProjectedTexel.rgb;
-    lastFrameReflectionsTexel.rgb /= 2.;
+        lastFrameReflectionsTexel.rgb += lastFrameReflectionsProjectedTexel.rgb;
+        lastFrameReflectionsTexel.rgb /= 2.;
+    }
 
     float alpha = lastFrameReflectionsTexel.a;
 
