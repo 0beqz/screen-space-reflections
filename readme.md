@@ -91,8 +91,8 @@ const options = {
 	ior: 1.45,
 	STRETCH_MISSED_RAYS: false,
 	useMRT: true,
-	useNormalMap: true,
-	useRoughnessMap: true
+	USE_NORMALMAP: true,
+	USE_ROUGHNESSMAP: true
 }
 ```
 
@@ -142,9 +142,9 @@ Description:
 
 - `useMRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run
 
-- `useRoughnessMaps`: if roughness maps should be taken account of when calculating reflections
+- `USE_ROUGHNESSMAPs`: if roughness maps should be taken account of when calculating reflections
 
-- `useNormalMaps`: if normal maps should be taken account of when calculating reflections
+- `USE_NORMALMAPs`: if normal maps should be taken account of when calculating reflections
 
 ## Features
 

@@ -31,8 +31,8 @@ export const defaultSSROptions = {
 	ior: 1.45,
 	STRETCH_MISSED_RAYS: false,
 	useMRT: true,
-	useNormalMap: true,
-	useRoughnessMap: true
+	USE_NORMALMAP: true,
+	USE_ROUGHNESSMAP: true
 }
 
 const noClearLastFrameReflectionsTextureOptions = [
@@ -172,10 +172,10 @@ export class SSRPass extends Pass {
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "useNormalMap":
+						case "USE_NORMALMAP":
 							break
 
-						case "useRoughnessMap":
+						case "USE_ROUGHNESSMAP":
 							break
 
 						// must be a uniform

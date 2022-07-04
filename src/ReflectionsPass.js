@@ -100,6 +100,28 @@ export class ReflectionsPass extends Pass {
 		}
 	}
 
+	#keepMaterialUpdated(normalDepthMaterial, origMat, prop, define) {
+		if (this.ssrPass[define]) {
+			if (origMat[prop] !== normalDepthMaterial[prop]) {
+				normalDepthMaterial[prop] = origMat[prop]
+				normalDepthMaterial.uniforms[prop].value = origMat[prop]
+
+				if (origMat[prop]) {
+					normalDepthMaterial.defines[define] = ""
+				} else {
+					delete normalDepthMaterial.defines[define]
+				}
+
+				normalDepthMaterial.needsUpdate = true
+			}
+		} else if (normalDepthMaterial[prop] !== undefined) {
+			normalDepthMaterial[prop] = undefined
+			normalDepthMaterial.uniforms[prop].value = undefined
+			delete normalDepthMaterial.defines[define]
+			normalDepthMaterial.needsUpdate = true
+		}
+	}
+
 	#setNormalDepthRoughnessMaterialInScene() {
 		this._scene.traverse(c => {
 			if (c.material) {
@@ -110,17 +132,10 @@ export class ReflectionsPass extends Pass {
 					this.#normalDepthMaterials[origMat.uuid] = new NormalDepthRoughnessMaterial()
 
 					const normalDepthMaterial = this.#normalDepthMaterials[origMat.uuid]
-					if (this.#useMRT) {
-						normalDepthMaterial.defines.USE_MRT = ""
-					}
+					if (this.#useMRT) normalDepthMaterial.defines.USE_MRT = ""
 					normalDepthMaterial._originalUuid = c.material.uuid
 
 					normalDepthMaterial.extensions.derivatives = true
-
-					normalDepthMaterial.normalScale = origMat.normalScale
-
-					normalDepthMaterial.uniforms.normalMap = new Uniform(null)
-					normalDepthMaterial.uniforms.normalMap.value = origMat.normalMap
 
 					Object.defineProperty(normalDepthMaterial.uniforms.roughness, "value", {
 						get() {
@@ -129,23 +144,17 @@ export class ReflectionsPass extends Pass {
 						set(_) {}
 					})
 
-					if (this.#options.useNormalMap && origMat.normalMap) {
-						normalDepthMaterial.normalMap = origMat.normalMap
-						normalDepthMaterial.defines.USE_NORMALMAP = ""
-					}
-					if (this.#options.useRoughnessMap && origMat.roughnessMap) {
-						normalDepthMaterial.uniforms.roughnessMap.value = origMat.roughnessMap
-						normalDepthMaterial.defines.USE_ROUGHNESSMAP = ""
-					}
-
+					normalDepthMaterial.normalScale = origMat.normalScale
 					normalDepthMaterial.uniforms.normalScale.value = origMat.normalScale
 
 					const map = origMat.map || origMat.normalMap || origMat.roughnessMap || origMat.metalnessMap
-
 					if (map) normalDepthMaterial.uniforms.uvTransform.value = map.matrix
 				}
 
 				const normalDepthMaterial = this.#normalDepthMaterials[c.material.uuid]
+
+				this.#keepMaterialUpdated(normalDepthMaterial, origMat, "normalMap", "USE_NORMALMAP")
+				this.#keepMaterialUpdated(normalDepthMaterial, origMat, "roughnessMap", "USE_ROUGHNESSMAP")
 
 				c.material = normalDepthMaterial
 			}
