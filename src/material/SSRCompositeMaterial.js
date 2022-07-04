@@ -1,4 +1,4 @@
-﻿import { Matrix4, ShaderMaterial, Uniform } from "three"
+﻿import { ShaderMaterial, Uniform } from "three"
 import fragmentShader from "./shader/ssrComposite.frag"
 
 export class SSRCompositeMaterial extends ShaderMaterial {
@@ -11,12 +11,11 @@ export class SSRCompositeMaterial extends ShaderMaterial {
 				reflectionsBuffer: new Uniform(null),
 				blurredReflectionsBuffer: new Uniform(null),
 				blurredReflectionsBuffer4: new Uniform(null),
-				_projectionMatrix: new Uniform(new Matrix4())
+				samples: new Uniform(1)
 			},
 
 			defines: {
-				RENDER_MODE: 0,
-				USE_BLUR: ""
+				RENDER_MODE: 0
 			},
 
 			fragmentShader,

@@ -6,8 +6,9 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
 import { Pane } from "tweakpane"
-import { SSRPass } from "./ssr/SSRPass.js"
-import "./style/main.css"
+import { SSRPass } from "screen-space-reflections"
+import "./style.css"
+import { defaultSSROptions } from "../src/SSRPass"
 
 const sizes = {}
 sizes.width = window.innerWidth
@@ -73,8 +74,8 @@ const controls = new OrbitControls(camera, document.querySelector("#orbitControl
 window.controls = controls
 
 controls.addEventListener("change", () => {
-	ssrPass.reflectionsPass.samples = 1
-	// ssrPass.reflectionsPass.createLastFramebufferTexture()
+	if (ssrPass) ssrPass.reflectionsPass.samples = 1
+	// ssrPass.reflectionsPass.createLastLastFrameReflectionsTexture()
 })
 
 const composer = new POSTPROCESSING.EffectComposer(renderer, {
@@ -102,7 +103,7 @@ let params = {
 	intensity: 1,
 	depthBlur: 0.26,
 	maxBlur: 0.85,
-	enableJittering: true,
+	ENABLE_JITTERING: true,
 	jitter: 0.36,
 	jitterRough: 2,
 	jitterSpread: 3.37,
@@ -115,10 +116,10 @@ let params = {
 	MAX_STEPS: 25,
 	NUM_BINARY_SEARCH_STEPS: 7,
 	maxDepthDifference: 3,
-	stretchMissedRays: false,
+	STRETCH_MISSED_RAYS: false,
 	floorRoughness: 2.6,
 	floorNormalScale: 0,
-	useMRT: true,
+	useMRT: false,
 	useNormalMap: true,
 	useRoughnessMap: true
 }
@@ -139,7 +140,7 @@ const paramsDesert = {
 	intensity: 0.7,
 	depthBlur: 0.11,
 	maxBlur: 1,
-	enableJittering: true,
+	ENABLE_JITTERING: true,
 	jitter: 0.17,
 	jitterRough: 0,
 	jitterSpread: 0.98,
@@ -148,7 +149,7 @@ const paramsDesert = {
 	MAX_STEPS: 32,
 	NUM_BINARY_SEARCH_STEPS: 6,
 	maxDepth: 1,
-	stretchMissedRays: true,
+	STRETCH_MISSED_RAYS: true,
 	maxDepthDifference: 500,
 	thickness: 22.83,
 	ior: 1.68,
@@ -258,7 +259,7 @@ const useVideoBackgroundAndDancer = () => {
 	params.blurHeight = 304
 	params.depthBlur = 0.13
 	params.blurKernelSize = 2
-	params.enableJittering = true
+	params.ENABLE_JITTERING = true
 	params.jitter = 0.18
 	params.jitterRough = 0.36
 	params.jitterSpread = 0.34
@@ -310,6 +311,15 @@ const useVideoBackgroundAndDancer = () => {
 const pane = new Pane()
 window.pane = pane
 pane.containerElem_.style.userSelect = "none"
+
+pane.on("change", ev => {
+	const { presetKey } = ev
+
+	if (Object.keys(defaultSSROptions).includes(presetKey)) {
+		console.log("set", presetKey)
+		ssrPass[presetKey] = ev.value
+	}
+})
 
 // eslint-disable-next-line prefer-const
 let renderModesList
@@ -413,8 +423,8 @@ blurFolder.addInput(params, "blurHeight", { min: 0, max: 2000, step: 1 })
 
 const jitterFolder = pane.addFolder({ title: "Jitter", expanded: false })
 
-jitterFolder.addInput(params, "enableJittering").on("change", () => {
-	if (params.enableJittering) {
+jitterFolder.addInput(params, "ENABLE_JITTERING").on("change", () => {
+	if (params.ENABLE_JITTERING) {
 		ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING = ""
 	} else {
 		delete ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING
@@ -477,7 +487,7 @@ if (!useDesert) {
 			params.width = 1359
 			params.height = 804
 			params.blurKernelSize = 1
-			params.enableJittering = false
+			params.ENABLE_JITTERING = false
 			params.maxDepthDifference = 6
 
 			params.rayFadeOut = 2.72
@@ -547,22 +557,11 @@ const loop = () => {
 	}
 
 	if (ssrPass) {
-		const dpr = window.devicePixelRatio
-
-		if (params.width !== lastWidth || params.height !== lastHeight) {
-			ssrPass.setSize(params.width * dpr, params.height * dpr)
-			lastWidth = params.width
-			lastHeight = params.height
-		}
-
 		for (const key of Object.keys(params)) {
 			if (key in ssrPass.reflectionUniforms) {
 				ssrPass.reflectionUniforms[key].value = params[key]
 			}
 		}
-
-		ssrPass.kawaseBlurPass.kernelSize = params.blurKernelSize
-		ssrPass.kawaseBlurPass.setSize(params.blurWidth * dpr, params.blurHeight * dpr)
 	}
 
 	composer.render()

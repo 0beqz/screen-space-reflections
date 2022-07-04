@@ -78,7 +78,7 @@ const options = {
 	intensity: 1,
 	power: 1,
 	depthBlur: 0.1,
-	enableJittering: false,
+	ENABLE_JITTERING: false,
 	jitter: 0.1,
 	jitterSpread: 0.1,
 	jitterRough: 0.1,
@@ -89,7 +89,7 @@ const options = {
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
-	stretchMissedRays: false,
+	STRETCH_MISSED_RAYS: false,
 	useMRT: true,
 	useNormalMap: true,
 	useRoughnessMap: true
@@ -118,7 +118,7 @@ Description:
 
 - `depthBlur`: how much deep reflections will be blurred (as reflections become blurrier the further away the object they are reflecting is)
 
-- `enableJittering`: whether jittering is enabled; jittering will randomly jitter the reflections resulting in a more noisy but overall more realistic look, enabling jittering can be expensive depending on the view angle
+- `ENABLE_JITTERING`: whether jittering is enabled; jittering will randomly jitter the reflections resulting in a more noisy but overall more realistic look, enabling jittering can be expensive depending on the view angle
 
 - `jitter`: how intense jittering should be
 
@@ -138,7 +138,7 @@ Description:
 
 - `ior`: Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter set how much the intensity varies
 
-- `stretchMissedRays`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
+- `STRETCH_MISSED_RAYS`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
 
 - `useMRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run
 

@@ -1,6 +1,7 @@
 ﻿varying vec2 vUv;
 
 uniform sampler2D inputBuffer;
+uniform sampler2D lastFrameReflectionsBuffer;
 uniform sampler2D normalBuffer;
 uniform sampler2D depthBuffer;
 
@@ -12,16 +13,18 @@ uniform float cameraFar;
 
 uniform float rayStep;
 uniform float intensity;
-uniform float power;
 uniform float maxDepthDifference;
 uniform float roughnessFadeOut;
 uniform float depthBlur;
+uniform float maxBlur;
 uniform float maxDepth;
 uniform float rayFadeOut;
 uniform float thickness;
 uniform float ior;
 
-#ifdef USE_JITTERING
+uniform float samples;
+
+#ifdef ENABLE_JITTERING
 uniform float jitter;
 uniform float jitterRough;
 uniform float jitterSpread;
@@ -97,8 +100,8 @@ void main() {
     // jitteriing
     vec3 jitt = vec3(0.);
 
-#ifdef USE_JITTERING
-    vec3 randomJitter = hash(5. * (worldPos + viewNormal)) - vec3(0.5, 0.5, 0.5);
+#ifdef ENABLE_JITTERING
+    vec3 randomJitter = hash(5. * (samples * worldPos)) - vec3(0.5, 0.5, 0.5);
     float spread = ((2. - specular) + 0.05 * roughness * jitterRough) * jitterSpread;
     float jitterMix = jitter + jitterRough * roughness;
     if (jitterMix > 1.) jitterMix = 1.;
@@ -121,15 +124,14 @@ void main() {
     float screenFade = 0.1;
     float maxDimension = min(1.0, max(abs(coordsNDC.x), abs(coordsNDC.y)));
     float screenEdgefactor = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
-
-    float reflectionMultiplier = max(0., screenEdgefactor);
+    screenEdgefactor = max(0., screenEdgefactor);
 
     vec3 SSR = texture2D(inputBuffer, coords.xy).rgb;
-    if (power != 1.) SSR = pow(SSR, vec3(power));
+    // SSR += texture2D(lastFrameReflectionsBuffer, coords.xy).rgb;
 
     float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));
 
-    vec3 finalSSR = SSR * reflectionMultiplier * roughnessFactor;
+    vec3 finalSSR = SSR * screenEdgefactor * roughnessFactor;
 
     vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
 
@@ -138,7 +140,7 @@ void main() {
     reflectionDistance += 1.;
 
     if (rayFadeOut != 0.) {
-        float opacity = 1. / ((reflectionDistance * reflectionDistance) * rayFadeOut * 0.01);
+        float opacity = 1. / (reflectionDistance * reflectionDistance * rayFadeOut * 0.01);
         if (opacity > 1.) opacity = 1.;
         finalSSR *= opacity;
     }
@@ -146,9 +148,11 @@ void main() {
     float blurMix = 0.;
 #ifdef USE_BLUR
     // increase the reflection blur the further away the reflecting object is
-    blurMix = reflectionDistance * depthBlur;
+    blurMix = sqrt(reflectionDistance) * depthBlur;
     if (blurMix > 1.) blurMix = 1.;
 #endif
+
+    blurMix = min(blurMix, maxBlur);
 
     float fresnelFactor = fresnel_dielectric(normalize(viewPos), viewNormal, ior);
 

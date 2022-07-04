@@ -1,14 +1,18 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
 import {
+	FramebufferTexture,
+	HalfFloatType,
 	NearestFilter,
 	NearestMipmapNearestFilter,
+	RGBAFormat,
 	Uniform,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
-import WEBGL from "three/examples/jsm/capabilities/WebGL"
-import { NormalDepthRoughnessMaterial } from "./material/NormalDepthRoughnessMaterial"
-import { SSRMaterial } from "./material/SSRMaterial"
+import WEBGL from "three/examples/jsm/capabilities/WebGL.js"
+import { NormalDepthRoughnessMaterial } from "./material/NormalDepthRoughnessMaterial.js"
+import { SSRMaterial } from "./material/SSRMaterial.js"
+import { VelocityPass } from "./passes/VelocityPass.js"
 
 export class ReflectionsPass extends Pass {
 	#defaultMaterials = {}
@@ -16,28 +20,20 @@ export class ReflectionsPass extends Pass {
 	#options = {}
 	#useMRT = false
 	#webgl1DepthPass = null
+	#webgl1VelocityPass = null
+	samples = 1
 
-	constructor(scene, camera, options = {}) {
+	staticNoise = false
+
+	constructor(ssrPass, options = {}) {
 		super("ReflectionsPass")
 
-		this._scene = scene
-		this._camera = camera
+		this.ssrPass = ssrPass
+		this._scene = ssrPass._scene
+		this._camera = ssrPass._camera
 		this.#options = options
 
 		this.fullscreenMaterial = new SSRMaterial()
-
-		for (const key of Object.keys(options)) {
-			if (this.fullscreenMaterial.uniforms[key] !== undefined) {
-				this.fullscreenMaterial.uniforms[key].value = options[key]
-			}
-		}
-
-		if (options["enableJittering"] === true) this.fullscreenMaterial.defines.USE_JITTERING = ""
-
-		if (options["MAX_STEPS"]) this.fullscreenMaterial.defines.MAX_STEPS = options["MAX_STEPS"]
-
-		if (options["NUM_BINARY_SEARCH_STEPS"])
-			this.fullscreenMaterial.defines.NUM_BINARY_SEARCH_STEPS = options["NUM_BINARY_SEARCH_STEPS"]
 
 		const width = options.width || window.innerWidth
 		const height = options.height || window.innerHeight
@@ -47,25 +43,27 @@ export class ReflectionsPass extends Pass {
 			magFilter: NearestFilter
 		})
 
-		this.renderPass = new RenderPass(scene, camera)
+		this.renderPass = new RenderPass(this._scene, this._camera)
 
 		this.#useMRT = options.useMRT && WEBGL.isWebGL2Available()
 
 		if (this.#useMRT) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 2, {
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 3, {
 				minFilter: NearestMipmapNearestFilter,
 				magFilter: NearestMipmapNearestFilter,
-				generateMipmaps: true
+				generateMipmaps: true,
+				type: HalfFloatType
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[0]
 			this.depthTexture = this.gBuffersRenderTarget.texture[1]
+			this.velocityTexture = this.gBuffersRenderTarget.texture[2]
 
 			this.fullscreenMaterial.defines.USE_ROUGHNESSMAP = true
 		} else {
 			// depth pass
-			this.#webgl1DepthPass = new DepthPass(scene, camera)
+			this.#webgl1DepthPass = new DepthPass(this._scene, this._camera)
 			this.#webgl1DepthPass.renderTarget.minFilter = NearestMipmapNearestFilter
 			this.#webgl1DepthPass.renderTarget.magFilter = NearestMipmapNearestFilter
 			this.#webgl1DepthPass.renderTarget.generateMipmaps = true
@@ -76,6 +74,7 @@ export class ReflectionsPass extends Pass {
 
 			this.#webgl1DepthPass.setSize(window.innerWidth, window.innerHeight)
 
+			// render normals (in the rgb channel) and roughness (in the alpha channel) in gBuffersRenderTarget
 			this.gBuffersRenderTarget = new WebGLRenderTarget(width, height, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter
@@ -83,12 +82,22 @@ export class ReflectionsPass extends Pass {
 
 			this.normalTexture = this.gBuffersRenderTarget.texture
 			this.depthTexture = this.#webgl1DepthPass.texture
+
+			this.#webgl1VelocityPass = new VelocityPass(this._scene, this._camera)
+			this.velocityTexture = this.#webgl1VelocityPass.renderTarget.texture
 		}
+
+		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 		this.gBuffersRenderTarget.setSize(width, height)
+
+		if (!this.#useMRT) {
+			this.#webgl1DepthPass.setSize(width, height)
+			this.#webgl1VelocityPass.setSize(width, height)
+		}
 	}
 
 	#setNormalDepthRoughnessMaterialInScene() {
@@ -105,6 +114,8 @@ export class ReflectionsPass extends Pass {
 						normalDepthMaterial.defines.USE_MRT = ""
 					}
 					normalDepthMaterial._originalUuid = c.material.uuid
+
+					normalDepthMaterial.extensions.derivatives = true
 
 					normalDepthMaterial.normalScale = origMat.normalScale
 
@@ -143,26 +154,40 @@ export class ReflectionsPass extends Pass {
 
 	#unsetNormalDepthRoughnessMaterialInScene() {
 		this._scene.traverse(c => {
-			if (c.material) c.material = this.#defaultMaterials[c.material._originalUuid]
+			if (c.material) {
+				c.material.uniforms.prevProjectionMatrix.value.copy(this._camera.projectionMatrix)
+				c.material.uniforms.prevModelViewMatrix.value.copy(c.modelViewMatrix)
+
+				c.material = this.#defaultMaterials[c.material._originalUuid]
+			}
 		})
 	}
 
 	render(renderer, inputBuffer) {
-		if (this.#webgl1DepthPass !== null) {
+		if (this.staticNoise) {
+			// this.samples = this.samples === 1 ? 2 : 1
+			this.samples = 1
+		} else {
+			this.samples++
+		}
+
+		// render depth and velocity in seperate passes
+		if (!this.#useMRT) {
 			this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
+
+			if (this.ssrPass.temporalResolve) this.#webgl1VelocityPass.render(renderer, inputBuffer)
 		}
 
 		this.#setNormalDepthRoughnessMaterialInScene()
-
 		renderer.setRenderTarget(this.gBuffersRenderTarget)
-
 		this.renderPass.render(renderer, this.gBuffersRenderTarget, this.gBuffersRenderTarget)
-
 		this.#unsetNormalDepthRoughnessMaterialInScene()
 
 		this.fullscreenMaterial.uniforms.inputBuffer.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.normalBuffer.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthBuffer.value = this.depthTexture
+		this.fullscreenMaterial.uniforms.samples.value = this.samples
+		this.fullscreenMaterial.uniforms.lastFrameReflectionsBuffer.value = this.lastFrameReflectionsTexture
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
