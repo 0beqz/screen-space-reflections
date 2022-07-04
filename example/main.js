@@ -95,7 +95,7 @@ let params = {
 	height: window.innerHeight,
 	temporalResolve: true,
 	staticNoise: false,
-	useBlur: false,
+	ENABLE_BLUR: false,
 	blurKernelSize: 3,
 	blurWidth: 935,
 	blurHeight: 391,
@@ -132,7 +132,7 @@ const paramsDesert = {
 
 	width: window.innerWidth,
 	height: window.innerHeight,
-	useBlur: true,
+	ENABLE_BLUR: true,
 	blurKernelSize: 3,
 	blurWidth: 1370,
 	blurHeight: 370,
@@ -254,7 +254,7 @@ let didLoadVideoBackgroundAndDancer = false
 const useVideoBackgroundAndDancer = () => {
 	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-	params.useBlur = true
+	params.ENABLE_BLUR = true
 	params.blurWidth = 935
 	params.blurHeight = 304
 	params.depthBlur = 0.13
@@ -406,8 +406,8 @@ optionsFolder.addInput(params, "ior", {
 })
 
 const blurFolder = pane.addFolder({ title: "Blur" })
-blurFolder.addInput(params, "useBlur").on("change", () => {
-	if (params.useBlur) {
+blurFolder.addInput(params, "ENABLE_BLUR").on("change", () => {
+	if (params.ENABLE_BLUR) {
 		ssrPass.fullscreenMaterial.defines.USE_BLUR = ""
 		ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = ""
 	} else {
@@ -438,15 +438,9 @@ jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 5, step: 0.01 })
 
 const definesFolder = pane.addFolder({ title: "Steps", expanded: false })
 
-definesFolder.addInput(params, "MAX_STEPS", { min: 1, max: 256, step: 1 }).on("change", () => {
-	ssrPass.reflectionsPass.fullscreenMaterial.defines.MAX_STEPS = parseInt(params.MAX_STEPS)
-	ssrPass.reflectionsPass.fullscreenMaterial.needsUpdate = true
-})
-
-definesFolder.addInput(params, "NUM_BINARY_SEARCH_STEPS", { min: 0, max: 16, step: 1 }).on("change", () => {
-	ssrPass.reflectionsPass.fullscreenMaterial.defines.NUM_BINARY_SEARCH_STEPS = parseInt(params.NUM_BINARY_SEARCH_STEPS)
-	ssrPass.reflectionsPass.fullscreenMaterial.needsUpdate = true
-})
+definesFolder.addInput(params, "MAX_STEPS", { min: 1, max: 256, step: 1 })
+definesFolder.addInput(params, "NUM_BINARY_SEARCH_STEPS", { min: 0, max: 16, step: 1 })
+definesFolder.addInput(params, "STRETCH_MISSED_RAYS")
 
 const sceneFolder = pane.addFolder({ title: "Scene", expanded: false })
 
@@ -480,7 +474,7 @@ if (!useDesert) {
 		.on("click", () => {
 			for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-			params.useBlur = true
+			params.ENABLE_BLUR = true
 			params.blurWidth = 1130
 			params.blurHeight = 391
 			params.depthBlur = 0.06
