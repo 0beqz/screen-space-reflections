@@ -1,4 +1,5 @@
 ﻿#define EULER 2.718281828459045
+#define FLOAT_EPSILON 0.00001
 
 uniform sampler2D inputBuffer;
 uniform sampler2D lastFrameReflectionsBuffer;
@@ -14,24 +15,46 @@ void main() {
 
 #ifdef TEMPORAL_RESOLVE
     vec2 velUv = texture2D(velocityBuffer, vUv).xy;
+
     vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsBuffer, vUv - velUv);
+
     lastFrameReflectionsTexel.rgb += lastFrameReflectionsProjectedTexel.rgb;
     lastFrameReflectionsTexel.rgb /= 2.;
+
+    float alpha = lastFrameReflectionsTexel.a;
 
     float mixVal = 1. / samples;
     mixVal /= EULER;
 
-    vec3 newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
-
-    // alternative sampling option - not using it as ther's much more noise when moving camera
-    // newColor = lastFrameReflectionsTexel.rgb * (1. - 1. / samples) + inputTexel.rgb / samples;
-
-    if (length(lastFrameReflectionsTexel.rgb) < 0.001) {
-        newColor = mix(lastFrameReflectionsTexel.rgb, lastFrameReflectionsTexel.rgb + inputTexel.rgb, 0.25);
+    // if a ray presumably hit nothing (reflection color is black) then decrease alpha by the given formula
+    // going by the formula, a pixel that never reflected anything during sampling should have an alpha of 0 in 14 samples
+    // we'll use that info to get rid of ghosting later
+    if (samples < 15.) {
+        if (length(inputTexel.rgb) < FLOAT_EPSILON) {
+            alpha -= 0.1 * (1. - 1. / (samples + 1.));
+            if (alpha < 0.) alpha = 0.;
+        } else {
+            alpha = 1.;
+        }
     }
 
-    float blurMix = mix(lastFrameReflectionsTexel.a, inputTexel.a + 0.5, mixVal);
-    gl_FragColor = vec4(newColor, blurMix);
+    vec3 newColor;
+    float movementSpeed = dot(velUv, velUv);
+    float blurMix = 0.;
+
+    if (alpha > 0.) {
+        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
+    }
+
+    blurMix = mix(lastFrameReflectionsTexel.a, inputTexel.a + 0.5, mixVal);
+
+    if (length(lastFrameReflectionsTexel.rgb) < 0.001) {
+        newColor = mix(lastFrameReflectionsTexel.rgb, lastFrameReflectionsTexel.rgb + inputTexel.rgb, min(1., 0.1 + movementSpeed * 100.));
+    }
+
+    // newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
+
+    gl_FragColor = vec4(newColor, alpha);
 #else
     gl_FragColor = vec4(inputTexel.rgb, inputTexel.a);
 #endif
