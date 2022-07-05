@@ -4,12 +4,12 @@ import { SSRCompositeMaterial } from "./material/SSRCompositeMaterial"
 import { ReflectionsPass } from "./ReflectionsPass"
 
 const defaultOptions = {
-	width: window.innerWidth,
-	height: window.innerHeight,
+	width: 2000,
+	height: 1000,
 	useBlur: true,
 	blurKernelSize: KernelSize.SMALL,
-	blurWidth: window.innerWidth,
-	blurHeight: window.innerHeight,
+	blurWidth: 2000,
+	blurHeight: 1000,
 	rayStep: 0.1,
 	intensity: 1,
 	power: 1,

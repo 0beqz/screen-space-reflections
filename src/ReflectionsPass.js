@@ -39,8 +39,8 @@ export class ReflectionsPass extends Pass {
 		if (options["NUM_BINARY_SEARCH_STEPS"])
 			this.fullscreenMaterial.defines.NUM_BINARY_SEARCH_STEPS = options["NUM_BINARY_SEARCH_STEPS"]
 
-		const width = options.width || window.innerWidth
-		const height = options.height || window.innerHeight
+		const width = options.width
+		const height = options.height
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: NearestFilter,
@@ -74,7 +74,7 @@ export class ReflectionsPass extends Pass {
 			this.#webgl1DepthPass.renderTarget.texture.magFilter = NearestMipmapNearestFilter
 			this.#webgl1DepthPass.renderTarget.texture.generateMipmaps = true
 
-			this.#webgl1DepthPass.setSize(window.innerWidth, window.innerHeight)
+			this.#webgl1DepthPass.setSize(options.width, options.height)
 
 			this.gBuffersRenderTarget = new WebGLRenderTarget(width, height, {
 				minFilter: NearestFilter,
