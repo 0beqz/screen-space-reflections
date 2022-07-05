@@ -17,6 +17,10 @@
 		"screen-space-reflections",
 		"3d"
 	],
+	"files": [
+		"dist/index.js",
+		"dist/index.cjs"
+	],
 	"author": "0beqz",
 	"license": "MIT",
 	"devDependencies": {
