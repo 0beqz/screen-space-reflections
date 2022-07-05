@@ -9,6 +9,7 @@ import { Pane } from "tweakpane"
 import { SSRPass } from "screen-space-reflections"
 import "./style.css"
 import { defaultSSROptions } from "../src/SSRPass"
+import { Color } from "three"
 
 window.addEventListener("resize", () => {
 	camera.aspect = window.innerWidth / window.innerHeight
@@ -215,8 +216,8 @@ gltflLoader.load(useDesert ? "desert.glb" : "scene.glb", asset => {
 	box2.position.set(4, 1, -3.5)
 	box2.updateMatrixWorld()
 
-	scene.add(box)
-	scene.add(box2)
+	// scene.add(box)
+	// scene.add(box2)
 
 	// if (floorMesh) floorMesh.material.roughness = 0
 	// if (floorMesh) floorMesh.material.roughnessMap = null
@@ -225,6 +226,50 @@ gltflLoader.load(useDesert ? "desert.glb" : "scene.glb", asset => {
 	loop()
 
 	if (urlParams.get("dancer") === "true" && !useDesert) useVideoBackgroundAndDancer()
+})
+
+gltflLoader.load("plane.glb", asset => {
+	const mesh = asset.scene
+	mesh.position.set(5, 0, 0.5)
+	mesh.rotateY(1.2)
+	mesh.scale.multiplyScalar(2)
+
+	mesh.traverse(c => {
+		if (c.material) {
+			c.material.setValues({
+				roughness: 0.05,
+				metalness: 0.9
+			})
+			console.log(c.material)
+			c.material.color.multiplyScalar(0.0675)
+		}
+	})
+
+	mesh.updateMatrixWorld()
+
+	scene.add(mesh)
+})
+
+gltflLoader.load("heli.glb", asset => {
+	const mesh = asset.scene
+	mesh.position.set(5, 0, 2.5)
+	mesh.rotateY(1.2)
+	mesh.scale.multiplyScalar(2)
+
+	mesh.traverse(c => {
+		if (c.material) {
+			c.material.setValues({
+				roughness: 0.05,
+				metalness: 0.9
+			})
+			console.log(c.material)
+			c.material.color.multiplyScalar(0.0825)
+		}
+	})
+
+	mesh.updateMatrixWorld()
+
+	scene.add(mesh)
 })
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
