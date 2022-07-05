@@ -47,6 +47,9 @@ void main() {
 
     if (alpha > 0.) {
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
+    } else if (samples < 15.) {
+        // different approach
+        mixVal += 0.3;
     }
 
     blurMix = mix(lastFrameReflectionsTexel.a, inputTexel.a + 0.5, mixVal);
@@ -55,7 +58,7 @@ void main() {
         newColor = mix(lastFrameReflectionsTexel.rgb, lastFrameReflectionsTexel.rgb + inputTexel.rgb, min(1., 0.1 + movementSpeed * 100.));
     }
 
-    // newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
+    newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
 
     gl_FragColor = vec4(newColor, alpha);
 #else
