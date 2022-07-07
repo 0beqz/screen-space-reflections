@@ -29,8 +29,11 @@ void main() {
 
     blurMix = reflectionsTexel.a;
 
+    // @todo: remove live
+    blurMix = 0.4;
+
     reflectionClr = mix(reflectionClr, blurredReflectionsTexel.xyz, blurMix);
-    reflectionClr = mix(reflectionClr, vec3(0.), 0.35 * pow(SQRT_3 - length(reflectionClr), 1.5));
+    // reflectionClr = 2.5 * mix(reflectionClr, vec3(0.), 0.35 * pow(SQRT_3 - length(reflectionClr), 1.5));
     reflectionClr = max(vec3(0.), reflectionClr);
 #endif
 

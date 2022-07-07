@@ -22,11 +22,15 @@ export class VelocityPass extends Pass {
 		this._scene = scene
 		this._camera = camera
 
-		this.renderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: HalfFloatType
-		})
+		this.renderTarget = new WebGLRenderTarget(
+			typeof window !== "undefined" ? window.innerWidth : 2000,
+			typeof window !== "undefined" ? window.innerHeight : 1000,
+			{
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
+				type: HalfFloatType
+			}
+		)
 	}
 
 	#setVelocityMaterialInScene() {

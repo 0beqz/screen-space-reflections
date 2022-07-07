@@ -104,3 +104,5 @@ dist
 
 # TernJS port file
 .tern-port
+example/public/white.hdr
+example/public/sceneAircrafts.glb

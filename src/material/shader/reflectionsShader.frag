@@ -202,10 +202,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
 
         rayHitDepthDifference = depth - hitPos.z;
 
-        if (rayHitDepthDifference >= 0.) {
-            // early out if the ray's depth is "way higher" than the depth at that view position
-            if (rayHitDepthDifference > thickness) return INVALID_RAY_COORDS;
-
+        if (rayHitDepthDifference >= 0. && rayHitDepthDifference < thickness) {
 #if NUM_BINARY_SEARCH_STEPS == 0
             // filter out sky
             if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;

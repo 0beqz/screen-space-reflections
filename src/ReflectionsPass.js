@@ -3,9 +3,7 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	NearestFilter,
-	NearestMipmapNearestFilter,
 	RGBAFormat,
-	Uniform,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
@@ -35,8 +33,8 @@ export class ReflectionsPass extends Pass {
 
 		this.fullscreenMaterial = new ReflectionsMaterial()
 
-		const width = options.width || window.innerWidth
-		const height = options.height || window.innerHeight
+		const width = options.width || typeof window !== "undefined" ? window.innerWidth : 2000
+		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: NearestFilter,
@@ -50,8 +48,8 @@ export class ReflectionsPass extends Pass {
 		if (this.#useMRT) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 3, {
-				minFilter: NearestMipmapNearestFilter,
-				magFilter: NearestMipmapNearestFilter,
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
 				generateMipmaps: true,
 				type: HalfFloatType
 			})
@@ -64,15 +62,18 @@ export class ReflectionsPass extends Pass {
 		} else {
 			// depth pass
 			this.#webgl1DepthPass = new DepthPass(this._scene, this._camera)
-			this.#webgl1DepthPass.renderTarget.minFilter = NearestMipmapNearestFilter
-			this.#webgl1DepthPass.renderTarget.magFilter = NearestMipmapNearestFilter
+			this.#webgl1DepthPass.renderTarget.minFilter = NearestFilter
+			this.#webgl1DepthPass.renderTarget.magFilter = NearestFilter
 			this.#webgl1DepthPass.renderTarget.generateMipmaps = true
 
-			this.#webgl1DepthPass.renderTarget.texture.minFilter = NearestMipmapNearestFilter
-			this.#webgl1DepthPass.renderTarget.texture.magFilter = NearestMipmapNearestFilter
+			this.#webgl1DepthPass.renderTarget.texture.minFilter = NearestFilter
+			this.#webgl1DepthPass.renderTarget.texture.magFilter = NearestFilter
 			this.#webgl1DepthPass.renderTarget.texture.generateMipmaps = true
 
-			this.#webgl1DepthPass.setSize(window.innerWidth, window.innerHeight)
+			this.#webgl1DepthPass.setSize(
+				typeof window !== "undefined" ? window.innerWidth : 2000,
+				typeof window !== "undefined" ? window.innerHeight : 1000
+			)
 
 			// render normals (in the rgb channel) and roughness (in the alpha channel) in gBuffersRenderTarget
 			this.gBuffersRenderTarget = new WebGLRenderTarget(width, height, {
@@ -88,6 +89,13 @@ export class ReflectionsPass extends Pass {
 		}
 
 		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
+
+		this.fullscreenMaterial.uniforms.normalBuffer.value = this.normalTexture
+		this.fullscreenMaterial.uniforms.depthBuffer.value = this.depthTexture
+		this.fullscreenMaterial.uniforms.lastFrameReflectionsBuffer.value = this.lastFrameReflectionsTexture
+		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
+		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
+		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 	}
 
 	setSize(width, height) {
@@ -173,13 +181,6 @@ export class ReflectionsPass extends Pass {
 	}
 
 	render(renderer, inputBuffer) {
-		if (this.staticNoise) {
-			// this.samples = this.samples === 1 ? 2 : 1
-			this.samples = 1
-		} else {
-			this.samples++
-		}
-
 		// render depth and velocity in seperate passes
 		if (!this.#useMRT) {
 			this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
@@ -193,13 +194,7 @@ export class ReflectionsPass extends Pass {
 		this.#unsetNormalDepthRoughnessMaterialInScene()
 
 		this.fullscreenMaterial.uniforms.inputBuffer.value = inputBuffer.texture
-		this.fullscreenMaterial.uniforms.normalBuffer.value = this.normalTexture
-		this.fullscreenMaterial.uniforms.depthBuffer.value = this.depthTexture
-		this.fullscreenMaterial.uniforms.samples.value = this.samples
-		this.fullscreenMaterial.uniforms.lastFrameReflectionsBuffer.value = this.lastFrameReflectionsTexture
-		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
-		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
-		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
+		this.fullscreenMaterial.uniforms.samples.value = this.ssrPass.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
