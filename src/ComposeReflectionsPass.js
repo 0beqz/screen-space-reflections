@@ -13,16 +13,21 @@ export class ComposeReflectionsPass extends Pass {
 		this._scene = scene
 		this._camera = camera
 
-		this.renderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter
-		})
+		this.renderTarget = new WebGLRenderTarget(
+			typeof window !== "undefined" ? window.innerWidth : 2000,
+			typeof window !== "undefined" ? window.innerHeight : 1000,
+			{
+				minFilter: NearestFilter,
+				magFilter: NearestFilter
+			}
+		)
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			type: "ComposeReflectionsMaterial",
 			uniforms: {
 				inputBuffer: new Uniform(null),
 				lastFrameReflectionsBuffer: new Uniform(null),
+				depthBuffer: new Uniform(null),
 				velocityBuffer: new Uniform(null),
 				samples: new Uniform(1)
 			},

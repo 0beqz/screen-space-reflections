@@ -60,6 +60,10 @@ void main() {
 
     newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
 
+    if (samples > 16.) {
+        newColor = lastFrameReflectionsTexel.rgb * (1. - 1. / samples) + inputTexel.rgb / samples;
+    }
+
     gl_FragColor = vec4(newColor, alpha);
 #else
     gl_FragColor = vec4(inputTexel.rgb, inputTexel.a);
