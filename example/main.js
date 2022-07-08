@@ -9,7 +9,6 @@ import { Pane } from "tweakpane"
 import { SSRPass } from "screen-space-reflections"
 import "./style.css"
 import { defaultSSROptions } from "../src/SSRPass"
-import { Color } from "three"
 
 window.addEventListener("resize", () => {
 	camera.aspect = window.innerWidth / window.innerHeight
@@ -17,15 +16,16 @@ window.addEventListener("resize", () => {
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	ssrPass.setSize(window.innerWidth, window.innerHeight)
-
-	ssrPass.samples = 0
 })
 
 const scene = new THREE.Scene()
 window.scene = scene
 scene.add(new THREE.AmbientLight())
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100)
+const hemiLight = new THREE.HemisphereLight(0x443333, 0x111122)
+scene.add(hemiLight)
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100)
 
 scene.add(camera)
 scene.autoUpdate = false
@@ -69,13 +69,14 @@ controls.addEventListener("change", () => {
 	// ssrPass.reflectionsPass.createLastLastFrameReflectionsTexture()
 })
 
-const composer = new POSTPROCESSING.EffectComposer(renderer)
+const composer = new POSTPROCESSING.EffectComposer(renderer, {
+	frameBufferType: HalfFloatType
+})
 window.composer = composer
-
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
-const params = {
+let params = {
 	enabled: true,
 	floorRoughness: 1,
 	floorNormalScale: 1,
@@ -86,10 +87,10 @@ const params = {
 	temporalResolve: true,
 	staticNoise: false,
 	ENABLE_BLUR: false,
-	blurKernelSize: 1,
-	blurWidth: 1696,
-	blurHeight: 1500,
-	rayStep: 0.193,
+	blurKernelSize: 3,
+	blurWidth: 935,
+	blurHeight: 391,
+	rayStep: 0.534,
 	intensity: 1,
 	depthBlur: 0.26,
 	maxBlur: 0.85,
@@ -100,13 +101,13 @@ const params = {
 	roughnessFadeOut: 0.51,
 	rayFadeOut: 1.03,
 	maxDepth: 1,
-	thickness: 0.65,
+	thickness: 3.5,
 	ior: 1.45,
 	rayFadeOut: 0,
-	MAX_STEPS: 64,
-	NUM_BINARY_SEARCH_STEPS: 4,
+	MAX_STEPS: 25,
+	NUM_BINARY_SEARCH_STEPS: 7,
 	maxDepthDifference: 3,
-	STRETCH_MISSED_RAYS: true,
+	STRETCH_MISSED_RAYS: false,
 	floorRoughness: 2.6,
 	floorNormalScale: 0,
 	useMRT: true,
@@ -114,10 +115,52 @@ const params = {
 	USE_ROUGHNESSMAP: true
 }
 
-const urlParams = new URLSearchParams(window.location.search)
+const paramsDesert = {
+	enabled: true,
+	floorRoughness: 1,
+	floorNormalScale: 1,
+	antialias: false,
 
-camera.position.set(11.52397338793808, 1.3288224896940117, -0.5247956153854474)
-controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.46503426700631345)
+	width: window.innerWidth,
+	height: window.innerHeight,
+	ENABLE_BLUR: true,
+	blurKernelSize: 3,
+	blurWidth: 1370,
+	blurHeight: 370,
+	rayStep: 0.205,
+	intensity: 0.7,
+	depthBlur: 0.11,
+	maxBlur: 1,
+	ENABLE_JITTERING: true,
+	jitter: 0.17,
+	jitterRough: 0,
+	jitterSpread: 0.98,
+	roughnessFadeOut: 0,
+	rayFadeOut: 0,
+	MAX_STEPS: 32,
+	NUM_BINARY_SEARCH_STEPS: 6,
+	maxDepth: 1,
+	STRETCH_MISSED_RAYS: true,
+	maxDepthDifference: 500,
+	thickness: 22.83,
+	ior: 1.68,
+	useMRT: true,
+	USE_NORMALMAP: false,
+	USE_ROUGHNESSMAP: false
+}
+
+const urlParams = new URLSearchParams(window.location.search)
+const useDesert = urlParams.get("desert") === "true"
+
+if (useDesert) {
+	params = paramsDesert
+
+	camera.position.set(43.41796615579645, -0.989309749754447, 111.06453952471358)
+	controls.target.set(30.557604018998227, -1.0641165515106161, 111.09867225736214)
+} else {
+	camera.position.set(11.002333350656253, 2.406571150547438, -2.833099999666251)
+	controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.46503426700631345)
+}
 
 const defaultParams = { ...params }
 
@@ -130,31 +173,12 @@ const gltflLoader = new GLTFLoader()
 let floorMesh
 let emitterMesh
 
-gltflLoader.load("sceneAircrafts.glb", asset => {
+gltflLoader.load(useDesert ? "desert.glb" : "scene.glb", asset => {
 	scene.add(asset.scene)
 	asset.scene.traverse(c => {
-		c.updateMatrixWorld()
-
 		if (c.material) {
 			c.material.normalScale.setScalar(1)
-
-			if (c.name.startsWith("plane")) {
-				c.material.setValues({
-					roughness: 0.05,
-					metalness: 0.9
-				})
-
-				c.material.color.multiplyScalar(0.0675)
-			}
-
-			if (c.name.startsWith("heli")) {
-				c.material.setValues({
-					roughness: 0.05,
-					metalness: 0.9
-				})
-
-				c.material.color.multiplyScalar(0.0825)
-			}
+			if (useDesert) c.material.roughness = 0.1
 		}
 
 		if (c.name === "Plane") floorMesh = c
@@ -191,8 +215,8 @@ gltflLoader.load("sceneAircrafts.glb", asset => {
 	box2.position.set(4, 1, -3.5)
 	box2.updateMatrixWorld()
 
-	// scene.add(box)
-	// scene.add(box2)
+	scene.add(box)
+	scene.add(box2)
 
 	// if (floorMesh) floorMesh.material.roughness = 0
 	// if (floorMesh) floorMesh.material.roughnessMap = null
@@ -200,63 +224,19 @@ gltflLoader.load("sceneAircrafts.glb", asset => {
 
 	loop()
 
-	if (urlParams.get("dancer") === "true") useVideoBackgroundAndDancer()
+	if (urlParams.get("dancer") === "true" && !useDesert) useVideoBackgroundAndDancer()
 })
-
-// gltflLoader.load("plane.glb", asset => {
-// 	const mesh = asset.scene
-// 	mesh.position.set(5, 0, 0.5)
-// 	mesh.rotateY(1.2)
-// 	mesh.scale.multiplyScalar(2)
-
-// 	mesh.traverse(c => {
-// 		if (c.material) {
-// 			c.material.setValues({
-// 				roughness: 0.05,
-// 				metalness: 0.9
-// 			})
-// 			console.log(c.material)
-// 			c.material.color.multiplyScalar(0.0675)
-// 		}
-// 	})
-
-// 	mesh.updateMatrixWorld()
-
-// 	scene.add(mesh)
-// })
-
-// gltflLoader.load("heli.glb", asset => {
-// 	const mesh = asset.scene
-// 	mesh.position.set(5, 0, 2.5)
-// 	mesh.rotateY(1.2)
-// 	mesh.scale.multiplyScalar(2)
-
-// 	mesh.traverse(c => {
-// 		if (c.material) {
-// 			c.material.setValues({
-// 				roughness: 0.05,
-// 				metalness: 0.9
-// 			})
-// 			console.log(c.material)
-// 			c.material.color.multiplyScalar(0.0825)
-// 		}
-// 	})
-
-// 	mesh.updateMatrixWorld()
-
-// 	scene.add(mesh)
-// })
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-// new RGBELoader().load("env.hdr", tex => {
-// 	const envMap = pmremGenerator.fromEquirectangular(tex).texture
-// 	envMap.minFilter = THREE.LinearFilter
+new RGBELoader().load("env.hdr", tex => {
+	const envMap = pmremGenerator.fromEquirectangular(tex).texture
+	envMap.minFilter = THREE.LinearFilter
 
-// 	scene.environment = envMap
-// 	scene.background = envMap
-// })
+	if (useDesert) scene.environment = envMap
+	if (useDesert) scene.background = envMap
+})
 
 let mixer
 let skinMesh
@@ -364,9 +344,19 @@ renderModesList = optionsFolder
 		ssrPass.fullscreenMaterial.needsUpdate = true
 	})
 
-optionsFolder.addInput(params, "temporalResolve")
+optionsFolder.addInput(params, "temporalResolve").on("change", () => {
+	if (params.temporalResolve) {
+		ssrPass.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE = ""
+	} else {
+		delete ssrPass.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE
+	}
 
-optionsFolder.addInput(params, "staticNoise")
+	ssrPass.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
+})
+
+optionsFolder.addInput(params, "staticNoise").on("change", () => {
+	ssrPass.reflectionsPass.staticNoise = params.staticNoise
+})
 
 optionsFolder.addInput(params, "width", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "height", { min: 0, max: 2000, step: 1 })
@@ -376,7 +366,7 @@ optionsFolder.addInput(params, "depthBlur", { min: 0, max: 0.5, step: 0.01 })
 optionsFolder.addInput(params, "maxBlur", { min: 0, max: 1, step: 0.01 })
 optionsFolder.addInput(params, "maxDepthDifference", {
 	min: 0,
-	max: 8,
+	max: useDesert ? 20 : 8,
 	step: 0.01
 })
 optionsFolder.addInput(params, "maxDepth", {
@@ -396,7 +386,7 @@ optionsFolder.addInput(params, "rayFadeOut", {
 })
 optionsFolder.addInput(params, "thickness", {
 	min: 0,
-	max: 10,
+	max: useDesert ? 30 : 10,
 	step: 0.01
 })
 
@@ -407,14 +397,32 @@ optionsFolder.addInput(params, "ior", {
 })
 
 const blurFolder = pane.addFolder({ title: "Blur" })
-blurFolder.addInput(params, "ENABLE_BLUR")
+blurFolder.addInput(params, "ENABLE_BLUR").on("change", () => {
+	if (params.ENABLE_BLUR) {
+		ssrPass.fullscreenMaterial.defines.USE_BLUR = ""
+		ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = ""
+	} else {
+		delete ssrPass.fullscreenMaterial.defines.USE_BLUR
+		delete ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_BLUR
+	}
+
+	ssrPass.fullscreenMaterial.needsUpdate = true
+})
 blurFolder.addInput(params, "blurKernelSize", { min: 0, max: 5, step: 1 })
 blurFolder.addInput(params, "blurWidth", { min: 0, max: 2000, step: 1 })
 blurFolder.addInput(params, "blurHeight", { min: 0, max: 2000, step: 1 })
 
 const jitterFolder = pane.addFolder({ title: "Jitter", expanded: false })
 
-jitterFolder.addInput(params, "ENABLE_JITTERING")
+jitterFolder.addInput(params, "ENABLE_JITTERING").on("change", () => {
+	if (params.ENABLE_JITTERING) {
+		ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING = ""
+	} else {
+		delete ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING
+	}
+	ssrPass.reflectionsPass.fullscreenMaterial.needsUpdate = true
+})
+
 jitterFolder.addInput(params, "jitter", { min: 0, max: 3, step: 0.01 })
 jitterFolder.addInput(params, "jitterRough", { min: 0, max: 2, step: 0.01 })
 jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 5, step: 0.01 })
@@ -452,56 +460,58 @@ presetsFolder
 		pane.refresh()
 	})
 
-presetsFolder
-	.addButton({
-		title: "Fast"
-	})
-	.on("click", () => {
-		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
+if (!useDesert) {
+	presetsFolder
+		.addButton({
+			title: "Fast"
+		})
+		.on("click", () => {
+			for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-		params.ENABLE_BLUR = true
-		params.blurWidth = 1130
-		params.blurHeight = 391
-		params.depthBlur = 0.06
-		params.width = 1359
-		params.height = 804
-		params.blurKernelSize = 1
-		params.ENABLE_JITTERING = false
-		params.maxDepthDifference = 6
+			params.ENABLE_BLUR = true
+			params.blurWidth = 1130
+			params.blurHeight = 391
+			params.depthBlur = 0.06
+			params.width = 1359
+			params.height = 804
+			params.blurKernelSize = 1
+			params.ENABLE_JITTERING = false
+			params.maxDepthDifference = 6
 
-		params.rayFadeOut = 2.72
+			params.rayFadeOut = 2.72
 
-		params.rayStep = 3.232
-		params.MAX_STEPS = 4
-		params.NUM_BINARY_SEARCH_STEPS = 7
+			params.rayStep = 3.232
+			params.MAX_STEPS = 4
+			params.NUM_BINARY_SEARCH_STEPS = 7
 
-		pane.refresh()
-	})
+			pane.refresh()
+		})
 
-presetsFolder
-	.addButton({
-		title: "High Quality"
-	})
-	.on("click", () => {
-		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
+	presetsFolder
+		.addButton({
+			title: "High Quality"
+		})
+		.on("click", () => {
+			for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-		params.MAX_STEPS = 256
-		params.rayStep = 0.055
-		params.intensity = 1
-		params.floorNormalScale = 0
-		params.floorRoughness = 0
-		params.depthBlur = 0
+			params.MAX_STEPS = 256
+			params.rayStep = 0.055
+			params.intensity = 1
+			params.floorNormalScale = 0
+			params.floorRoughness = 0
+			params.depthBlur = 0
 
-		pane.refresh()
-	})
+			pane.refresh()
+		})
 
-presetsFolder
-	.addButton({
-		title: "Video Background with Dancer"
-	})
-	.on("click", () => {
-		useVideoBackgroundAndDancer()
-	})
+	presetsFolder
+		.addButton({
+			title: "Video Background with Dancer"
+		})
+		.on("click", () => {
+			useVideoBackgroundAndDancer()
+		})
+}
 
 const stats = new Stats()
 stats.showPanel(0)
