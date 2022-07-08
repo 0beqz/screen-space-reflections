@@ -1,9 +1,14 @@
 ﻿import { KawaseBlurPass, KernelSize, Pass } from "postprocessing"
-import { Matrix4 } from "three"
-import { Vector3 } from "three"
-import { Quaternion } from "three"
-import { Euler } from "three"
-import { LinearFilter, Vector2, WebGLRenderTarget } from "three"
+import {
+	FramebufferTexture,
+	LinearFilter,
+	NearestFilter,
+	Quaternion,
+	RGBAFormat,
+	Vector2,
+	Vector3,
+	WebGLRenderTarget
+} from "three"
 import { ComposeReflectionsPass } from "./ComposeReflectionsPass.js"
 import { SSRCompositeMaterial } from "./material/SSRCompositeMaterial.js"
 import { ReflectionsPass } from "./ReflectionsPass.js"
@@ -88,6 +93,14 @@ export class SSRPass extends Pass {
 		}
 
 		this.kawaseBlurPassRenderTarget = new WebGLRenderTarget(options.blurWidth, options.blurHeight, parameters)
+
+		this.lastFrameDepthTexture = new FramebufferTexture(options.width, options.height, RGBAFormat)
+
+		this.lastFrameDepthRenderTarget = new WebGLRenderTarget(options.width, options.height, {
+			minFilter: NearestFilter,
+			magFilter: NearestFilter
+		})
+		this.lastFrameDepthRenderTarget.texture = this.reflectionsPass.depthTexture
 
 		this.#makeOptionsReactive(options)
 	}
@@ -235,9 +248,9 @@ export class SSRPass extends Pass {
 		}
 
 		// const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
-		// const rotateDist = this.#lastCameraTransform.quaternion.angleTo(this._camera.quaternion)
+		// const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
 
-		// if (moveDist > 0.001 || rotateDist > 0.001) {
+		// if (moveDist > 0.000001 || rotateDist > 0.000001) {
 		// 	this.samples = 1
 
 		// 	this.#lastCameraTransform.position.copy(this._camera.position)
@@ -249,12 +262,18 @@ export class SSRPass extends Pass {
 
 		// compose reflection of last and current frame into one reflection
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.samples.value = this.samples
+		this.composeReflectionsPass.fullscreenMaterial.uniforms.depthBuffer.value = this.reflectionsPass.depthTexture
+		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameDepthBuffer.value = this.lastFrameDepthTexture
 
 		this.composeReflectionsPass.render(renderer, this.reflectionsPass.renderTarget, this.composeRenderTarget)
 
 		// save reflections of this frame
 		renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
 		renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
+
+		// save depth of this frame
+		renderer.setRenderTarget(this.lastFrameDepthRenderTarget)
+		renderer.copyFramebufferToTexture(zeroVec2, this.lastFrameDepthTexture)
 
 		if (this.ENABLE_BLUR) {
 			renderer.setRenderTarget(this.kawaseBlurPassRenderTarget)
@@ -269,5 +288,10 @@ export class SSRPass extends Pass {
 
 		renderer.setRenderTarget(this.renderToScreen ? null : outputBuffer)
 		renderer.render(this.scene, this.camera)
+
+		this.composeReflectionsPass.fullscreenMaterial.uniforms._lastProjectionMatrix.value.copy(
+			this._camera.projectionMatrix
+		)
+		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 	}
 }

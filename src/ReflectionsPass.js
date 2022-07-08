@@ -1,4 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+import { UnsignedByteType } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
@@ -57,6 +58,8 @@ export class ReflectionsPass extends Pass {
 			this.normalTexture = this.gBuffersRenderTarget.texture[0]
 			this.depthTexture = this.gBuffersRenderTarget.texture[1]
 			this.velocityTexture = this.gBuffersRenderTarget.texture[2]
+
+			this.depthTexture.type = UnsignedByteType
 
 			this.fullscreenMaterial.defines.USE_ROUGHNESSMAP = true
 		} else {
