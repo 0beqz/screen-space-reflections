@@ -247,15 +247,15 @@ export class SSRPass extends Pass {
 			this.samples++
 		}
 
-		// const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
-		// const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
+		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
+		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
 
-		// if (moveDist > 0.000001 || rotateDist > 0.000001) {
-		// 	this.samples = 1
+		if (moveDist > 0.000001 || rotateDist > 0.000001) {
+			this.samples = 3
 
-		// 	this.#lastCameraTransform.position.copy(this._camera.position)
-		// 	this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
-		// }
+			this.#lastCameraTransform.position.copy(this._camera.position)
+			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
+		}
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer, this.reflectionsPass.renderTarget)

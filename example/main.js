@@ -64,11 +64,6 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 window.controls = controls
 
-controls.addEventListener("change", () => {
-	if (ssrPass) ssrPass.samples = 1
-	// ssrPass.reflectionsPass.createLastLastFrameReflectionsTexture()
-})
-
 const composer = new POSTPROCESSING.EffectComposer(renderer, {
 	frameBufferType: HalfFloatType
 })
