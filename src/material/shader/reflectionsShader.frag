@@ -127,7 +127,7 @@ void main() {
     screenEdgefactor = max(0., screenEdgefactor);
 
     vec3 SSR = texture2D(inputBuffer, coords.xy).rgb;
-    // SSR += texture2D(lastFrameReflectionsBuffer, coords.xy).rgb;
+    SSR += texture2D(lastFrameReflectionsBuffer, coords.xy).rgb;
 
     float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));
 

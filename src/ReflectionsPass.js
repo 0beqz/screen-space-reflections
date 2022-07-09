@@ -109,6 +109,9 @@ export class ReflectionsPass extends Pass {
 			this.#webgl1DepthPass.setSize(width, height)
 			this.#webgl1VelocityPass.setSize(width, height)
 		}
+
+		this.fullscreenMaterial.uniforms.width.value = this.renderTarget.width
+		this.fullscreenMaterial.uniforms.height.value = this.renderTarget.height
 	}
 
 	#keepMaterialUpdated(normalDepthMaterial, origMat, prop, define) {
