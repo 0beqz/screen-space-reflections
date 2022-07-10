@@ -7356,7 +7356,7 @@
 						(this.texture.generateMipmaps = void 0 !== n.generateMipmaps && n.generateMipmaps),
 						(this.texture.internalFormat = void 0 !== n.internalFormat ? n.internalFormat : null),
 						(this.texture.minFilter = void 0 !== n.minFilter ? n.minFilter : d),
-						(this.depthBuffer = void 0 === n.depthBuffer || n.depthBuffer),
+						(this.depthTexture = void 0 === n.depthTexture || n.depthTexture),
 						(this.stencilBuffer = void 0 !== n.stencilBuffer && n.stencilBuffer),
 						(this.depthTexture = void 0 !== n.depthTexture ? n.depthTexture : null),
 						(this.samples = void 0 !== n.samples ? n.samples : 0)
@@ -7386,7 +7386,7 @@
 					const t = Object.assign({}, e.texture.image)
 					return (
 						(this.texture.source = new ge(t)),
-						(this.depthBuffer = e.depthBuffer),
+						(this.depthTexture = e.depthTexture),
 						(this.stencilBuffer = e.stencilBuffer),
 						null !== e.depthTexture && (this.depthTexture = e.depthTexture.clone()),
 						(this.samples = e.samples),
@@ -7433,7 +7433,7 @@
 						(this.depth = e.depth),
 						this.viewport.set(0, 0, this.width, this.height),
 						this.scissor.set(0, 0, this.width, this.height),
-						(this.depthBuffer = e.depthBuffer),
+						(this.depthTexture = e.depthTexture),
 						(this.stencilBuffer = e.stencilBuffer),
 						null !== e.depthTexture && (this.depthTexture = e.depthTexture.clone()),
 						(this.texture.length = 0)
@@ -12773,7 +12773,7 @@
 				const o = r(a)
 				o !== a && (console.warn("THREE.WebGLRenderer:", a, "not supported, using", o, "instead."), (a = o))
 				const l = s || t.has("WEBGL_draw_buffers"),
-					c = !0 === n.logarithmicDepthBuffer,
+					c = !0 === n.logarithmicdepthTexture,
 					h = e.getParameter(34930),
 					u = e.getParameter(35660),
 					d = e.getParameter(3379),
@@ -12797,7 +12797,7 @@
 					},
 					getMaxPrecision: r,
 					precision: a,
-					logarithmicDepthBuffer: c,
+					logarithmicdepthTexture: c,
 					maxTextures: h,
 					maxVertexTextures: u,
 					maxTextureSize: d,
@@ -13060,7 +13060,7 @@
 					;(ni = this._renderer.getRenderTarget()), this._setSize(256)
 					const r = this._allocateTargets()
 					return (
-						(r.depthBuffer = !0),
+						(r.depthTexture = !0),
 						this._sceneToCubeUV(e, n, i, r),
 						t > 0 && this._blur(r, 0, 0, t),
 						this._applyPMREM(r),
@@ -13109,7 +13109,7 @@
 				_allocateTargets() {
 					const e = 3 * Math.max(this._cubeSize, 112),
 						t = 4 * this._cubeSize,
-						n = { magFilter: d, minFilter: d, generateMipmaps: !1, type: v, format: x, encoding: D, depthBuffer: !1 },
+						n = { magFilter: d, minFilter: d, generateMipmaps: !1, type: v, format: x, encoding: D, depthTexture: !1 },
 						i = oi(e, t, n)
 					if (null === this._pingPongRenderTarget || this._pingPongRenderTarget.width !== e) {
 						null !== this._pingPongRenderTarget && this._dispose(), (this._pingPongRenderTarget = oi(e, t, n))
@@ -14342,7 +14342,7 @@
 									"physical" === e.shaderID
 										? "#extension GL_OES_standard_derivatives : enable"
 										: "",
-									(e.extensionFragDepth || e.logarithmicDepthBuffer) && e.rendererExtensionFragDepth
+									(e.extensionFragDepth || e.logarithmicdepthTexture) && e.rendererExtensionFragDepth
 										? "#extension GL_EXT_frag_depth : enable"
 										: "",
 									e.extensionDrawBuffers && e.rendererExtensionDrawBuffers
@@ -14428,8 +14428,8 @@
 							n.shadowMapEnabled ? "#define USE_SHADOWMAP" : "",
 							n.shadowMapEnabled ? "#define " + u : "",
 							n.sizeAttenuation ? "#define USE_SIZEATTENUATION" : "",
-							n.logarithmicDepthBuffer ? "#define USE_LOGDEPTHBUF" : "",
-							n.logarithmicDepthBuffer && n.rendererExtensionFragDepth ? "#define USE_LOGDEPTHBUF_EXT" : "",
+							n.logarithmicdepthTexture ? "#define USE_LOGDEPTHBUF" : "",
+							n.logarithmicdepthTexture && n.rendererExtensionFragDepth ? "#define USE_LOGDEPTHBUF_EXT" : "",
 							"uniform mat4 modelMatrix;",
 							"uniform mat4 modelViewMatrix;",
 							"uniform mat4 projectionMatrix;",
@@ -14536,8 +14536,8 @@
 							n.shadowMapEnabled ? "#define " + u : "",
 							n.premultipliedAlpha ? "#define PREMULTIPLIED_ALPHA" : "",
 							n.physicallyCorrectLights ? "#define PHYSICALLY_CORRECT_LIGHTS" : "",
-							n.logarithmicDepthBuffer ? "#define USE_LOGDEPTHBUF" : "",
-							n.logarithmicDepthBuffer && n.rendererExtensionFragDepth ? "#define USE_LOGDEPTHBUF_EXT" : "",
+							n.logarithmicdepthTexture ? "#define USE_LOGDEPTHBUF" : "",
+							n.logarithmicdepthTexture && n.rendererExtensionFragDepth ? "#define USE_LOGDEPTHBUF_EXT" : "",
 							"uniform mat4 viewMatrix;",
 							"uniform vec3 cameraPosition;",
 							"uniform bool isOrthographic;",
@@ -14724,7 +14724,7 @@
 					c = new Wr(),
 					h = [],
 					u = r.isWebGL2,
-					d = r.logarithmicDepthBuffer,
+					d = r.logarithmicdepthTexture,
 					p = r.vertexTextures
 				let m = r.precision
 				const f = {
@@ -14886,7 +14886,7 @@
 							fogExp2: _ && _.isFogExp2,
 							flatShading: !!a.flatShading,
 							sizeAttenuation: a.sizeAttenuation,
-							logarithmicDepthBuffer: d,
+							logarithmicdepthTexture: d,
 							skinning: !0 === v.isSkinnedMesh,
 							morphTargets: void 0 !== x.morphAttributes.position,
 							morphNormals: void 0 !== x.morphAttributes.normal,
@@ -14998,7 +14998,7 @@
 										l.disableAll(),
 										t.useFog && l.enable(0),
 										t.flatShading && l.enable(1),
-										t.logarithmicDepthBuffer && l.enable(2),
+										t.logarithmicdepthTexture && l.enable(2),
 										t.skinning && l.enable(3),
 										t.morphTargets && l.enable(4),
 										t.morphNormals && l.enable(5),
@@ -16341,11 +16341,11 @@
 							)
 								for (let t = 0; t < 6; t++)
 									e.deleteFramebuffer(r.__webglFramebuffer[t]),
-										r.__webglDepthbuffer && e.deleteRenderbuffer(r.__webglDepthbuffer[t])
+										r.__webgldepthTexture && e.deleteRenderbuffer(r.__webgldepthTexture[t])
 							else {
 								if (
 									(e.deleteFramebuffer(r.__webglFramebuffer),
-									r.__webglDepthbuffer && e.deleteRenderbuffer(r.__webglDepthbuffer),
+									r.__webgldepthTexture && e.deleteRenderbuffer(r.__webgldepthTexture),
 									r.__webglMultisampledFramebuffer && e.deleteFramebuffer(r.__webglMultisampledFramebuffer),
 									r.__webglColorRenderbuffer)
 								)
@@ -16586,7 +16586,7 @@
 						n.bindFramebuffer(36160, null)
 				}
 				function se(t, n, i) {
-					if ((e.bindRenderbuffer(36161, t), n.depthBuffer && !n.stencilBuffer)) {
+					if ((e.bindRenderbuffer(36161, t), n.depthTexture && !n.stencilBuffer)) {
 						let r = 33189
 						if (i || le(n)) {
 							const t = n.depthTexture
@@ -16597,7 +16597,7 @@
 								: e.renderbufferStorageMultisample(36161, i, r, n.width, n.height)
 						} else e.renderbufferStorage(36161, r, n.width, n.height)
 						e.framebufferRenderbuffer(36160, 36096, 36161, t)
-					} else if (n.depthBuffer && n.stencilBuffer) {
+					} else if (n.depthTexture && n.stencilBuffer) {
 						const r = oe(n)
 						i && !1 === le(n)
 							? e.renderbufferStorageMultisample(36161, r, 35056, n.width, n.height)
@@ -16625,7 +16625,7 @@
 				function ae(t) {
 					const r = i.get(t),
 						s = !0 === t.isWebGLCubeRenderTarget
-					if (t.depthTexture && !r.__autoAllocateDepthBuffer) {
+					if (t.depthTexture && !r.__autoAllocatedepthTexture) {
 						if (s) throw new Error("target.depthTexture not supported in Cube render targets")
 						!(function (t, r) {
 							if (r && r.isWebGLCubeRenderTarget)
@@ -16653,15 +16653,15 @@
 							}
 						})(r.__webglFramebuffer, t)
 					} else if (s) {
-						r.__webglDepthbuffer = []
+						r.__webgldepthTexture = []
 						for (let i = 0; i < 6; i++)
 							n.bindFramebuffer(36160, r.__webglFramebuffer[i]),
-								(r.__webglDepthbuffer[i] = e.createRenderbuffer()),
-								se(r.__webglDepthbuffer[i], t, !1)
+								(r.__webgldepthTexture[i] = e.createRenderbuffer()),
+								se(r.__webgldepthTexture[i], t, !1)
 					} else
 						n.bindFramebuffer(36160, r.__webglFramebuffer),
-							(r.__webglDepthbuffer = e.createRenderbuffer()),
-							se(r.__webglDepthbuffer, t, !1)
+							(r.__webgldepthTexture = e.createRenderbuffer()),
+							se(r.__webgldepthTexture, t, !1)
 					n.bindFramebuffer(36160, null)
 				}
 				function oe(e) {
@@ -16852,7 +16852,7 @@
 										e.framebufferRenderbuffer(36160, 36064 + n, 36161, o.__webglColorRenderbuffer[n])
 								}
 								e.bindRenderbuffer(36161, null),
-									t.depthBuffer &&
+									t.depthTexture &&
 										((o.__webglDepthRenderbuffer = e.createRenderbuffer()), se(o.__webglDepthRenderbuffer, t, !0)),
 									n.bindFramebuffer(36160, null)
 							}
@@ -16886,7 +16886,7 @@
 								z(a, u) && V(e),
 								n.unbindTexture()
 						}
-						t.depthBuffer && ae(t)
+						t.depthTexture && ae(t)
 					}),
 					(this.updateRenderTargetMipmap = function (e) {
 						const t = F(e) || M,
@@ -16918,10 +16918,10 @@
 										e.lastFrameReflectionsTexture2D(36009, 36064 + t, 3553, null, 0)
 							n.bindFramebuffer(36008, h.__webglMultisampledFramebuffer), n.bindFramebuffer(36009, h.__webglFramebuffer)
 							for (let n = 0; n < r.length; n++) {
-								l.push(36064 + n), t.depthBuffer && l.push(c)
+								l.push(36064 + n), t.depthTexture && l.push(c)
 								const d = void 0 !== h.__ignoreDepthValues && h.__ignoreDepthValues
 								if (
-									(!1 === d && (t.depthBuffer && (o |= 256), t.stencilBuffer && (o |= 1024)),
+									(!1 === d && (t.depthTexture && (o |= 256), t.stencilBuffer && (o |= 1024)),
 									u && e.framebufferRenderbuffer(36008, 36064, 36161, h.__webglColorRenderbuffer[n]),
 									!0 === d && (e.invalidateFramebuffer(36008, [c]), e.invalidateFramebuffer(36009, [c])),
 									u)
@@ -18104,7 +18104,7 @@
 								) {
 									if (
 										(P.setValue(ye, "projectionMatrix", e.projectionMatrix),
-										K.logarithmicDepthBuffer && P.setValue(ye, "logDepthBufFC", 2 / (Math.log(e.far + 1) / Math.LN2)),
+										K.logarithmicdepthTexture && P.setValue(ye, "logDepthBufFC", 2 / (Math.log(e.far + 1) / Math.LN2)),
 										T !== e && ((T = e), (C = !0), (A = !0)),
 										i.isShaderMaterial ||
 											i.isMeshPhongMaterial ||
@@ -18483,8 +18483,8 @@
 						const i = ee.get(e)
 						;(i.__hasExternalTextures = !0),
 							i.__hasExternalTextures &&
-								((i.__autoAllocateDepthBuffer = void 0 === n),
-								i.__autoAllocateDepthBuffer ||
+								((i.__autoAllocatedepthTexture = void 0 === n),
+								i.__autoAllocatedepthTexture ||
 									(!0 === Y.has("WEBGL_multisampled_render_to_texture") &&
 										(console.warn(
 											"THREE.WebGLRenderer: Render-to-texture extension was disabled because an external texture was provided"
@@ -22374,7 +22374,7 @@
 						super({
 							name: "KawaseBlurMaterial",
 							uniforms: {
-								inputBuffer: new io(null),
+								inputTexture: new io(null),
 								texelSize: new io(new be()),
 								scale: new io(new Q(1, 1)),
 								kernel: new io(0)
@@ -22383,7 +22383,7 @@
 							depthWrite: !1,
 							depthTest: !1,
 							fragmentShader:
-								"#ifdef FRAMEBUFFER_PRECISION_HIGH\nuniform mediump sampler2D inputBuffer;\n#else\nuniform lowp sampler2D inputBuffer;\n#endif\nvarying vec2 vUv0;varying vec2 vUv1;varying vec2 vUv2;varying vec2 vUv3;void main(){vec4 sum=texture2D(inputBuffer,vUv0);sum+=texture2D(inputBuffer,vUv1);sum+=texture2D(inputBuffer,vUv2);sum+=texture2D(inputBuffer,vUv3);gl_FragColor=sum*0.25;\n#include <encodings_fragment>\n}",
+								"#ifdef FRAMEBUFFER_PRECISION_HIGH\nuniform mediump sampler2D inputTexture;\n#else\nuniform lowp sampler2D inputTexture;\n#endif\nvarying vec2 vUv0;varying vec2 vUv1;varying vec2 vUv2;varying vec2 vUv3;void main(){vec4 sum=texture2D(inputTexture,vUv0);sum+=texture2D(inputTexture,vUv1);sum+=texture2D(inputTexture,vUv2);sum+=texture2D(inputTexture,vUv3);gl_FragColor=sum*0.25;\n#include <encodings_fragment>\n}",
 							vertexShader:
 								"uniform vec4 texelSize;uniform float kernel;uniform vec2 scale;varying vec2 vUv0;varying vec2 vUv1;varying vec2 vUv2;varying vec2 vUv3;void main(){vec2 uv=position.xy*0.5+0.5;vec2 dUv=(texelSize.xy*vec2(kernel)+texelSize.zw)*scale.x*scale.y;vUv0=vec2(uv.x-dUv.x,uv.y+dUv.y);vUv1=vec2(uv.x+dUv.x,uv.y+dUv.y);vUv2=vec2(uv.x+dUv.x,uv.y-dUv.y);vUv3=vec2(uv.x-dUv.x,uv.y-dUv.y);gl_Position=vec4(position.xy,1.0,1.0);}"
 						}),
@@ -22391,11 +22391,11 @@
 							this.setTexelSize(e.x, e.y),
 							(this.kernelSize = 2)
 					}
-					set inputBuffer(e) {
-						this.uniforms.inputBuffer.value = e
+					set inputTexture(e) {
+						this.uniforms.inputTexture.value = e
 					}
-					setInputBuffer(e) {
-						this.inputBuffer = e
+					setinputTexture(e) {
+						this.inputTexture = e
 					}
 					get kernelSequence() {
 						return go[this.kernelSize]
@@ -22440,22 +22440,22 @@
 					constructor() {
 						super({
 							name: "CopyMaterial",
-							uniforms: { inputBuffer: new io(null), opacity: new io(1) },
+							uniforms: { inputTexture: new io(null), opacity: new io(1) },
 							blending: 0,
 							depthWrite: !1,
 							depthTest: !1,
 							fragmentShader:
-								"#include <common>\n#include <dithering_pars_fragment>\n#ifdef FRAMEBUFFER_PRECISION_HIGH\nuniform mediump sampler2D inputBuffer;\n#else\nuniform lowp sampler2D inputBuffer;\n#endif\nuniform float opacity;varying vec2 vUv;void main(){vec4 texel=texture2D(inputBuffer,vUv);gl_FragColor=opacity*texel;\n#include <encodings_fragment>\n#include <dithering_fragment>\n}",
+								"#include <common>\n#include <dithering_pars_fragment>\n#ifdef FRAMEBUFFER_PRECISION_HIGH\nuniform mediump sampler2D inputTexture;\n#else\nuniform lowp sampler2D inputTexture;\n#endif\nuniform float opacity;varying vec2 vUv;void main(){vec4 texel=texture2D(inputTexture,vUv);gl_FragColor=opacity*texel;\n#include <encodings_fragment>\n#include <dithering_fragment>\n}",
 							vertexShader:
 								"varying vec2 vUv;void main(){vUv=position.xy*0.5+0.5;gl_Position=vec4(position.xy,1.0,1.0);}"
 						}),
 							(this.toneMapped = !1)
 					}
-					set inputBuffer(e) {
-						this.uniforms.inputBuffer.value = e
+					set inputTexture(e) {
+						this.uniforms.inputTexture.value = e
 					}
-					setInputBuffer(e) {
-						this.uniforms.inputBuffer.value = e
+					setinputTexture(e) {
+						this.uniforms.inputTexture.value = e
 					}
 					getOpacity(e) {
 						return this.uniforms.opacity.value
@@ -22553,7 +22553,12 @@
 							(this.needsSwap = !1),
 							(this.renderTarget = e),
 							void 0 === e &&
-								((this.renderTarget = new we(1, 1, { minFilter: d, magFilter: d, stencilBuffer: !1, depthBuffer: !1 })),
+								((this.renderTarget = new we(1, 1, {
+									minFilter: d,
+									magFilter: d,
+									stencilBuffer: !1,
+									depthTexture: !1
+								})),
 								(this.renderTarget.texture.name = "CopyPass.Target")),
 							(this.autoResize = t)
 					}
@@ -22573,7 +22578,7 @@
 						this.autoResize = e
 					}
 					render(e, t, n, i, r) {
-						;(this.fullscreenMaterial.inputBuffer = t.texture),
+						;(this.fullscreenMaterial.inputTexture = t.texture),
 							e.setRenderTarget(this.renderToScreen ? null : this.renderTarget),
 							e.render(this.scene, this.camera)
 					}
@@ -23035,7 +23040,7 @@
 						resolutionY: s = i
 					} = {}) {
 						super("KawaseBlurPass"),
-							(this.renderTargetA = new we(1, 1, { depthBuffer: !1 })),
+							(this.renderTargetA = new we(1, 1, { depthTexture: !1 })),
 							(this.renderTargetA.texture.name = "Blur.Target.A"),
 							(this.renderTargetB = this.renderTargetA.clone()),
 							(this.renderTargetB.texture.name = "Blur.Target.B")
@@ -23106,10 +23111,10 @@
 						this.fullscreenMaterial = c
 						for (let t = 0, n = h.length; t < n; ++t) {
 							const n = 0 == (1 & t) ? o : l
-							;(c.kernel = h[t]), (c.inputBuffer = u.texture), e.setRenderTarget(n), e.render(s, a), (u = n)
+							;(c.kernel = h[t]), (c.inputTexture = u.texture), e.setRenderTarget(n), e.render(s, a), (u = n)
 						}
 						;(this.fullscreenMaterial = this.copyMaterial),
-							(this.copyMaterial.inputBuffer = u.texture),
+							(this.copyMaterial.inputTexture = u.texture),
 							e.setRenderTarget(this.renderToScreen ? null : n),
 							e.render(s, a)
 					}
@@ -25090,15 +25095,15 @@
 					super({
 						type: "SSRCompositeMaterial",
 						uniforms: {
-							inputBuffer: new io(null),
-							reflectionsBuffer: new io(null),
-							blurredReflectionsBuffer: new io(null),
-							blurredReflectionsBuffer4: new io(null),
+							inputTexture: new io(null),
+							reflectionsTexture: new io(null),
+							blurredReflectionsTexture: new io(null),
+							blurredReflectionsTexture4: new io(null),
 							_projectionMatrix: new io(new nt())
 						},
-						defines: { RENDER_MODE: 0, USE_BLUR: "" },
+						defines: { RENDER_MODE: 0, ENABLE_BLUR: "" },
 						fragmentShader:
-							"#define MODE_DEFAULT 0\r\n#define MODE_REFLECTIONS 1\r\n#define MODE_RAW_REFLECTION 2\r\n#define MODE_BLURRED_REFLECTIONS 3\r\n#define MODE_INPUT 4\r\n#define MODE_BLUR_MIX 5\r\n\r\n#define FLOAT_EPSILON 0.00001\r\n#define SQRT_3 1.7320508075688772 + FLOAT_EPSILON\r\n\r\nuniform sampler2D inputBuffer;\r\nuniform sampler2D reflectionsBuffer;\r\nuniform sampler2D blurredReflectionsBuffer;\r\nuniform sampler2D blurredReflectionsBuffer4;\r\n\r\nvarying vec2 vUv;\r\n\r\nvoid main() {\r\n    vec4 inputTexel = texture2D(inputBuffer, vUv);\r\n\r\n    vec4 reflectionsTexel = texture2D(reflectionsBuffer, vUv);\r\n    vec3 reflectionClr = reflectionsTexel.xyz;\r\n\r\n#ifdef USE_BLUR\r\n    vec4 blurredReflectionsTexel = texture2D(blurredReflectionsBuffer, vUv);\r\n\r\n    float blurMix = reflectionsTexel.a;\r\n\r\n    reflectionClr = mix(reflectionClr, blurredReflectionsTexel.xyz, blurMix);\r\n    reflectionClr = mix(reflectionClr, vec3(0.), 0.35 * pow(SQRT_3 - length(reflectionClr), 1.5));\r\n    reflectionClr = max(vec3(0.), reflectionClr);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_DEFAULT\r\n    gl_FragColor = vec4(inputTexel.rgb + reflectionClr, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_REFLECTIONS\r\n    gl_FragColor = vec4(reflectionClr, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_RAW_REFLECTION\r\n    gl_FragColor = vec4(reflectionsTexel.xyz, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_BLURRED_REFLECTIONS\r\n#ifdef USE_BLUR\r\n    gl_FragColor = vec4(blurredReflectionsTexel.xyz, 1.);\r\n#endif\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_INPUT\r\n    gl_FragColor = vec4(inputTexel.xyz, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_BLUR_MIX\r\n#ifdef USE_BLUR\r\n    gl_FragColor = vec4(vec3(blurMix), 1.);\r\n#endif\r\n#endif\r\n\r\n#include <encodings_fragment>\r\n}",
+							"#define MODE_DEFAULT 0\r\n#define MODE_REFLECTIONS 1\r\n#define MODE_RAW_REFLECTION 2\r\n#define MODE_BLURRED_REFLECTIONS 3\r\n#define MODE_INPUT 4\r\n#define MODE_BLUR_MIX 5\r\n\r\n#define FLOAT_EPSILON 0.00001\r\n#define SQRT_3 1.7320508075688772 + FLOAT_EPSILON\r\n\r\nuniform sampler2D inputTexture;\r\nuniform sampler2D reflectionsTexture;\r\nuniform sampler2D blurredReflectionsTexture;\r\nuniform sampler2D blurredReflectionsTexture4;\r\n\r\nvarying vec2 vUv;\r\n\r\nvoid main() {\r\n    vec4 inputTexel = texture2D(inputTexture, vUv);\r\n\r\n    vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);\r\n    vec3 reflectionClr = reflectionsTexel.xyz;\r\n\r\n#ifdef ENABLE_BLUR\r\n    vec4 blurredReflectionsTexel = texture2D(blurredReflectionsTexture, vUv);\r\n\r\n    float blurMix = reflectionsTexel.a;\r\n\r\n    reflectionClr = mix(reflectionClr, blurredReflectionsTexel.xyz, blurMix);\r\n    reflectionClr = mix(reflectionClr, vec3(0.), 0.35 * pow(SQRT_3 - length(reflectionClr), 1.5));\r\n    reflectionClr = max(vec3(0.), reflectionClr);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_DEFAULT\r\n    gl_FragColor = vec4(inputTexel.rgb + reflectionClr, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_REFLECTIONS\r\n    gl_FragColor = vec4(reflectionClr, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_RAW_REFLECTION\r\n    gl_FragColor = vec4(reflectionsTexel.xyz, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_BLURRED_REFLECTIONS\r\n#ifdef ENABLE_BLUR\r\n    gl_FragColor = vec4(blurredReflectionsTexel.xyz, 1.);\r\n#endif\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_INPUT\r\n    gl_FragColor = vec4(inputTexel.xyz, 1.);\r\n#endif\r\n\r\n#if RENDER_MODE == MODE_BLUR_MIX\r\n#ifdef ENABLE_BLUR\r\n    gl_FragColor = vec4(vec3(blurMix), 1.);\r\n#endif\r\n#endif\r\n\r\n#include <encodings_fragment>\r\n}",
 						vertexShader:
 							"\n                varying vec2 vUv;\n\n                void main() {\n                    vUv = position.xy * 0.5 + 0.5;\n                    gl_Position = vec4(position.xy, 1.0, 1.0);\n                }\n            "
 					})
@@ -25138,9 +25143,9 @@
 					super({
 						type: "SSRMaterial",
 						uniforms: {
-							inputBuffer: new io(null),
-							normalBuffer: new io(null),
-							depthBuffer: new io(null),
+							inputTexture: new io(null),
+							normalTexture: new io(null),
+							depthTexture: new io(null),
 							_projectionMatrix: new io(new nt()),
 							_inverseProjectionMatrix: new io(new nt()),
 							cameraMatrixWorld: new io(new nt()),
@@ -25158,11 +25163,11 @@
 							jitter: new io(0.5),
 							jitterRough: new io(0.5),
 							jitterSpread: new io(1),
-							depthBlur: new io(1)
+							maxRoughness: new io(1)
 						},
 						defines: { MAX_STEPS: 20, NUM_BINARY_SEARCH_STEPS: 5 },
 						fragmentShader:
-							"varying vec2 vUv;\r\n\r\nuniform sampler2D inputBuffer;\r\nuniform sampler2D normalBuffer;\r\nuniform sampler2D depthBuffer;\r\n\r\nuniform mat4 _projectionMatrix;\r\nuniform mat4 _inverseProjectionMatrix;\r\nuniform mat4 cameraMatrixWorld;\r\nuniform float cameraNear;\r\nuniform float cameraFar;\r\n\r\nuniform float rayStep;\r\nuniform float intensity;\r\nuniform float power;\r\nuniform float maxDepthDifference;\r\nuniform float roughnessFadeOut;\r\nuniform float depthBlur;\r\nuniform float maxDepth;\r\nuniform float rayFadeOut;\r\nuniform float thickness;\r\nuniform float ior;\r\n\r\n#ifdef USE_JITTERING\r\nuniform float jitter;\r\nuniform float jitterRough;\r\nuniform float jitterSpread;\r\n#endif\r\n\r\n#define FLOAT_EPSILON 0.00001\r\n#define EARLY_OUT_COLOR vec4(0., 0., 0., 1.)\r\n\r\nconst vec2 INVALID_RAY_COORDS = vec2(-1.);\r\nfloat _maxDepthDifference;  // maxDepthDifference * 0.01\r\n\r\n#include <packing>\r\n\r\n// helper functions\r\n#include <helperFunctions>\r\n\r\nvec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);\r\nvec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);\r\n\r\nvoid main() {\r\n    vec4 depthTexel = texture2D(depthBuffer, vUv);\r\n\r\n    // filter out sky\r\n    if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    float unpackedDepth = unpackRGBAToDepth(depthTexel);\r\n\r\n    if (unpackedDepth > maxDepth) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    vec4 normalTexel = texture2D(normalBuffer, vUv);\r\n\r\n    float roughness = normalTexel.a;\r\n\r\n    if (roughness > 1. - FLOAT_EPSILON && roughnessFadeOut > 1. - FLOAT_EPSILON) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    float specular = 1. - roughness;\r\n    specular *= specular;\r\n\r\n    normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);\r\n\r\n    // view-space depth\r\n    float depth = getViewZ(unpackedDepth);\r\n\r\n    // view-space normal of the current texel\r\n    vec3 viewNormal = normalTexel.xyz;\r\n\r\n    // view-space position of the current texel\r\n    vec3 viewPos = getViewPosition(depth);\r\n\r\n    // world-space position of the current texel\r\n    vec3 worldPos = screenSpaceToWorldSpace(vUv, unpackedDepth);\r\n\r\n    // view-space reflected ray\r\n    vec3 reflected = normalize(reflect(normalize(viewPos), normalize(viewNormal)));\r\n\r\n    // early out if the reflection is pretty much pointing at the camera as we know there won't be anything to reflect\r\n    if (viewNormal.z - reflected.z < 0.005) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    _maxDepthDifference = maxDepthDifference * 0.01;\r\n\r\n    // jitteriing\r\n    vec3 jitt = vec3(0.);\r\n\r\n#ifdef USE_JITTERING\r\n    vec3 randomJitter = hash(5. * (worldPos + viewNormal)) - vec3(0.5, 0.5, 0.5);\r\n    float spread = ((2. - specular) + 0.05 * roughness * jitterRough) * jitterSpread;\r\n    float jitterMix = jitter + jitterRough * roughness;\r\n    if (jitterMix > 1.) jitterMix = 1.;\r\n    jitt = mix(vec3(0.), randomJitter * spread, jitterMix);\r\n#endif\r\n\r\n    vec3 hitPos = viewPos;\r\n    float rayHitDepthDifference;\r\n\r\n    vec2 coords = RayMarch(jitt + reflected * -viewPos.z, hitPos, rayHitDepthDifference);\r\n\r\n    if (coords.x == -1.) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    // from: https://github.com/kode80/kode80SSR\r\n    // source: https://github.com/kode80/kode80SSR/blob/master/Assets/Resources/Shaders/SSR.shader#L256\r\n    vec2 coordsNDC = (coords * 2.0 - 1.0);\r\n    float screenFade = 0.1;\r\n    float maxDimension = min(1.0, max(abs(coordsNDC.x), abs(coordsNDC.y)));\r\n    float screenEdgefactor = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));\r\n\r\n    float reflectionMultiplier = max(0., screenEdgefactor);\r\n\r\n    vec3 SSR = texture2D(inputBuffer, coords.xy).rgb;\r\n    if (power != 1.) SSR = pow(SSR, vec3(power));\r\n\r\n    float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));\r\n\r\n    vec3 finalSSR = SSR * reflectionMultiplier * roughnessFactor;\r\n\r\n    vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);\r\n\r\n    // distance from the reflection point to what it's reflecting\r\n    float reflectionDistance = distance(hitWorldPos, worldPos);\r\n    reflectionDistance += 1.;\r\n\r\n    if (rayFadeOut != 0.) {\r\n        float opacity = 1. / ((reflectionDistance * reflectionDistance) * rayFadeOut * 0.01);\r\n        if (opacity > 1.) opacity = 1.;\r\n        finalSSR *= opacity;\r\n    }\r\n\r\n    float blurMix = 0.;\r\n#ifdef USE_BLUR\r\n    // increase the reflection blur the further away the reflecting object is\r\n    blurMix = reflectionDistance * depthBlur;\r\n    if (blurMix > 1.) blurMix = 1.;\r\n#endif\r\n\r\n    float fresnelFactor = fresnel_dielectric(normalize(viewPos), viewNormal, ior);\r\n\r\n    finalSSR = finalSSR * fresnelFactor * intensity;\r\n    finalSSR = min(vec3(1.), finalSSR);\r\n\r\n    gl_FragColor = vec4(finalSSR, blurMix);\r\n\r\n#include <encodings_fragment>\r\n}\r\n\r\nvec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {\r\n    dir = normalize(dir);\r\n    dir *= rayStep;\r\n\r\n    float depth;\r\n    int steps;\r\n    vec4 projectedCoord;\r\n    vec4 lastProjectedCoord;\r\n    float unpackedDepth;\r\n    float stepMultiplier = 1.;\r\n    vec4 depthTexel;\r\n\r\n    for (int i = 0; i < MAX_STEPS; i++) {\r\n        hitPos += dir * stepMultiplier;\r\n\r\n        projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);\r\n        projectedCoord.xy /= projectedCoord.w;\r\n        // [-1, 1] --\x3e [0, 1] (NDC to screen position)\r\n        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;\r\n\r\n        // the ray is outside the screen so we know there won't be anything it will hit\r\n        // undo the last step and halve the step multiplier\r\n        if (projectedCoord.x > 1. || projectedCoord.y > 1.) {\r\n            hitPos -= dir * stepMultiplier;\r\n            stepMultiplier *= 0.5;\r\n            continue;\r\n        }\r\n\r\n        depthTexel = textureLod(depthBuffer, projectedCoord.xy, 0.);\r\n\r\n        unpackedDepth = unpackRGBAToDepth(depthTexel);\r\n\r\n        // if (unpackedDepth > maxDepth) return INVALID_RAY_COORDS;\r\n\r\n        depth = getViewZ(unpackedDepth);\r\n\r\n        rayHitDepthDifference = depth - hitPos.z;\r\n\r\n        if (rayHitDepthDifference >= 0.) {\r\n            // early out if the ray's depth is \"way higher\" than the depth at that view position\r\n            if (rayHitDepthDifference > thickness) return INVALID_RAY_COORDS;\r\n\r\n#if NUM_BINARY_SEARCH_STEPS == 0\r\n            // filter out sky\r\n            if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;\r\n#else\r\n            projectedCoord.xy = BinarySearch(dir, hitPos, rayHitDepthDifference);\r\n#endif\r\n\r\n            return projectedCoord.xy;\r\n        }\r\n\r\n        steps++;\r\n        lastProjectedCoord = projectedCoord;\r\n    }\r\n\r\n#ifndef STRETCH_MISSED_RAYS\r\n    return INVALID_RAY_COORDS;\r\n#endif\r\n\r\n    rayHitDepthDifference = unpackedDepth;\r\n\r\n    return projectedCoord.xy;\r\n}\r\n\r\nvec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {\r\n    float depth;\r\n    vec4 projectedCoord;\r\n    vec2 lastMinProjectedCoordXY;\r\n    float unpackedDepth;\r\n    vec4 depthTexel;\r\n\r\n    for (int i = 0; i < NUM_BINARY_SEARCH_STEPS; i++) {\r\n        projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);\r\n        projectedCoord.xy /= projectedCoord.w;\r\n        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;\r\n\r\n        if ((lastMinProjectedCoordXY.x > 1. || lastMinProjectedCoordXY.y > 1.) && (projectedCoord.x > 1. || projectedCoord.y > 1.)) return INVALID_RAY_COORDS;\r\n\r\n        depthTexel = textureLod(depthBuffer, projectedCoord.xy, 0.);\r\n\r\n        unpackedDepth = unpackRGBAToDepth(depthTexel);\r\n        depth = getViewZ(unpackedDepth);\r\n\r\n        rayHitDepthDifference = depth - hitPos.z;\r\n\r\n        dir *= 0.5;\r\n\r\n        if (rayHitDepthDifference > 0.0) {\r\n            hitPos -= dir;\r\n        } else {\r\n            hitPos += dir;\r\n            lastMinProjectedCoordXY = projectedCoord.xy;\r\n        }\r\n    }\r\n\r\n    // filter out sky\r\n    if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;\r\n\r\n    if (abs(rayHitDepthDifference) > _maxDepthDifference) return INVALID_RAY_COORDS;\r\n\r\n    projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);\r\n    projectedCoord.xy /= projectedCoord.w;\r\n    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;\r\n\r\n#ifndef STRETCH_MISSED_RAYS\r\n    if (projectedCoord.x > 1. || projectedCoord.y > 1.) return INVALID_RAY_COORDS;\r\n#endif\r\n\r\n    rayHitDepthDifference = unpackedDepth;\r\n\r\n    return projectedCoord.xy;\r\n}".replace(
+							"varying vec2 vUv;\r\n\r\nuniform sampler2D inputTexture;\r\nuniform sampler2D normalTexture;\r\nuniform sampler2D depthTexture;\r\n\r\nuniform mat4 _projectionMatrix;\r\nuniform mat4 _inverseProjectionMatrix;\r\nuniform mat4 cameraMatrixWorld;\r\nuniform float cameraNear;\r\nuniform float cameraFar;\r\n\r\nuniform float rayStep;\r\nuniform float intensity;\r\nuniform float power;\r\nuniform float maxDepthDifference;\r\nuniform float roughnessFadeOut;\r\nuniform float maxRoughness;\r\nuniform float maxDepth;\r\nuniform float rayFadeOut;\r\nuniform float thickness;\r\nuniform float ior;\r\n\r\n#ifdef USE_JITTERING\r\nuniform float jitter;\r\nuniform float jitterRough;\r\nuniform float jitterSpread;\r\n#endif\r\n\r\n#define FLOAT_EPSILON 0.00001\r\n#define EARLY_OUT_COLOR vec4(0., 0., 0., 1.)\r\n\r\nconst vec2 INVALID_RAY_COORDS = vec2(-1.);\r\nfloat _maxDepthDifference;  // maxDepthDifference * 0.01\r\n\r\n#include <packing>\r\n\r\n// helper functions\r\n#include <helperFunctions>\r\n\r\nvec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);\r\nvec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);\r\n\r\nvoid main() {\r\n    vec4 depthTexel = texture2D(depthTexture, vUv);\r\n\r\n    // filter out sky\r\n    if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    float unpackedDepth = unpackRGBAToDepth(depthTexel);\r\n\r\n    if (unpackedDepth > maxDepth) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    vec4 normalTexel = texture2D(normalTexture, vUv);\r\n\r\n    float roughness = normalTexel.a;\r\n\r\n    if (roughness > 1. - FLOAT_EPSILON && roughnessFadeOut > 1. - FLOAT_EPSILON) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    float specular = 1. - roughness;\r\n    specular *= specular;\r\n\r\n    normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);\r\n\r\n    // view-space depth\r\n    float depth = getViewZ(unpackedDepth);\r\n\r\n    // view-space normal of the current texel\r\n    vec3 viewNormal = normalTexel.xyz;\r\n\r\n    // view-space position of the current texel\r\n    vec3 viewPos = getViewPosition(depth);\r\n\r\n    // world-space position of the current texel\r\n    vec3 worldPos = screenSpaceToWorldSpace(vUv, unpackedDepth);\r\n\r\n    // view-space reflected ray\r\n    vec3 reflected = normalize(reflect(normalize(viewPos), normalize(viewNormal)));\r\n\r\n    // early out if the reflection is pretty much pointing at the camera as we know there won't be anything to reflect\r\n    if (viewNormal.z - reflected.z < 0.005) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    _maxDepthDifference = maxDepthDifference * 0.01;\r\n\r\n    // jitteriing\r\n    vec3 jitt = vec3(0.);\r\n\r\n#ifdef USE_JITTERING\r\n    vec3 randomJitter = hash(5. * (worldPos + viewNormal)) - vec3(0.5, 0.5, 0.5);\r\n    float spread = ((2. - specular) + 0.05 * roughness * jitterRough) * jitterSpread;\r\n    float jitterMix = jitter + jitterRough * roughness;\r\n    if (jitterMix > 1.) jitterMix = 1.;\r\n    jitt = mix(vec3(0.), randomJitter * spread, jitterMix);\r\n#endif\r\n\r\n    vec3 hitPos = viewPos;\r\n    float rayHitDepthDifference;\r\n\r\n    vec2 coords = RayMarch(jitt + reflected * -viewPos.z, hitPos, rayHitDepthDifference);\r\n\r\n    if (coords.x == -1.) {\r\n        gl_FragColor = EARLY_OUT_COLOR;\r\n        return;\r\n    }\r\n\r\n    // from: https://github.com/kode80/kode80SSR\r\n    // source: https://github.com/kode80/kode80SSR/blob/master/Assets/Resources/Shaders/SSR.shader#L256\r\n    vec2 coordsNDC = (coords * 2.0 - 1.0);\r\n    float screenFade = 0.1;\r\n    float maxDimension = min(1.0, max(abs(coordsNDC.x), abs(coordsNDC.y)));\r\n    float screenEdgefactor = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));\r\n\r\n    float reflectionMultiplier = max(0., screenEdgefactor);\r\n\r\n    vec3 SSR = texture2D(inputTexture, coords.xy).rgb;\r\n    if (power != 1.) SSR = pow(SSR, vec3(power));\r\n\r\n    float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));\r\n\r\n    vec3 finalSSR = SSR * reflectionMultiplier * roughnessFactor;\r\n\r\n    vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);\r\n\r\n    // distance from the reflection point to what it's reflecting\r\n    float reflectionDistance = distance(hitWorldPos, worldPos);\r\n    reflectionDistance += 1.;\r\n\r\n    if (rayFadeOut != 0.) {\r\n        float opacity = 1. / ((reflectionDistance * reflectionDistance) * rayFadeOut * 0.01);\r\n        if (opacity > 1.) opacity = 1.;\r\n        finalSSR *= opacity;\r\n    }\r\n\r\n    float blurMix = 0.;\r\n#ifdef ENABLE_BLUR\r\n    // increase the reflection blur the further away the reflecting object is\r\n    blurMix = reflectionDistance * maxRoughness;\r\n    if (blurMix > 1.) blurMix = 1.;\r\n#endif\r\n\r\n    float fresnelFactor = fresnel_dielectric(normalize(viewPos), viewNormal, ior);\r\n\r\n    finalSSR = finalSSR * fresnelFactor * intensity;\r\n    finalSSR = min(vec3(1.), finalSSR);\r\n\r\n    gl_FragColor = vec4(finalSSR, blurMix);\r\n\r\n#include <encodings_fragment>\r\n}\r\n\r\nvec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {\r\n    dir = normalize(dir);\r\n    dir *= rayStep;\r\n\r\n    float depth;\r\n    int steps;\r\n    vec4 projectedCoord;\r\n    vec4 lastProjectedCoord;\r\n    float unpackedDepth;\r\n    float stepMultiplier = 1.;\r\n    vec4 depthTexel;\r\n\r\n    for (int i = 0; i < MAX_STEPS; i++) {\r\n        hitPos += dir * stepMultiplier;\r\n\r\n        projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);\r\n        projectedCoord.xy /= projectedCoord.w;\r\n        // [-1, 1] --\x3e [0, 1] (NDC to screen position)\r\n        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;\r\n\r\n        // the ray is outside the screen so we know there won't be anything it will hit\r\n        // undo the last step and halve the step multiplier\r\n        if (projectedCoord.x > 1. || projectedCoord.y > 1.) {\r\n            hitPos -= dir * stepMultiplier;\r\n            stepMultiplier *= 0.5;\r\n            continue;\r\n        }\r\n\r\n        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.);\r\n\r\n        unpackedDepth = unpackRGBAToDepth(depthTexel);\r\n\r\n        // if (unpackedDepth > maxDepth) return INVALID_RAY_COORDS;\r\n\r\n        depth = getViewZ(unpackedDepth);\r\n\r\n        rayHitDepthDifference = depth - hitPos.z;\r\n\r\n        if (rayHitDepthDifference >= 0.) {\r\n            // early out if the ray's depth is \"way higher\" than the depth at that view position\r\n            if (rayHitDepthDifference > thickness) return INVALID_RAY_COORDS;\r\n\r\n#if NUM_BINARY_SEARCH_STEPS == 0\r\n            // filter out sky\r\n            if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;\r\n#else\r\n            projectedCoord.xy = BinarySearch(dir, hitPos, rayHitDepthDifference);\r\n#endif\r\n\r\n            return projectedCoord.xy;\r\n        }\r\n\r\n        steps++;\r\n        lastProjectedCoord = projectedCoord;\r\n    }\r\n\r\n#ifndef STRETCH_MISSED_RAYS\r\n    return INVALID_RAY_COORDS;\r\n#endif\r\n\r\n    rayHitDepthDifference = unpackedDepth;\r\n\r\n    return projectedCoord.xy;\r\n}\r\n\r\nvec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {\r\n    float depth;\r\n    vec4 projectedCoord;\r\n    vec2 lastMinProjectedCoordXY;\r\n    float unpackedDepth;\r\n    vec4 depthTexel;\r\n\r\n    for (int i = 0; i < NUM_BINARY_SEARCH_STEPS; i++) {\r\n        projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);\r\n        projectedCoord.xy /= projectedCoord.w;\r\n        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;\r\n\r\n        if ((lastMinProjectedCoordXY.x > 1. || lastMinProjectedCoordXY.y > 1.) && (projectedCoord.x > 1. || projectedCoord.y > 1.)) return INVALID_RAY_COORDS;\r\n\r\n        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.);\r\n\r\n        unpackedDepth = unpackRGBAToDepth(depthTexel);\r\n        depth = getViewZ(unpackedDepth);\r\n\r\n        rayHitDepthDifference = depth - hitPos.z;\r\n\r\n        dir *= 0.5;\r\n\r\n        if (rayHitDepthDifference > 0.0) {\r\n            hitPos -= dir;\r\n        } else {\r\n            hitPos += dir;\r\n            lastMinProjectedCoordXY = projectedCoord.xy;\r\n        }\r\n    }\r\n\r\n    // filter out sky\r\n    if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;\r\n\r\n    if (abs(rayHitDepthDifference) > _maxDepthDifference) return INVALID_RAY_COORDS;\r\n\r\n    projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);\r\n    projectedCoord.xy /= projectedCoord.w;\r\n    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;\r\n\r\n#ifndef STRETCH_MISSED_RAYS\r\n    if (projectedCoord.x > 1. || projectedCoord.y > 1.) return INVALID_RAY_COORDS;\r\n#endif\r\n\r\n    rayHitDepthDifference = unpackedDepth;\r\n\r\n    return projectedCoord.xy;\r\n}".replace(
 								"#include <helperFunctions>",
 								"// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js\r\nvec3 getViewPosition(const float depth) {\r\n    float clipW = _projectionMatrix[2][3] * depth + _projectionMatrix[3][3];\r\n    vec4 clipPosition = vec4((vec3(vUv, depth) - 0.5) * 2.0, 1.0);\r\n    clipPosition *= clipW;\r\n    return (_inverseProjectionMatrix * clipPosition).xyz;\r\n}\r\n\r\n// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js\r\nfloat getViewZ(const float depth) {\r\n    return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);\r\n}\r\n\r\n// credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2\r\nvec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {\r\n    vec4 ndc = vec4(\r\n        (uv.x - 0.5) * 2.0,\r\n        (uv.y - 0.5) * 2.0,\r\n        (depth - 0.5) * 2.0,\r\n        1.0);\r\n\r\n    vec4 clip = _inverseProjectionMatrix * ndc;\r\n    vec4 view = cameraMatrixWorld * (clip / clip.w);\r\n\r\n    return view.xyz;\r\n}\r\n\r\n#define Scale (vec3(0.8, 0.8, 0.8))\r\n#define K (19.19)\r\n\r\nvec3 hash(vec3 a) {\r\n    a = fract(a * Scale);\r\n    a += dot(a, a.yxz + K);\r\n    return fract((a.xxy + a.yxx) * a.zyx);\r\n}\r\n\r\n// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl\r\nfloat fresnel_dielectric_cos(float cosi, float eta) {\r\n    /* compute fresnel reflectance without explicitly computing\r\n     * the refracted direction */\r\n    float c = abs(cosi);\r\n    float g = eta * eta - 1.0 + c * c;\r\n    float result;\r\n\r\n    if (g > 0.0) {\r\n        g = sqrt(g);\r\n        float A = (g - c) / (g + c);\r\n        float B = (c * (g + c) - 1.0) / (c * (g - c) + 1.0);\r\n        result = 0.5 * A * A * (1.0 + B * B);\r\n    } else {\r\n        result = 1.0; /* TIR (no refracted component) */\r\n    }\r\n\r\n    return result;\r\n}\r\n\r\n// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl\r\nfloat fresnel_dielectric(vec3 Incoming, vec3 Normal, float eta) {\r\n    /* compute fresnel reflectance without explicitly computing\r\n     * the refracted direction */\r\n\r\n    float cosine = dot(Incoming, Normal);\r\n    return min(1.0, 5.0 * fresnel_dielectric_cos(cosine, eta));\r\n}\r\n"
 							),
@@ -25197,7 +25202,7 @@
 					;(this.renderTarget = new we(i, r, { minFilter: c, magFilter: c })),
 						(this.renderPass = new Lo(e, t)),
 						(this.#i =
-							n.useMRT &&
+							n.USE_MRT &&
 							class {
 								static isWebGLAvailable() {
 									try {
@@ -25304,9 +25309,9 @@
 						e.setRenderTarget(this.gBuffersRenderTarget),
 						this.renderPass.render(e, this.gBuffersRenderTarget, this.gBuffersRenderTarget),
 						this.#a(),
-						(this.fullscreenMaterial.uniforms.inputBuffer.value = t.texture),
-						(this.fullscreenMaterial.uniforms.normalBuffer.value = this.normalTexture),
-						(this.fullscreenMaterial.uniforms.depthBuffer.value = this.depthTexture),
+						(this.fullscreenMaterial.uniforms.inputTexture.value = t.texture),
+						(this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture),
+						(this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture),
 						(this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld),
 						(this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix),
 						(this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse),
@@ -25326,7 +25331,7 @@
 				rayStep: 0.1,
 				intensity: 1,
 				power: 1,
-				depthBlur: 0.1,
+				maxRoughness: 0.1,
 				ENABLE_JITTERING: !1,
 				jitter: 0.1,
 				jitterSpread: 0.1,
@@ -25339,7 +25344,7 @@
 				thickness: 10,
 				ior: 1.45,
 				STRETCH_MISSED_RAYS: !1,
-				useMRT: !0,
+				USE_MRT: !0,
 				USE_NORMALMAP: !0,
 				USE_ROUGHNESSMAP: !0
 			}
@@ -25897,11 +25902,11 @@
 			const ac = new (class {
 				constructor(
 					e = null,
-					{ depthBuffer: t = !0, stencilBuffer: n = !1, multisampling: i = 0, frameBufferType: r } = {}
+					{ depthTexture: t = !0, stencilBuffer: n = !1, multisampling: i = 0, frameBufferType: r } = {}
 				) {
 					;(this.renderer = null),
-						(this.inputBuffer = this.createBuffer(t, n, r, i)),
-						(this.outputBuffer = this.inputBuffer.clone()),
+						(this.inputTexture = this.createBuffer(t, n, r, i)),
+						(this.outputBuffer = this.inputTexture.clone()),
 						(this.copyPass = new yo()),
 						(this.depthTexture = null),
 						(this.passes = []),
@@ -25977,22 +25982,22 @@
 						this.setRenderer(e)
 				}
 				get multisampling() {
-					return this.inputBuffer.samples || 0
+					return this.inputTexture.samples || 0
 				}
 				set multisampling(e) {
-					const t = this.inputBuffer,
+					const t = this.inputTexture,
 						n = this.multisampling
 					n > 0 && e > 0
-						? ((this.inputBuffer.samples = e),
+						? ((this.inputTexture.samples = e),
 						  (this.outputBuffer.samples = e),
-						  this.inputBuffer.dispose(),
+						  this.inputTexture.dispose(),
 						  this.outputBuffer.dispose())
 						: n !== e &&
-						  (this.inputBuffer.dispose(),
+						  (this.inputTexture.dispose(),
 						  this.outputBuffer.dispose(),
-						  (this.inputBuffer = this.createBuffer(t.depthBuffer, t.stencilBuffer, t.texture.type, e)),
-						  (this.inputBuffer.depthTexture = this.depthTexture),
-						  (this.outputBuffer = this.inputBuffer.clone()))
+						  (this.inputTexture = this.createBuffer(t.depthTexture, t.stencilBuffer, t.texture.type, e)),
+						  (this.inputTexture.depthTexture = this.depthTexture),
+						  (this.outputBuffer = this.inputTexture.clone()))
 				}
 				getTimer() {
 					return this.timer
@@ -26004,12 +26009,12 @@
 					if (((this.renderer = e), null !== e)) {
 						const t = e.getSize(new Q()),
 							n = e.getContext().getContextAttributes().alpha,
-							i = this.inputBuffer.texture.type
+							i = this.inputTexture.texture.type
 						i === m &&
 							e.outputEncoding === I &&
-							((this.inputBuffer.texture.encoding = I),
+							((this.inputTexture.texture.encoding = I),
 							(this.outputBuffer.texture.encoding = I),
-							this.inputBuffer.dispose(),
+							this.inputTexture.dispose(),
 							this.outputBuffer.dispose()),
 							(e.autoClear = !1),
 							this.setSize(t.width, t.height)
@@ -26024,9 +26029,9 @@
 				createDepthTexture() {
 					const e = (this.depthTexture = new ms())
 					return (
-						(this.inputBuffer.depthTexture = e),
-						this.inputBuffer.dispose(),
-						this.inputBuffer.stencilBuffer ? ((e.format = w), (e.type = _)) : (e.type = f),
+						(this.inputTexture.depthTexture = e),
+						this.inputTexture.dispose(),
+						this.inputTexture.stencilBuffer ? ((e.format = w), (e.type = _)) : (e.type = f),
 						e
 					)
 				}
@@ -26034,15 +26039,15 @@
 					if (null !== this.depthTexture) {
 						this.depthTexture.dispose(),
 							(this.depthTexture = null),
-							(this.inputBuffer.depthTexture = null),
-							this.inputBuffer.dispose()
+							(this.inputTexture.depthTexture = null),
+							this.inputTexture.dispose()
 						for (const e of this.passes) e.setDepthTexture(null)
 					}
 				}
 				createBuffer(t, n, i, r) {
 					const s = this.renderer,
 						a = null === s ? new Q() : s.getDrawingBufferSize(new Q()),
-						o = { minFilter: d, magFilter: d, stencilBuffer: n, depthBuffer: t, type: i }
+						o = { minFilter: d, magFilter: d, stencilBuffer: n, depthTexture: t, type: i }
 					let l
 					return (
 						r > 0
@@ -26062,7 +26067,7 @@
 						i = this.renderer,
 						r = i.getDrawingBufferSize(new Q()),
 						s = i.getContext().getContextAttributes().alpha,
-						a = this.inputBuffer.texture.type
+						a = this.inputTexture.texture.type
 					if (
 						(e.setRenderer(i),
 						e.setSize(r.width, r.height),
@@ -26104,7 +26109,7 @@
 					let i,
 						r,
 						s,
-						a = this.inputBuffer,
+						a = this.inputTexture,
 						o = this.outputBuffer,
 						l = !1
 					void 0 === e && (e = this.timer.update().getDelta())
@@ -26132,7 +26137,7 @@
 					}
 					i.setSize(e, t, n)
 					const r = i.getDrawingBufferSize(new Q())
-					this.inputBuffer.setSize(r.width, r.height), this.outputBuffer.setSize(r.width, r.height)
+					this.inputTexture.setSize(r.width, r.height), this.outputBuffer.setSize(r.width, r.height)
 					for (const e of this.passes) e.setSize(r.width, r.height)
 				}
 				reset() {
@@ -26142,7 +26147,7 @@
 				dispose() {
 					for (const e of this.passes) e.dispose()
 					;(this.passes = []),
-						null !== this.inputBuffer && this.inputBuffer.dispose(),
+						null !== this.inputTexture && this.inputTexture.dispose(),
 						null !== this.outputBuffer && this.outputBuffer.dispose(),
 						this.deleteDepthTexture(),
 						this.copyPass.dispose(),
@@ -26166,7 +26171,7 @@
 				rayStep: 0.534,
 				intensity: 1,
 				power: 1,
-				depthBlur: 0.11,
+				maxRoughness: 0.11,
 				ENABLE_JITTERING: !1,
 				jitter: 0.17,
 				jitterSpread: 0.59,
@@ -26180,7 +26185,7 @@
 				NUM_BINARY_SEARCH_STEPS: 7,
 				maxDepthDifference: 3,
 				STRETCH_MISSED_RAYS: !1,
-				useMRT: !0,
+				USE_MRT: !0,
 				USE_NORMALMAP: !0,
 				USE_ROUGHNESSMAP: !0
 			}
@@ -26198,7 +26203,7 @@
 					rayStep: 0.205,
 					intensity: 0.7,
 					power: 1.1,
-					depthBlur: 0.11,
+					maxRoughness: 0.11,
 					ENABLE_JITTERING: !0,
 					jitter: 0.17,
 					jitterRough: 0,
@@ -26212,7 +26217,7 @@
 					maxDepthDifference: 500,
 					thickness: 22.83,
 					ior: 1.68,
-					useMRT: !0,
+					USE_MRT: !0,
 					USE_NORMALMAP: !1,
 					USE_ROUGHNESSMAP: !1
 				},
@@ -26235,8 +26240,8 @@
 							(this.reflectionsPass = new Zl(e, t, n)),
 							this.reflectionsPass.setSize(n.width, n.height),
 							n.ENABLE_BLUR &&
-								((this.fullscreenMaterial.defines.USE_BLUR = ""),
-								(this.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = "")),
+								((this.fullscreenMaterial.defines.ENABLE_BLUR = ""),
+								(this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = "")),
 							n.STRETCH_MISSED_RAYS && (this.reflectionsPass.fullscreenMaterial.defines.STRETCH_MISSED_RAYS = ""),
 							(this.kawaseBlurPass = new Do()),
 							(this.kawaseBlurPass.kernelSize = n.blurKernelSize)
@@ -26251,14 +26256,14 @@
 					}
 					render(e, t, n) {
 						this.reflectionsPass.render(e, t, this.reflectionsPass.renderTarget)
-						const i = "USE_BLUR" in this.fullscreenMaterial.defines
+						const i = "ENABLE_BLUR" in this.fullscreenMaterial.defines
 						i &&
 							(e.setRenderTarget(this.kawaseBlurPassRenderTarget),
 							this.kawaseBlurPass.render(e, this.reflectionsPass.renderTarget, this.kawaseBlurPassRenderTarget))
 						const r = i ? this.kawaseBlurPassRenderTarget.texture : null
-						;(this.fullscreenMaterial.uniforms.inputBuffer.value = t.texture),
-							(this.fullscreenMaterial.uniforms.reflectionsBuffer.value = this.reflectionsPass.renderTarget.texture),
-							(this.fullscreenMaterial.uniforms.blurredReflectionsBuffer.value = r),
+						;(this.fullscreenMaterial.uniforms.inputTexture.value = t.texture),
+							(this.fullscreenMaterial.uniforms.reflectionsTexture.value = this.reflectionsPass.renderTarget.texture),
+							(this.fullscreenMaterial.uniforms.blurredReflectionsTexture.value = r),
 							(this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix),
 							e.setRenderTarget(this.renderToScreen ? null : n),
 							e.render(this.scene, this.camera)
@@ -26646,7 +26651,7 @@
 						((lc.ENABLE_BLUR = !0),
 						(lc.blurWidth = 935),
 						(lc.blurHeight = 304),
-						(lc.depthBlur = 0.13),
+						(lc.maxRoughness = 0.13),
 						(lc.blurKernelSize = 2),
 						(lc.ENABLE_JITTERING = !0),
 						(lc.jitter = 0.18),
@@ -26716,7 +26721,7 @@
 				Sc.addInput(lc, "rayStep", { min: 0.001, max: 5, step: 0.001 }),
 				Sc.addInput(lc, "intensity", { min: 0.1, max: 5, step: 0.1 }),
 				Sc.addInput(lc, "power", { min: 0.1, max: 5, step: 0.1 }),
-				Sc.addInput(lc, "depthBlur", { min: 0, max: 0.5, step: 0.01 }),
+				Sc.addInput(lc, "maxRoughness", { min: 0, max: 0.5, step: 0.01 }),
 				Sc.addInput(lc, "maxDepthDifference", { min: 0, max: uc ? 20 : 8, step: 0.01 }),
 				Sc.addInput(lc, "maxDepth", { min: 0.99, max: 1, step: 1e-5 }),
 				Sc.addInput(lc, "roughnessFadeOut", { min: 0, max: 1, step: 0.01 }),
@@ -26726,10 +26731,10 @@
 			const Ec = yc.addFolder({ title: "Blur" })
 			Ec.addInput(lc, "ENABLE_BLUR").on("change", () => {
 				lc.ENABLE_BLUR
-					? ((pc.fullscreenMaterial.defines.USE_BLUR = ""),
-					  (pc.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = ""))
-					: (delete pc.fullscreenMaterial.defines.USE_BLUR,
-					  delete pc.reflectionsPass.fullscreenMaterial.defines.USE_BLUR),
+					? ((pc.fullscreenMaterial.defines.ENABLE_BLUR = ""),
+					  (pc.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""))
+					: (delete pc.fullscreenMaterial.defines.ENABLE_BLUR,
+					  delete pc.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR),
 					(pc.fullscreenMaterial.needsUpdate = !0)
 			}),
 				Ec.addInput(lc, "blurKernelSize", { min: 0, max: 5, step: 1 }),
@@ -26777,7 +26782,7 @@
 						;(lc.ENABLE_BLUR = !0),
 							(lc.blurWidth = 1130),
 							(lc.blurHeight = 391),
-							(lc.depthBlur = 0.06),
+							(lc.maxRoughness = 0.06),
 							(lc.width = 1359),
 							(lc.height = 804),
 							(lc.blurKernelSize = 1),
@@ -26796,7 +26801,7 @@
 							(lc.intensity = 1),
 							(lc.floorNormalScale = 0),
 							(lc.floorRoughness = 0),
-							(lc.depthBlur = 0),
+							(lc.maxRoughness = 0),
 							yc.refresh()
 					}),
 					Pc.addButton({ title: "Video Background with Dancer" }).on("click", () => {

@@ -107,3 +107,6 @@ dist
 example/public/white.hdr
 example/public/sceneAircrafts.glb
 example/public/scene2.glb
+src/material/shader/reflectionsShader.frag
+example/public/starwars.3dl
+example/public/star_wars.glb

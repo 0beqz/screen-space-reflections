@@ -1,9 +1,9 @@
 ﻿varying vec2 vUv;
 
-uniform sampler2D inputBuffer;
-uniform sampler2D lastFrameReflectionsBuffer;
-uniform sampler2D normalBuffer;
-uniform sampler2D depthBuffer;
+uniform sampler2D inputTexture;
+uniform sampler2D lastFrameReflectionsTexture;
+uniform sampler2D normalTexture;
+uniform sampler2D depthTexture;
 
 uniform mat4 _projectionMatrix;
 uniform mat4 _inverseProjectionMatrix;
@@ -15,8 +15,7 @@ uniform float rayStep;
 uniform float intensity;
 uniform float maxDepthDifference;
 uniform float roughnessFadeOut;
-uniform float depthBlur;
-uniform float maxBlur;
+uniform float maxRoughness;
 uniform float maxDepth;
 uniform float rayFadeOut;
 uniform float thickness;
@@ -45,7 +44,7 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 
 void main() {
-    vec4 depthTexel = texture2D(depthBuffer, vUv);
+    vec4 depthTexel = texture2D(depthTexture, vUv);
 
     // filter out sky
     if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) {
@@ -60,9 +59,14 @@ void main() {
         return;
     }
 
-    vec4 normalTexel = texture2D(normalBuffer, vUv);
+    vec4 normalTexel = texture2D(normalTexture, vUv);
 
     float roughness = normalTexel.a;
+
+    if (roughness > maxRoughness) {
+        gl_FragColor = EARLY_OUT_COLOR;
+        return;
+    }
 
     if (roughness > 1. - FLOAT_EPSILON && roughnessFadeOut > 1. - FLOAT_EPSILON) {
         gl_FragColor = EARLY_OUT_COLOR;
@@ -86,32 +90,31 @@ void main() {
     // world-space position of the current texel
     vec3 worldPos = screenSpaceToWorldSpace(vUv, unpackedDepth);
 
-    // view-space reflected ray
-    vec3 reflected = normalize(reflect(normalize(viewPos), normalize(viewNormal)));
-
-    // early out if the reflection is pretty much pointing at the camera as we know there won't be anything to reflect
-    if (viewNormal.z - reflected.z < 0.005) {
-        gl_FragColor = EARLY_OUT_COLOR;
-        return;
-    }
-
-    _maxDepthDifference = maxDepthDifference * 0.01;
-
     // jitteriing
     vec3 jitt = vec3(0.);
 
 #ifdef ENABLE_JITTERING
-    vec3 randomJitter = hash(5. * (samples * worldPos)) - vec3(0.5, 0.5, 0.5);
-    float spread = ((2. - specular) + 0.05 * roughness * jitterRough) * jitterSpread;
+    vec3 randomJitter = hash(5. * (samples * worldPos)) - 0.5;
+    float spread = ((2. - specular) + roughness * jitterRough) * jitterSpread;
     float jitterMix = jitter + jitterRough * roughness;
     if (jitterMix > 1.) jitterMix = 1.;
     jitt = mix(vec3(0.), randomJitter * spread, jitterMix);
 #endif
 
+    jitt = mix(jitt, vec3(0.), 0.5);
+    viewNormal += jitt;
+
+    // view-space reflected ray
+    vec3 reflected = normalize(reflect(normalize(viewPos), normalize(viewNormal)));
+
+    _maxDepthDifference = maxDepthDifference * 0.01;
+
+    vec3 rayDir = reflected * -viewPos.z;
+
     vec3 hitPos = viewPos;
     float rayHitDepthDifference;
 
-    vec2 coords = RayMarch(jitt + reflected * -viewPos.z, hitPos, rayHitDepthDifference);
+    vec2 coords = RayMarch(rayDir, hitPos, rayHitDepthDifference);
 
     if (coords.x == -1.) {
         gl_FragColor = EARLY_OUT_COLOR;
@@ -126,8 +129,8 @@ void main() {
     float screenEdgefactor = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
     screenEdgefactor = max(0., screenEdgefactor);
 
-    vec3 SSR = texture2D(inputBuffer, coords.xy).rgb;
-    SSR += texture2D(lastFrameReflectionsBuffer, coords.xy).rgb;
+    vec3 SSR = texture2D(inputTexture, coords.xy).rgb;
+    SSR += texture2D(lastFrameReflectionsTexture, coords.xy).rgb;
 
     float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));
 
@@ -148,11 +151,9 @@ void main() {
     float blurMix = 0.;
 #ifdef ENABLE_BLUR
     // increase the reflection blur the further away the reflecting object is
-    blurMix = sqrt(reflectionDistance) * depthBlur;
+    blurMix = sqrt(reflectionDistance) * maxRoughness;
     if (blurMix > 1.) blurMix = 1.;
 #endif
-
-    blurMix = min(blurMix, maxBlur);
 
     float fresnelFactor = fresnel_dielectric(normalize(viewPos), viewNormal, ior);
 
@@ -192,7 +193,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
             continue;
         }
 
-        depthTexel = textureLod(depthBuffer, projectedCoord.xy, 0.);
+        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.);
 
         unpackedDepth = unpackRGBAToDepth(depthTexel);
 
@@ -240,7 +241,7 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
 
         if ((lastMinProjectedCoordXY.x > 1. || lastMinProjectedCoordXY.y > 1.) && (projectedCoord.x > 1. || projectedCoord.y > 1.)) return INVALID_RAY_COORDS;
 
-        depthTexel = textureLod(depthBuffer, projectedCoord.xy, 0.);
+        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.);
 
         unpackedDepth = unpackRGBAToDepth(depthTexel);
         depth = getViewZ(unpackedDepth);

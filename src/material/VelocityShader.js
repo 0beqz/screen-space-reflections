@@ -2,7 +2,7 @@ import { ShaderChunk, Matrix4 } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
 // a second set of bone information from the previou frame
-export const prev_skinning_pars_vertex = `
+export const prev_skinning_pars_vertex = /* glsl */ `
 		#ifdef USE_SKINNING
 		#ifdef BONE_TEXTURE
 			uniform sampler2D prevBoneTexture;
@@ -32,7 +32,7 @@ export const prev_skinning_pars_vertex = `
 
 // Returns the body of the vertex shader for the velocity buffer and
 // outputs the position of the current and last frame positions
-export const velocity_vertex = `
+export const velocity_vertex = /* glsl */ `
 		vec3 transformed;
 
 		// Get the normal
@@ -73,7 +73,7 @@ export const VelocityShader = {
 		opacity: { value: 1.0 }
 	},
 
-	vertexShader: `
+	vertexShader: /* glsl */ `
 			${ShaderChunk.skinning_pars_vertex}
 			${prev_skinning_pars_vertex}
 
@@ -90,7 +90,7 @@ export const VelocityShader = {
 			}
 		`,
 
-	fragmentShader: `
+	fragmentShader: /* glsl */ `
 			uniform float intensity;
 			varying vec4 prevPosition;
 			varying vec4 newPosition;

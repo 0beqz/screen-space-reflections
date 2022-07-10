@@ -1,10 +1,10 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { UnsignedByteType } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
 	NearestFilter,
 	RGBAFormat,
+	UnsignedByteType,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
@@ -17,7 +17,7 @@ export class ReflectionsPass extends Pass {
 	#defaultMaterials = {}
 	#normalDepthMaterials = {}
 	#options = {}
-	#useMRT = false
+	#USE_MRT = false
 	#webgl1DepthPass = null
 	#webgl1VelocityPass = null
 	samples = 1
@@ -44,9 +44,9 @@ export class ReflectionsPass extends Pass {
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		this.#useMRT = options.useMRT && WEBGL.isWebGL2Available()
+		this.#USE_MRT = options.USE_MRT && WEBGL.isWebGL2Available()
 
-		if (this.#useMRT) {
+		if (this.#USE_MRT) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 3, {
 				minFilter: NearestFilter,
@@ -93,9 +93,9 @@ export class ReflectionsPass extends Pass {
 
 		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
 
-		this.fullscreenMaterial.uniforms.normalBuffer.value = this.normalTexture
-		this.fullscreenMaterial.uniforms.depthBuffer.value = this.depthTexture
-		this.fullscreenMaterial.uniforms.lastFrameReflectionsBuffer.value = this.lastFrameReflectionsTexture
+		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value = this.lastFrameReflectionsTexture
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
@@ -105,13 +105,10 @@ export class ReflectionsPass extends Pass {
 		this.renderTarget.setSize(width, height)
 		this.gBuffersRenderTarget.setSize(width, height)
 
-		if (!this.#useMRT) {
+		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.setSize(width, height)
 			this.#webgl1VelocityPass.setSize(width, height)
 		}
-
-		this.fullscreenMaterial.uniforms.width.value = this.renderTarget.width
-		this.fullscreenMaterial.uniforms.height.value = this.renderTarget.height
 	}
 
 	#keepMaterialUpdated(normalDepthMaterial, origMat, prop, define) {
@@ -146,7 +143,7 @@ export class ReflectionsPass extends Pass {
 					this.#normalDepthMaterials[origMat.uuid] = new NormalDepthRoughnessMaterial()
 
 					const normalDepthMaterial = this.#normalDepthMaterials[origMat.uuid]
-					if (this.#useMRT) normalDepthMaterial.defines.USE_MRT = ""
+					if (this.#USE_MRT) normalDepthMaterial.defines.USE_MRT = ""
 					normalDepthMaterial._originalUuid = c.material.uuid
 
 					normalDepthMaterial.extensions.derivatives = true
@@ -186,12 +183,12 @@ export class ReflectionsPass extends Pass {
 		})
 	}
 
-	render(renderer, inputBuffer) {
+	render(renderer, inputTexture) {
 		// render depth and velocity in seperate passes
-		if (!this.#useMRT) {
+		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
 
-			if (this.ssrPass.temporalResolve) this.#webgl1VelocityPass.render(renderer, inputBuffer)
+			if (this.ssrPass.temporalResolve) this.#webgl1VelocityPass.render(renderer, inputTexture)
 		}
 
 		this.#setNormalDepthRoughnessMaterialInScene()
@@ -199,10 +196,12 @@ export class ReflectionsPass extends Pass {
 		this.renderPass.render(renderer, this.gBuffersRenderTarget, this.gBuffersRenderTarget)
 		this.#unsetNormalDepthRoughnessMaterialInScene()
 
-		this.fullscreenMaterial.uniforms.inputBuffer.value = inputBuffer.texture
+		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.ssrPass.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
+		this.fullscreenMaterial.uniforms.width.value = this.renderTarget.width
+		this.fullscreenMaterial.uniforms.height.value = this.renderTarget.height
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

@@ -9,10 +9,10 @@ export class ReflectionsMaterial extends ShaderMaterial {
 			type: "ReflectionsMaterial",
 
 			uniforms: {
-				inputBuffer: new Uniform(null),
-				lastFrameReflectionsBuffer: new Uniform(null),
-				normalBuffer: new Uniform(null),
-				depthBuffer: new Uniform(null),
+				inputTexture: new Uniform(null),
+				lastFrameReflectionsTexture: new Uniform(null),
+				normalTexture: new Uniform(null),
+				depthTexture: new Uniform(null),
 				width: new Uniform(1),
 				height: new Uniform(1),
 				_projectionMatrix: new Uniform(new Matrix4()),
@@ -31,8 +31,7 @@ export class ReflectionsMaterial extends ShaderMaterial {
 				jitter: new Uniform(0.5),
 				jitterRough: new Uniform(0.5),
 				jitterSpread: new Uniform(1),
-				depthBlur: new Uniform(1),
-				maxBlur: new Uniform(1),
+				maxRoughness: new Uniform(1),
 				samples: new Uniform(0)
 			},
 
