@@ -1,14 +1,12 @@
 import * as POSTPROCESSING from "postprocessing"
+import { SSRPass } from "screen-space-reflections"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { HalfFloatType } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
-import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js"
 import { Pane } from "tweakpane"
-import { SSRPass } from "screen-space-reflections"
-import "./style.css"
 import { defaultSSROptions } from "../src/SSRPass"
+import "./style.css"
 
 window.addEventListener("resize", () => {
 	camera.aspect = window.innerWidth / window.innerHeight
@@ -64,12 +62,35 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 window.controls = controls
 
-const composer = new POSTPROCESSING.EffectComposer(renderer, {
-	frameBufferType: HalfFloatType
-})
+const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
+
+new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
+	const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
+
+	let bloom1Options = {
+		intensity: 0.3,
+		blendFunction: POSTPROCESSING.BlendFunction.SCREEN,
+		kernelSize: POSTPROCESSING.KernelSize.HUGE,
+		luminanceThreshold: 0.26,
+		luminanceSmoothing: 0.5,
+		width: 600,
+		height: 400
+	}
+
+	let bloomEffect = new POSTPROCESSING.BloomEffect(bloom1Options)
+
+	composer.addPass(
+		new POSTPROCESSING.EffectPass(
+			camera,
+			// lutEffect,
+			bloomEffect,
+			new POSTPROCESSING.VignetteEffect({ offset: 0.4, darkness: 0.35 })
+		)
+	)
+})
 
 let params = {
 	enabled: true,
@@ -80,24 +101,24 @@ let params = {
 	width: window.innerWidth,
 	height: window.innerHeight,
 	temporalResolve: true,
+	temporalResolveMixSamples: 6,
 	staticNoise: false,
-	ENABLE_BLUR: false,
-	blurKernelSize: 3,
-	blurWidth: 935,
-	blurHeight: 391,
+	ENABLE_BLUR: true,
+	blurMix: 0.5,
+	blurKernelSize: 5,
+	blurSharpness: 7.07,
 	rayStep: 0.534,
 	intensity: 1,
-	depthBlur: 0.26,
-	maxBlur: 0.85,
+	maxRoughness: 0.99,
 	ENABLE_JITTERING: true,
-	jitter: 0.36,
+	jitter: 0,
 	jitterRough: 2,
 	jitterSpread: 3.37,
 	roughnessFadeOut: 0.51,
 	rayFadeOut: 1.03,
 	maxDepth: 1,
 	thickness: 3.5,
-	ior: 1.45,
+	ior: 1.7,
 	rayFadeOut: 0,
 	MAX_STEPS: 25,
 	NUM_BINARY_SEARCH_STEPS: 7,
@@ -110,52 +131,22 @@ let params = {
 	USE_ROUGHNESSMAP: true
 }
 
-const paramsDesert = {
-	enabled: true,
-	floorRoughness: 1,
-	floorNormalScale: 1,
-	antialias: false,
+// params.jitter = 0
+// params.jitterRough = 3
+// params.jitterSpread = 0.72
+// params.rayStep = 0.093
+// params.intensity = 1.45
+// params.ior = 2.01
+// params.rayStep = 0.093
+// params.rayFadeOut = 0.07
+// params.MAX_STEPS = 128
+// params.NUM_BINARY_SEARCH_STEPS = 0
 
-	width: window.innerWidth,
-	height: window.innerHeight,
-	ENABLE_BLUR: true,
-	blurKernelSize: 3,
-	blurWidth: 1370,
-	blurHeight: 370,
-	rayStep: 0.205,
-	intensity: 0.7,
-	depthBlur: 0.11,
-	maxBlur: 1,
-	ENABLE_JITTERING: true,
-	jitter: 0.17,
-	jitterRough: 0,
-	jitterSpread: 0.98,
-	roughnessFadeOut: 0,
-	rayFadeOut: 0,
-	MAX_STEPS: 32,
-	NUM_BINARY_SEARCH_STEPS: 6,
-	maxDepth: 1,
-	STRETCH_MISSED_RAYS: true,
-	maxDepthDifference: 500,
-	thickness: 22.83,
-	ior: 1.68,
-	useMRT: true,
-	USE_NORMALMAP: false,
-	USE_ROUGHNESSMAP: false
-}
+camera.position.set(11.002333350656253, 2.406571150547438, -2.833099999666251)
+controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.46503426700631345)
 
-const urlParams = new URLSearchParams(window.location.search)
-const useDesert = urlParams.get("desert") === "true"
-
-if (useDesert) {
-	params = paramsDesert
-
-	camera.position.set(43.41796615579645, -0.989309749754447, 111.06453952471358)
-	controls.target.set(30.557604018998227, -1.0641165515106161, 111.09867225736214)
-} else {
-	camera.position.set(11.002333350656253, 2.406571150547438, -2.833099999666251)
-	controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.46503426700631345)
-}
+// camera.position.set(-44.97245046706518, -1.5838993198634246, 15.961596242069124)
+// controls.target.set(-44.6043968840537, -1.421013025386915, 25.31290598262705)
 
 const defaultParams = { ...params }
 
@@ -168,13 +159,30 @@ const gltflLoader = new GLTFLoader()
 let floorMesh
 let emitterMesh
 
-gltflLoader.load(useDesert ? "desert.glb" : "scene.glb", asset => {
+gltflLoader.load("scene.glb", asset => {
 	scene.add(asset.scene)
 	asset.scene.traverse(c => {
 		if (c.material) {
 			c.material.normalScale.setScalar(1)
-			if (useDesert) c.material.roughness = 0.1
+			if (c.name.includes("heli") || c.name.includes("plane")) {
+				c.material.roughness = 0.1
+				c.material.metalness = 1
+				c.material.color.multiplyScalar(0.075)
+			}
+
+			// c.material.roughness = 0.2
+			// c.material.metalness = 0.9
+			// c.material.color.setScalar(0.8)
+			// c.material.normalScale.setScalar(2.5)
+
+			if (c.material.name.toLowerCase().includes("shd")) {
+				c.material.roughness = 0.1
+				c.material.metalness = 0.6
+				c.material.color.multiplyScalar(0.08)
+			}
 		}
+
+		c.updateMatrixWorld()
 
 		if (c.name === "Plane") floorMesh = c
 
@@ -219,19 +227,20 @@ gltflLoader.load(useDesert ? "desert.glb" : "scene.glb", asset => {
 
 	loop()
 
-	if (urlParams.get("dancer") === "true" && !useDesert) useVideoBackgroundAndDancer()
+	const urlParams = new URLSearchParams(window.location.search)
+	if (urlParams.get("dancer") === "true") useVideoBackgroundAndDancer()
 })
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("env.hdr", tex => {
-	const envMap = pmremGenerator.fromEquirectangular(tex).texture
-	envMap.minFilter = THREE.LinearFilter
+// new RGBELoader().load("env.hdr", tex => {
+// 	const envMap = pmremGenerator.fromEquirectangular(tex).texture
+// 	envMap.minFilter = THREE.LinearFilter
 
-	if (useDesert) scene.environment = envMap
-	if (useDesert) scene.background = envMap
-})
+// 	scene.environment = envMap
+// 	scene.background = envMap
+// })
 
 let mixer
 let skinMesh
@@ -241,9 +250,6 @@ const useVideoBackgroundAndDancer = () => {
 	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
 	params.ENABLE_BLUR = true
-	params.blurWidth = 935
-	params.blurHeight = 304
-	params.depthBlur = 0.13
 	params.blurKernelSize = 2
 	params.ENABLE_JITTERING = true
 	params.jitter = 0.18
@@ -302,7 +308,6 @@ pane.on("change", ev => {
 	const { presetKey } = ev
 
 	if (Object.keys(defaultSSROptions).includes(presetKey)) {
-		console.log("set", presetKey)
 		ssrPass[presetKey] = ev.value
 	}
 })
@@ -339,31 +344,14 @@ renderModesList = optionsFolder
 		ssrPass.fullscreenMaterial.needsUpdate = true
 	})
 
-optionsFolder.addInput(params, "temporalResolve").on("change", () => {
-	if (params.temporalResolve) {
-		ssrPass.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE = ""
-	} else {
-		delete ssrPass.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE
-	}
-
-	ssrPass.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
-})
-
-optionsFolder.addInput(params, "staticNoise").on("change", () => {
-	ssrPass.reflectionsPass.staticNoise = params.staticNoise
-})
-
+optionsFolder.addInput(params, "temporalResolve")
+optionsFolder.addInput(params, "temporalResolveMixSamples", { min: 0, max: 16, step: 1 })
+optionsFolder.addInput(params, "staticNoise")
 optionsFolder.addInput(params, "width", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "height", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "rayStep", { min: 0.001, max: 5, step: 0.001 })
-optionsFolder.addInput(params, "intensity", { min: 0.1, max: 5, step: 0.1 })
-optionsFolder.addInput(params, "depthBlur", { min: 0, max: 0.5, step: 0.01 })
-optionsFolder.addInput(params, "maxBlur", { min: 0, max: 1, step: 0.01 })
-optionsFolder.addInput(params, "maxDepthDifference", {
-	min: 0,
-	max: useDesert ? 20 : 8,
-	step: 0.01
-})
+optionsFolder.addInput(params, "intensity", { min: 0.1, max: 5, step: 0.01 })
+optionsFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
 optionsFolder.addInput(params, "maxDepth", {
 	min: 0.99,
 	max: 1,
@@ -381,7 +369,12 @@ optionsFolder.addInput(params, "rayFadeOut", {
 })
 optionsFolder.addInput(params, "thickness", {
 	min: 0,
-	max: useDesert ? 30 : 10,
+	max: 10,
+	step: 0.01
+})
+optionsFolder.addInput(params, "maxDepthDifference", {
+	min: 0,
+	max: 8,
 	step: 0.01
 })
 
@@ -392,20 +385,10 @@ optionsFolder.addInput(params, "ior", {
 })
 
 const blurFolder = pane.addFolder({ title: "Blur" })
-blurFolder.addInput(params, "ENABLE_BLUR").on("change", () => {
-	if (params.ENABLE_BLUR) {
-		ssrPass.fullscreenMaterial.defines.USE_BLUR = ""
-		ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_BLUR = ""
-	} else {
-		delete ssrPass.fullscreenMaterial.defines.USE_BLUR
-		delete ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_BLUR
-	}
-
-	ssrPass.fullscreenMaterial.needsUpdate = true
-})
-blurFolder.addInput(params, "blurKernelSize", { min: 0, max: 5, step: 1 })
-blurFolder.addInput(params, "blurWidth", { min: 0, max: 2000, step: 1 })
-blurFolder.addInput(params, "blurHeight", { min: 0, max: 2000, step: 1 })
+blurFolder.addInput(params, "ENABLE_BLUR")
+blurFolder.addInput(params, "blurMix", { min: 0, max: 1, step: 0.01 })
+blurFolder.addInput(params, "blurKernelSize", { min: 0, max: 10, step: 1 })
+blurFolder.addInput(params, "blurSharpness", { min: 0, max: 10, step: 0.01 })
 
 const jitterFolder = pane.addFolder({ title: "Jitter", expanded: false })
 
@@ -418,9 +401,9 @@ jitterFolder.addInput(params, "ENABLE_JITTERING").on("change", () => {
 	ssrPass.reflectionsPass.fullscreenMaterial.needsUpdate = true
 })
 
-jitterFolder.addInput(params, "jitter", { min: 0, max: 3, step: 0.01 })
-jitterFolder.addInput(params, "jitterRough", { min: 0, max: 2, step: 0.01 })
-jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 5, step: 0.01 })
+jitterFolder.addInput(params, "jitter", { min: 0, max: 0.5, step: 0.01 })
+jitterFolder.addInput(params, "jitterRough", { min: 0, max: 3, step: 0.01 })
+jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 3, step: 0.01 })
 
 const definesFolder = pane.addFolder({ title: "Steps", expanded: false })
 
@@ -455,58 +438,54 @@ presetsFolder
 		pane.refresh()
 	})
 
-if (!useDesert) {
-	presetsFolder
-		.addButton({
-			title: "Fast"
-		})
-		.on("click", () => {
-			for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
+presetsFolder
+	.addButton({
+		title: "Fast"
+	})
+	.on("click", () => {
+		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-			params.ENABLE_BLUR = true
-			params.blurWidth = 1130
-			params.blurHeight = 391
-			params.depthBlur = 0.06
-			params.width = 1359
-			params.height = 804
-			params.blurKernelSize = 1
-			params.ENABLE_JITTERING = false
-			params.maxDepthDifference = 6
+		params.ENABLE_BLUR = true
+		params.maxRoughness = 0.06
+		params.width = 1359
+		params.height = 804
+		params.blurKernelSize = 1
+		params.ENABLE_JITTERING = false
+		params.maxDepthDifference = 6
 
-			params.rayFadeOut = 2.72
+		params.rayFadeOut = 2.72
 
-			params.rayStep = 3.232
-			params.MAX_STEPS = 4
-			params.NUM_BINARY_SEARCH_STEPS = 7
+		params.rayStep = 3.232
+		params.MAX_STEPS = 4
+		params.NUM_BINARY_SEARCH_STEPS = 7
 
-			pane.refresh()
-		})
+		pane.refresh()
+	})
 
-	presetsFolder
-		.addButton({
-			title: "High Quality"
-		})
-		.on("click", () => {
-			for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
+presetsFolder
+	.addButton({
+		title: "High Quality"
+	})
+	.on("click", () => {
+		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-			params.MAX_STEPS = 256
-			params.rayStep = 0.055
-			params.intensity = 1
-			params.floorNormalScale = 0
-			params.floorRoughness = 0
-			params.depthBlur = 0
+		params.MAX_STEPS = 256
+		params.rayStep = 0.055
+		params.intensity = 1
+		params.floorNormalScale = 0
+		params.floorRoughness = 0
+		params.maxRoughness = 0
 
-			pane.refresh()
-		})
+		pane.refresh()
+	})
 
-	presetsFolder
-		.addButton({
-			title: "Video Background with Dancer"
-		})
-		.on("click", () => {
-			useVideoBackgroundAndDancer()
-		})
-}
+presetsFolder
+	.addButton({
+		title: "Video Background with Dancer"
+	})
+	.on("click", () => {
+		useVideoBackgroundAndDancer()
+	})
 
 const stats = new Stats()
 stats.showPanel(0)

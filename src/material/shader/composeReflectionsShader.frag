@@ -1,11 +1,9 @@
 ﻿#define EULER 2.718281828459045
 #define FLOAT_EPSILON 0.00001
 
-uniform sampler2D inputBuffer;
-uniform sampler2D lastFrameReflectionsBuffer;
-uniform sampler2D velocityBuffer;
-uniform sampler2D depthBuffer;
-uniform sampler2D lastFrameDepthBuffer;
+uniform sampler2D inputTexture;
+uniform sampler2D lastFrameReflectionsTexture;
+uniform sampler2D velocityTexture;
 
 uniform float width;
 uniform float height;
@@ -17,23 +15,30 @@ uniform mat4 _lastProjectionMatrix;
 uniform mat4 lastCameraMatrixWorld;
 
 uniform float samples;
+uniform float temporalResolveMixSamples;
 
 varying vec2 vUv;
 
 #include <packing>
 
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 projectionMatrix, mat4 camMatrixWorld) {
-    vec4 ndc = vec4(
-        (uv.x - 0.5) * 2.0,
-        (uv.y - 0.5) * 2.0,
-        (depth - 0.5) * 2.0,
-        1.0);
+// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/draw/intern/shaders/common_math_lib.glsl#L42
+#define min3(a, b, c) min(a, min(b, c))
+#define min4(a, b, c, d) min(a, min3(b, c, d))
+#define min5(a, b, c, d, e) min(a, min4(b, c, d, e))
+#define min6(a, b, c, d, e, f) min(a, min5(b, c, d, e, f))
+#define min7(a, b, c, d, e, f, g) min(a, min6(b, c, d, e, f, g))
+#define min8(a, b, c, d, e, f, g, h) min(a, min7(b, c, d, e, f, g, h))
+#define min9(a, b, c, d, e, f, g, h, i) min(a, min8(b, c, d, e, f, g, h, i))
 
-    vec4 clip = inverse(projectionMatrix) * ndc;
-    vec4 view = camMatrixWorld * (clip / clip.w);
+#define max3(a, b, c) max(a, max(b, c))
+#define max4(a, b, c, d) max(a, max3(b, c, d))
+#define max5(a, b, c, d, e) max(a, max4(b, c, d, e))
+#define max6(a, b, c, d, e, f) max(a, max5(b, c, d, e, f))
+#define max7(a, b, c, d, e, f, g) max(a, max6(b, c, d, e, f, g))
+#define max8(a, b, c, d, e, f, g, h) max(a, max7(b, c, d, e, f, g, h))
+#define max9(a, b, c, d, e, f, g, h, i) max(a, max8(b, c, d, e, f, g, h, i))
 
-    return view.xyz;
-}
+#define lum czm_luminance
 
 // source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
 float czm_luminance(vec3 rgb) {
@@ -43,52 +48,38 @@ float czm_luminance(vec3 rgb) {
 }
 
 void main() {
-    vec4 inputTexel = texture2D(inputBuffer, vUv);
-    vec4 lastFrameReflectionsTexel = texture2D(lastFrameReflectionsBuffer, vUv);
+    vec4 inputTexel = texture2D(inputTexture, vUv);
+    vec4 lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
 
-    float a = 0.;
+    ivec2 size = textureSize(inputTexture, 0);
+    vec2 pxSize = vec2(float(size.x), float(size.y));
 
-    vec2 pxSize = vec2(width, height);
+    vec3 c02 = texture2D(inputTexture, vUv + vec2(-1., 1.) / pxSize).rgb;
+    vec3 c12 = texture2D(inputTexture, vUv + vec2(0., 1.) / pxSize).rgb;
+    vec3 c22 = texture2D(inputTexture, vUv + vec2(1., 1.) / pxSize).rgb;
+    vec3 c01 = texture2D(inputTexture, vUv + vec2(-1., 0.) / pxSize).rgb;
+    vec3 c11 = inputTexel.rgb;
+    vec3 c21 = texture2D(inputTexture, vUv + vec2(1., 0.) / pxSize).rgb;
+    vec3 c00 = texture2D(inputTexture, vUv + vec2(-1., -1.) / pxSize).rgb;
+    vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -1.) / pxSize).rgb;
+    vec3 c20 = texture2D(inputTexture, vUv + vec2(1., -1.) / pxSize).rgb;
 
-    float weightSum = czm_luminance(inputTexel.rgb);
-    vec3 neighborColor;
-    vec3 minNeighborColor = inputTexel.rgb;
-    vec3 maxNeighborColor = inputTexel.rgb;
+    vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+    vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
 
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            if (x == 0 || y == 0) continue;
-
-            vec3 px = texture2D(inputBuffer, vUv + vec2(float(x), float(y)) / pxSize).rgb;
-
-            minNeighborColor = min(minNeighborColor, px);
-            maxNeighborColor = max(maxNeighborColor, px);
-
-            float weight = czm_luminance(px.rgb);
-
-            weightSum += weight;
-            neighborColor += weight * px;
-        }
-    }
-
-    // if (samples < 4.) {
-    //     neighborColor /= weightSum;
-    //     neighborColor = inputTexel.rgb * 0.75 + neighborColor * 0.25;
-
-    //     inputTexel.rgb = max(inputTexel.rgb, neighborColor);
-    // }
+// reduces noise when moving camera and not using temporal resolving
+#ifndef TEMPORAL_RESOLVE
+    vec3 neighborColor = lum(c02) * c02 + lum(c12) * c12 + lum(c22) * c22 + lum(c01) * c01 + lum(c11) * c11 + lum(c21) * c21 +
+                         lum(c00) * c00 + lum(c10) * c10 + lum(c20) * c20;
+    neighborColor = inputTexel.rgb * 0.75 + neighborColor * 0.25;
+    if (samples < 2.) inputTexel.rgb = max(inputTexel.rgb, neighborColor * 0.75);
+#endif
 
 #ifdef TEMPORAL_RESOLVE
-    vec2 velUv = texture2D(velocityBuffer, vUv).xy;
+    vec2 velUv = texture2D(velocityTexture, vUv).xy;
     vec2 reprojectedUv = vUv - velUv;
 
-    vec4 lastFrameReflectionsProjectedTexel;
-    float reprojectionDist;
-
     float alpha = lastFrameReflectionsTexel.a;
-
-    float mixVal = 1. / samples;
-    mixVal /= EULER;
 
     // if a ray presumably hit nothing (reflection color is black) then decrease alpha by the given formula
     // going by the formula, a pixel that never reflected anything during sampling should have an alpha of 0 in 14 samples
@@ -103,18 +94,10 @@ void main() {
     }
 
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
-        float curDepth = unpackRGBAToDepth(texture2D(depthBuffer, vUv));
-        float lastDepth = unpackRGBAToDepth(texture2D(lastFrameDepthBuffer, reprojectedUv));
+        vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
 
-        vec3 curWorldPos = screenSpaceToWorldSpace(vUv, curDepth, _projectionMatrix, cameraMatrixWorld);
-        vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, _lastProjectionMatrix, lastCameraMatrixWorld);
-
-        reprojectionDist = distance(lastWorldPos, curWorldPos);
-        reprojectionDist = pow(reprojectionDist, 4.) * 5.;
-
-        lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsBuffer, reprojectedUv);
-
-        if (samples < 8. && (reprojectionDist > 0.0001 || alpha < 0.5)) {
+        // neighborhood clamping
+        if (samples < 4.) {
             lastFrameReflectionsProjectedTexel.rgb = clamp(lastFrameReflectionsProjectedTexel.rgb, minNeighborColor, maxNeighborColor);
         }
 
@@ -126,31 +109,27 @@ void main() {
         }
     }
 
-    vec3 newColor;
-    float movementSpeed = dot(velUv, velUv);
-    float blurMix = 0.;
+    float mixVal = 1. / samples;
+    mixVal /= EULER;
 
-    if (alpha > 0.) {
-        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
-    } else if (samples < 15.) {
-        // different approach
+    if (alpha < FLOAT_EPSILON && samples < 15.) {
         mixVal += 0.3;
     }
 
-    blurMix = mix(lastFrameReflectionsTexel.a, inputTexel.a + 0.5, mixVal);
-
-    newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
-
-    // if (samples > 32.) {
-    //     newColor = lastFrameReflectionsTexel.rgb * (1. - 1. / samples) + inputTexel.rgb / samples;
-    // }
-
-    if (length(lastFrameReflectionsTexel.rgb) < 0.005 && samples < 4.) {
+    vec3 newColor;
+    if (samples <= temporalResolveMixSamples) {
+        float w = 1. / temporalResolveMixSamples;
+        newColor = lastFrameReflectionsTexel.rgb * (1. - w) + inputTexel.rgb * w;
+    } else if (length(lastFrameReflectionsTexel.rgb) < 0.005 && samples < 8.) {
         newColor = mix(lastFrameReflectionsTexel.rgb, lastFrameReflectionsTexel.rgb + inputTexel.rgb, 0.5);
+    } else {
+        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
 
-    gl_FragColor = vec4(vec3(newColor), alpha);
+    gl_FragColor = vec4(newColor, alpha);
 #else
+    float samplesMultiplier = pow(samples / 32., 4.) + 1.;
+    if (samples > 1.) inputTexel.rgb = lastFrameReflectionsTexel.rgb * (1. - 1. / (samples * samplesMultiplier)) + inputTexel.rgb / (samples * samplesMultiplier);
     gl_FragColor = vec4(inputTexel.rgb, inputTexel.a);
 #endif
 }

@@ -1,33 +1,24 @@
-﻿import { KawaseBlurPass, KernelSize, Pass } from "postprocessing"
-import {
-	FramebufferTexture,
-	LinearFilter,
-	NearestFilter,
-	Quaternion,
-	RGBAFormat,
-	Vector2,
-	Vector3,
-	WebGLRenderTarget
-} from "three"
+﻿import { Pass } from "postprocessing"
+import { Quaternion, Vector2, Vector3 } from "three"
 import { ComposeReflectionsPass } from "./ComposeReflectionsPass.js"
-import { SSRCompositeMaterial } from "./material/SSRCompositeMaterial.js"
+import { FinalSSRMaterial } from "./material/FinalSSRMaterial.js"
 import { ReflectionsPass } from "./ReflectionsPass.js"
 
 const zeroVec2 = new Vector2()
 
 export const defaultSSROptions = {
 	temporalResolve: true,
+	temporalResolveMixSamples: 6,
 	staticNoise: false,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
 	ENABLE_BLUR: true,
-	blurKernelSize: KernelSize.SMALL,
-	blurWidth: typeof window !== "undefined" ? window.innerWidth : 2000,
-	blurHeight: typeof window !== "undefined" ? window.innerHeight : 1000,
+	blurMix: 0.5,
+	blurKernelSize: 8,
+	blurSharpness: 0.5,
 	rayStep: 0.1,
 	intensity: 1,
-	depthBlur: 0.1,
-	maxBlur: 1,
+	maxRoughness: 0.1,
 	ENABLE_JITTERING: false,
 	jitter: 0.1,
 	jitterSpread: 0.1,
@@ -41,12 +32,12 @@ export const defaultSSROptions = {
 	thickness: 10,
 	ior: 1.45,
 	STRETCH_MISSED_RAYS: true,
-	useMRT: true,
+	USE_MRT: true,
 	USE_NORMALMAP: true,
 	USE_ROUGHNESSMAP: true
 }
 
-const noResetSamplesProperties = ["ENABLE_BLUR", "blurKernelSize", "blurWidth", "blurHeight", "depthBlur"]
+const noResetSamplesProperties = ["ENABLE_BLUR", "blurSharpness", "blurKernelSize", "blurMix"]
 
 export class SSRPass extends Pass {
 	#lastSize
@@ -69,38 +60,21 @@ export class SSRPass extends Pass {
 
 		// returns just the calculates reflections
 		this.reflectionsPass = new ReflectionsPass(this, options)
-		this.reflectionsPass.setSize(options.width, options.height)
 
-		this.composeReflectionsPass = new ComposeReflectionsPass(scene, camera)
+		this.composeReflectionsPass = new ComposeReflectionsPass(this)
 
-		this.fullscreenMaterial = new SSRCompositeMaterial()
-		this.fullscreenMaterial.uniforms.reflectionsBuffer.value = this.composeReflectionsPass.renderTarget.texture
+		this.fullscreenMaterial = new FinalSSRMaterial()
+		this.fullscreenMaterial.uniforms.reflectionsTexture.value = this.composeReflectionsPass.renderTarget.texture
 
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.inputBuffer.value =
+		this.composeReflectionsPass.fullscreenMaterial.uniforms.inputTexture.value =
 			this.reflectionsPass.renderTarget.texture
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsBuffer.value =
+		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value =
 			this.reflectionsPass.lastFrameReflectionsTexture
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.depthBuffer.value = this.reflectionsPass.depthTexture
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.velocityBuffer.value = this.reflectionsPass.velocityTexture
+		this.composeReflectionsPass.fullscreenMaterial.uniforms.velocityTexture.value = this.reflectionsPass.velocityTexture
 
-		// used to smooth out reflections by blurring them (more blur the longer the ray is)
-		this.kawaseBlurPass = new KawaseBlurPass()
-		this.kawaseBlurPass.kernelSize = options.blurKernelSize
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.reflectionsPass.depthTexture
 
-		const parameters = {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter
-		}
-
-		this.kawaseBlurPassRenderTarget = new WebGLRenderTarget(options.blurWidth, options.blurHeight, parameters)
-
-		this.lastFrameDepthTexture = new FramebufferTexture(options.width, options.height, RGBAFormat)
-
-		this.lastFrameDepthRenderTarget = new WebGLRenderTarget(options.width, options.height, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter
-		})
-		this.lastFrameDepthRenderTarget.texture = this.reflectionsPass.depthTexture
+		this.setSize(options.width, options.height)
 
 		this.#makeOptionsReactive(options)
 	}
@@ -133,26 +107,24 @@ export class SSRPass extends Pass {
 					switch (key) {
 						case "width":
 							this.setSize(value * dpr, options.height)
+							this.fullscreenMaterial.uniforms.g_InvResolutionDirection.value.set(1 / (value * dpr), 1 / options.height)
 							break
 
 						case "height":
 							this.setSize(options.width, value * dpr)
+							this.fullscreenMaterial.uniforms.g_InvResolutionDirection.value.set(1 / options.width, 1 / (value * dpr))
 							break
 
-						case "blurHeight":
-							this.kawaseBlurPass.setSize(options.blurWidth, value * dpr)
+						case "blurMix":
+							this.fullscreenMaterial.uniforms.blurMix.value = value
 							break
 
-						case "blurWidth":
-							this.kawaseBlurPass.setSize(value * dpr, options.blurHeight)
-							break
-
-						case "blurHeight":
-							this.kawaseBlurPass.setSize(this.kawaseBlurPass.resolution.base.x, value * dpr)
+						case "blurSharpness":
+							this.fullscreenMaterial.uniforms.g_Sharpness.value = value
 							break
 
 						case "blurKernelSize":
-							this.kawaseBlurPass.kernelSize = value
+							this.fullscreenMaterial.uniforms.kernelRadius.value = value
 							break
 
 						// defines
@@ -178,11 +150,14 @@ export class SSRPass extends Pass {
 
 						case "ENABLE_BLUR":
 							if (value) {
+								this.fullscreenMaterial.defines.ENABLE_BLUR = ""
 								this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""
 							} else {
+								delete this.fullscreenMaterial.defines.ENABLE_BLUR
 								delete this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR
 							}
 
+							this.fullscreenMaterial.needsUpdate = needsUpdate
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
@@ -210,6 +185,10 @@ export class SSRPass extends Pass {
 							}
 
 							this.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
+							break
+
+						case "temporalResolveMixSamples":
+							this.composeReflectionsPass.fullscreenMaterial.uniforms.temporalResolveMixSamples.value = value
 							break
 
 						// must be a uniform
@@ -240,51 +219,36 @@ export class SSRPass extends Pass {
 		return this.reflectionsPass.fullscreenMaterial.uniforms
 	}
 
-	render(renderer, inputBuffer, outputBuffer) {
-		if (this.staticNoise) {
-			this.samples = 1
-		} else {
-			this.samples++
-		}
+	render(renderer, inputTexture, outputBuffer) {
+		this.samples = this.staticNoise ? 1 : this.samples + 1
 
 		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
 		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
 
 		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.samples = 3
+			this.samples = 1
 
 			this.#lastCameraTransform.position.copy(this._camera.position)
 			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
 		}
 
 		// render reflections of current frame
-		this.reflectionsPass.render(renderer, inputBuffer, this.reflectionsPass.renderTarget)
+		this.reflectionsPass.render(renderer, inputTexture)
 
 		// compose reflection of last and current frame into one reflection
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.samples.value = this.samples
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.depthBuffer.value = this.reflectionsPass.depthTexture
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameDepthBuffer.value = this.lastFrameDepthTexture
+		this.composeReflectionsPass.render(renderer)
 
-		this.composeReflectionsPass.render(renderer, this.reflectionsPass.renderTarget, this.composeRenderTarget)
-
-		// save reflections of this frame
-		renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
-
-		// save depth of this frame
-		renderer.setRenderTarget(this.lastFrameDepthRenderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.lastFrameDepthTexture)
-
-		if (this.ENABLE_BLUR) {
-			renderer.setRenderTarget(this.kawaseBlurPassRenderTarget)
-			this.kawaseBlurPass.render(renderer, this.composeReflectionsPass.renderTarget, this.kawaseBlurPassRenderTarget)
+		if (!this.staticNoise || this.temporalResolve) {
+			// save reflections of this frame
+			renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
+			renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
 		}
 
-		const blurredReflectionsBuffer = this.ENABLE_BLUR ? this.kawaseBlurPassRenderTarget.texture : null
-
-		this.fullscreenMaterial.uniforms.inputBuffer.value = inputBuffer.texture
-		this.fullscreenMaterial.uniforms.blurredReflectionsBuffer.value = blurredReflectionsBuffer
+		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.samples
+		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
+		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
 		renderer.setRenderTarget(this.renderToScreen ? null : outputBuffer)
 		renderer.render(this.scene, this.camera)
