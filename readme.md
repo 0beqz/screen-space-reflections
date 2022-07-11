@@ -207,7 +207,8 @@ Here are two implementations for three.js and react-three-fiber:
 
 - [x] Add Temporal Filtering to reduce noise
 - [x] Use a Bilateral Filter to reduce noise
-- [x] Allow blur with Temporal Filtering
+- [ ] Reprojection: support skinned meshes
+- [ ] Reprojection blend moving objects well
 
 ## Credits
 
