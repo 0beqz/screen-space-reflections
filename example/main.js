@@ -118,7 +118,7 @@ let params = {
 	rayFadeOut: 1.03,
 	maxDepth: 1,
 	thickness: 3.5,
-	ior: 1.7,
+	ior: 2,
 	rayFadeOut: 0,
 	MAX_STEPS: 25,
 	NUM_BINARY_SEARCH_STEPS: 7,
@@ -345,7 +345,7 @@ renderModesList = optionsFolder
 	})
 
 optionsFolder.addInput(params, "temporalResolve")
-optionsFolder.addInput(params, "temporalResolveMixSamples", { min: 0, max: 16, step: 1 })
+optionsFolder.addInput(params, "temporalResolveMixSamples", { min: 0, max: 24, step: 1 })
 optionsFolder.addInput(params, "staticNoise")
 optionsFolder.addInput(params, "width", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "height", { min: 0, max: 2000, step: 1 })
@@ -493,13 +493,10 @@ document.body.appendChild(stats.dom)
 
 const clock = new THREE.Clock()
 
-let lastWidth
-let lastHeight
-
 let goRight = true
 
 const loop = () => {
-	const dt = clock.getDelta()
+	// const dt = clock.getDelta()
 
 	// const val = goRight ? 4 : -4
 	// camera.position.z += val * dt * 0.875
