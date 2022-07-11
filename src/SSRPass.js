@@ -37,6 +37,7 @@ export const defaultSSROptions = {
 	USE_ROUGHNESSMAP: true
 }
 
+// all the properties for which we don't have to resample
 const noResetSamplesProperties = ["ENABLE_BLUR", "blurSharpness", "blurKernelSize", "blurMix"]
 
 export class SSRPass extends Pass {

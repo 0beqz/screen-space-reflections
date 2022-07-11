@@ -1,4 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+import { Matrix4 } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
@@ -174,9 +175,11 @@ export class ReflectionsPass extends Pass {
 
 	#unsetNormalDepthRoughnessMaterialInScene() {
 		this._scene.traverse(c => {
-			if (c.material) {
+			if (c.material?.type === "NormalDepthRoughnessMaterial") {
 				c.material.uniforms.prevProjectionMatrix.value.copy(this._camera.projectionMatrix)
 				c.material.uniforms.prevModelViewMatrix.value.copy(c.modelViewMatrix)
+
+				c.material.uniforms.prevModelViewMatrix.value.multiplyMatrices(this._camera.matrixWorldInverse, c.matrixWorld)
 
 				c.material = this.#defaultMaterials[c.material._originalUuid]
 			}

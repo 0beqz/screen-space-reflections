@@ -112,15 +112,14 @@ void main() {
     float mixVal = 1. / samples;
     mixVal /= EULER;
 
-    if (alpha < FLOAT_EPSILON && samples < 15.) {
-        mixVal += 0.3;
-    }
+    if (alpha < FLOAT_EPSILON && samples < 15.) mixVal += 0.3;
 
+    // calculate output color depending on the samples and lightness of the color
     vec3 newColor;
     if (samples <= temporalResolveMixSamples) {
         float w = 1. / temporalResolveMixSamples;
         newColor = lastFrameReflectionsTexel.rgb * (1. - w) + inputTexel.rgb * w;
-    } else if (length(lastFrameReflectionsTexel.rgb) < 0.005 && samples < 8.) {
+    } else if (czm_luminance(lastFrameReflectionsTexel.rgb) < 0.005 && samples < 8.) {
         newColor = mix(lastFrameReflectionsTexel.rgb, lastFrameReflectionsTexel.rgb + inputTexel.rgb, 0.5);
     } else {
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
