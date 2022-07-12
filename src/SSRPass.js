@@ -9,6 +9,7 @@ const zeroVec2 = new Vector2()
 export const defaultSSROptions = {
 	temporalResolve: true,
 	temporalResolveMixSamples: 6,
+	maxSamples: 0,
 	staticNoise: false,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
@@ -233,17 +234,19 @@ export class SSRPass extends Pass {
 			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
 		}
 
-		// render reflections of current frame
-		this.reflectionsPass.render(renderer, inputTexture)
+		if (this.maxSamples === 0 || this.samples <= this.maxSamples) {
+			// render reflections of current frame
+			this.reflectionsPass.render(renderer, inputTexture)
 
-		// compose reflection of last and current frame into one reflection
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.samples.value = this.samples
-		this.composeReflectionsPass.render(renderer)
+			// compose reflection of last and current frame into one reflection
+			this.composeReflectionsPass.fullscreenMaterial.uniforms.samples.value = this.samples
+			this.composeReflectionsPass.render(renderer)
 
-		if (!this.staticNoise || this.temporalResolve) {
-			// save reflections of this frame
-			renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
-			renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
+			if (!this.staticNoise || this.temporalResolve) {
+				// save reflections of this frame
+				renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
+				renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
+			}
 		}
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture.texture
