@@ -96,17 +96,26 @@ void main() {
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
         vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
 
+        float diff = 0.;
+
         // neighborhood clamping
         if (samples < 4.) {
+            vec3 origColor = lastFrameReflectionsProjectedTexel.rgb;
             lastFrameReflectionsProjectedTexel.rgb = clamp(lastFrameReflectionsProjectedTexel.rgb, minNeighborColor, maxNeighborColor);
+
+            diff = distance(origColor, lastFrameReflectionsTexel.rgb);
         }
 
         if (length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
             lastFrameReflectionsTexel.rgb = lastFrameReflectionsProjectedTexel.rgb;
         } else {
+            // @todo: remove these lines!
             lastFrameReflectionsTexel.rgb += lastFrameReflectionsProjectedTexel.rgb;
             lastFrameReflectionsTexel.rgb /= 2.;
         }
+
+        // @todo: comment back in
+        // lastFrameReflectionsTexel.rgb = lastFrameReflectionsProjectedTexel.rgb;
     }
 
     float mixVal = 1. / samples;
@@ -116,13 +125,17 @@ void main() {
 
     // calculate output color depending on the samples and lightness of the color
     vec3 newColor;
-    if (samples <= temporalResolveMixSamples) {
-        float w = 1. / temporalResolveMixSamples;
-        newColor = lastFrameReflectionsTexel.rgb * (1. - w) + inputTexel.rgb * w;
-    } else if (czm_luminance(lastFrameReflectionsTexel.rgb) < 0.005 && samples < 8.) {
-        newColor = mix(lastFrameReflectionsTexel.rgb, lastFrameReflectionsTexel.rgb + inputTexel.rgb, 0.5);
+
+    if (samples > 3. && length(lastFrameReflectionsTexel.rgb) < 0.01) {
+        // this will prevent the appearing of distracting colorful dots around the edge of a reflection once the camera has stopped moving
+        newColor = lastFrameReflectionsTexel.rgb;
     } else {
-        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
+        if (samples <= temporalResolveMixSamples) {
+            float w = 1. / temporalResolveMixSamples;
+            newColor = lastFrameReflectionsTexel.rgb * (1. - w) + inputTexel.rgb * w;
+        } else {
+            newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
+        }
     }
 
     gl_FragColor = vec4(newColor, alpha);

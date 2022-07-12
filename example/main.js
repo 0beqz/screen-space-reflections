@@ -102,6 +102,7 @@ let params = {
 	height: window.innerHeight,
 	temporalResolve: true,
 	temporalResolveMixSamples: 6,
+	maxSamples: 0,
 	staticNoise: false,
 	ENABLE_BLUR: true,
 	blurMix: 0.5,
@@ -217,6 +218,8 @@ gltflLoader.load("scene.glb", asset => {
 	)
 	box2.position.set(4, 1, -3.5)
 	box2.updateMatrixWorld()
+
+	box.name = "box"
 
 	scene.add(box)
 	scene.add(box2)
@@ -346,6 +349,7 @@ renderModesList = optionsFolder
 
 optionsFolder.addInput(params, "temporalResolve")
 optionsFolder.addInput(params, "temporalResolveMixSamples", { min: 0, max: 24, step: 1 })
+optionsFolder.addInput(params, "maxSamples", { min: 0, max: 16, step: 1 })
 optionsFolder.addInput(params, "staticNoise")
 optionsFolder.addInput(params, "width", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "height", { min: 0, max: 2000, step: 1 })
@@ -496,14 +500,17 @@ const clock = new THREE.Clock()
 let goRight = true
 
 const loop = () => {
-	// const dt = clock.getDelta()
+	const dt = clock.getDelta()
 
-	// const val = goRight ? 4 : -4
-	// camera.position.z += val * dt * 0.875
-	// if (Math.abs(Math.abs(val) < Math.abs(camera.position.z))) {
-	// 	camera.position.z = val
+	// let box = scene.getObjectByName("box")
+
+	// const val = goRight ? 2 : -2
+	// // box.position.z += val * dt * 0.875
+	// if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
+	// 	box.position.z = val
 	// 	goRight = !goRight
 	// }
+	// box.updateMatrixWorld()
 
 	stats.begin()
 
