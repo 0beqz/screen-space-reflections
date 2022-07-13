@@ -12,7 +12,7 @@
     "vite-plugin-glsl": "^0.2.0"
   },
   "dependencies": {
-    "postprocessing": "^6.28.1",
+    "postprocessing": "^6.28.3",
     "stats.js": "^0.17.0",
     "three": "^0.142.0",
     "tweakpane": "^3.1.0"

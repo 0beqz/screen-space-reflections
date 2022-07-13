@@ -94,10 +94,10 @@
     "picocolors" "^1.0.0"
     "source-map-js" "^1.0.2"
 
-"postprocessing@^6.28.1":
-  "integrity" "sha512-3KwA5k9IwdB0bpyJ/jK1KnXAk1BJYV1jnywGXJnQXg5trSNVRUq0Gkas2GDIpo+6ThCbwb20NmF6WQOaeyk1Og=="
-  "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.28.1.tgz"
-  "version" "6.28.1"
+"postprocessing@^6.28.3":
+  "integrity" "sha512-Y3VzV2pa+EJlzXOFyNTV/6htDQsHdhhYhpALyfv/9fk9H+GbUR/Zw2wjpZO1JWqO1x/nYbhmZficwvVk981EEw=="
+  "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.28.3.tgz"
+  "version" "6.28.3"
 
 "resolve@^1.22.0":
   "integrity" "sha512-nBpuuYuY5jFsli/JIs1oldw6fOQCBioohqWZg/2hiaOybXOft4lonv85uDOKXdf8rhyK159cxU5cDcK/NKk8zw=="
@@ -130,7 +130,7 @@
   "resolved" "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz"
   "version" "1.0.0"
 
-"three@^0.142.0", "three@>= 0.107.0 < 0.142.0":
+"three@^0.142.0", "three@>= 0.107.0 < 0.143.0":
   "integrity" "sha512-ESjPO+3geFr+ZUfVMpMnF/eVU2uJPOh0e2ZpMFqjNca1wApS9lJb7E4MjwGIczgt9iuKd8PEm6Pfgp2bJ92Xtg=="
   "resolved" "https://registry.npmjs.org/three/-/three-0.142.0.tgz"
   "version" "0.142.0"
