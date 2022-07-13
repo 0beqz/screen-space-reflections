@@ -1,8 +1,14 @@
-﻿import { Pass } from "postprocessing"
-import { Quaternion, Vector2, Vector3 } from "three"
+﻿import { Effect } from "postprocessing"
+import { Quaternion, Uniform, Vector2, Vector3 } from "three"
 import { ComposeReflectionsPass } from "./ComposeReflectionsPass.js"
-import { FinalSSRMaterial } from "./material/FinalSSRMaterial.js"
+import bilateralBlur from "./material/shader/bilateralBlur.frag"
+import fragmentShader from "./material/shader/finalSSRShader.frag"
+import helperFunctions from "./material/shader/helperFunctions.frag"
 import { ReflectionsPass } from "./ReflectionsPass.js"
+
+const finalFragmentShader = fragmentShader
+	.replace("#include <helperFunctions>", helperFunctions)
+	.replace("#include <bilateralBlur>", bilateralBlur)
 
 const zeroVec2 = new Vector2()
 
@@ -42,7 +48,7 @@ export const defaultSSROptions = {
 // all the properties for which we don't have to resample
 const noResetSamplesProperties = ["ENABLE_BLUR", "blurSharpness", "blurKernelSize", "blurMix"]
 
-export class SSRPass extends Pass {
+export class SSREffect extends Effect {
 	#lastSize
 	samples = 0
 	#lastCameraTransform = {
@@ -51,7 +57,20 @@ export class SSRPass extends Pass {
 	}
 
 	constructor(scene, camera, options = defaultSSROptions) {
-		super("SSRPass")
+		super("SSRPass", finalFragmentShader, {
+			type: "ComposeReflectionsMaterial",
+			uniforms: new Map([
+				["inputTexture", new Uniform(null)],
+				["reflectionsTexture", new Uniform(null)],
+				["depthTexture", new Uniform(null)],
+				["samples", new Uniform(1)],
+				["blurMix", new Uniform(0.5)],
+				["g_Sharpness", new Uniform(1)],
+				["g_InvResolutionDirection", new Uniform(new Vector2())],
+				["kernelRadius", new Uniform(16)]
+			]),
+			defines: new Map([["RENDER_MODE", "0"]])
+		})
 		this._scene = scene
 		this._camera = camera
 
@@ -66,8 +85,7 @@ export class SSRPass extends Pass {
 
 		this.composeReflectionsPass = new ComposeReflectionsPass(this)
 
-		this.fullscreenMaterial = new FinalSSRMaterial()
-		this.fullscreenMaterial.uniforms.reflectionsTexture.value = this.composeReflectionsPass.renderTarget.texture
+		this.uniforms.get("reflectionsTexture").value = this.composeReflectionsPass.renderTarget.texture
 
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.inputTexture.value =
 			this.reflectionsPass.renderTarget.texture
@@ -75,14 +93,18 @@ export class SSRPass extends Pass {
 			this.reflectionsPass.lastFrameReflectionsTexture
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.velocityTexture.value = this.reflectionsPass.velocityTexture
 
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.reflectionsPass.depthTexture
-
 		this.setSize(options.width, options.height)
 
 		this.#makeOptionsReactive(options)
 	}
 
 	#makeOptionsReactive(options) {
+		// this can't be toggled during run-time
+		if (options.ENABLE_BLUR) {
+			this.defines.set("ENABLE_BLUR", "")
+			this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""
+		}
+
 		const dpr = window.devicePixelRatio
 		let needsUpdate = false
 
@@ -114,24 +136,24 @@ export class SSRPass extends Pass {
 
 						case "width":
 							this.setSize(value * dpr, options.height)
-							this.fullscreenMaterial.uniforms.g_InvResolutionDirection.value.set(1 / (value * dpr), 1 / options.height)
+							this.uniforms.get("g_InvResolutionDirection").value.set(1 / (value * dpr), 1 / options.height)
 							break
 
 						case "height":
 							this.setSize(options.width, value * dpr)
-							this.fullscreenMaterial.uniforms.g_InvResolutionDirection.value.set(1 / options.width, 1 / (value * dpr))
+							this.uniforms.get("g_InvResolutionDirection").value.set(1 / options.width, 1 / (value * dpr))
 							break
 
 						case "blurMix":
-							this.fullscreenMaterial.uniforms.blurMix.value = value
+							this.uniforms.get("blurMix").value = value
 							break
 
 						case "blurSharpness":
-							this.fullscreenMaterial.uniforms.g_Sharpness.value = value
+							this.uniforms.get("g_Sharpness").value = value
 							break
 
 						case "blurKernelSize":
-							this.fullscreenMaterial.uniforms.kernelRadius.value = value
+							this.uniforms.get("kernelRadius").value = value
 							break
 
 						// defines
@@ -152,19 +174,6 @@ export class SSRPass extends Pass {
 								delete this.reflectionsPass.fullscreenMaterial.defines.ENABLE_JITTERING
 							}
 
-							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
-							break
-
-						case "ENABLE_BLUR":
-							if (value) {
-								this.fullscreenMaterial.defines.ENABLE_BLUR = ""
-								this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""
-							} else {
-								delete this.fullscreenMaterial.defines.ENABLE_BLUR
-								delete this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR
-							}
-
-							this.fullscreenMaterial.needsUpdate = needsUpdate
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
@@ -233,7 +242,7 @@ export class SSRPass extends Pass {
 		return this.reflectionsPass.fullscreenMaterial.uniforms
 	}
 
-	render(renderer, inputTexture, outputBuffer) {
+	update(renderer, inputTexture) {
 		this.samples = this.staticNoise ? 1 : this.samples + 1
 
 		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
@@ -261,14 +270,10 @@ export class SSRPass extends Pass {
 			}
 		}
 
-		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture.texture
-		this.fullscreenMaterial.uniforms.samples.value = this.samples
-		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
-		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
+		// update uniforms
+		this.uniforms.get("samples").value = this.samples
 
-		renderer.setRenderTarget(this.renderToScreen ? null : outputBuffer)
-		renderer.render(this.scene, this.camera)
-
+		// save last camera projection matrix and matrix world to compute the velocity in the next frame (for reprojection)
 		this.composeReflectionsPass.fullscreenMaterial.uniforms._lastProjectionMatrix.value.copy(
 			this._camera.projectionMatrix
 		)

@@ -19,7 +19,7 @@ export class FinalSSRMaterial extends ShaderMaterial {
 				blurMix: new Uniform(0.5),
 				g_Sharpness: new Uniform(1),
 				g_InvResolutionDirection: new Uniform(new Vector2()),
-				kernelRadius: new Uniform(16)
+				kernelRadius: new Uniform(10)
 			},
 
 			defines: {
