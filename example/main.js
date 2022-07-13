@@ -98,10 +98,9 @@ let params = {
 	floorNormalScale: 1,
 	antialias: false,
 
-	width: window.innerWidth,
-	height: window.innerHeight,
+	resolutionScale: 1,
 	temporalResolve: true,
-	temporalResolveMixSamples: 6,
+	temporalResolveMix: 0.9,
 	maxSamples: 0,
 	staticNoise: false,
 	ENABLE_BLUR: true,
@@ -347,12 +346,11 @@ renderModesList = optionsFolder
 		ssrPass.fullscreenMaterial.needsUpdate = true
 	})
 
+optionsFolder.addInput(params, "resolutionScale", { min: 0.125, max: 1, step: 0.125 })
 optionsFolder.addInput(params, "temporalResolve")
-optionsFolder.addInput(params, "temporalResolveMixSamples", { min: 0, max: 24, step: 1 })
+optionsFolder.addInput(params, "temporalResolveMix", { min: 0, max: 0.975, step: 0.001 })
 optionsFolder.addInput(params, "maxSamples", { min: 0, max: 16, step: 1 })
 optionsFolder.addInput(params, "staticNoise")
-optionsFolder.addInput(params, "width", { min: 0, max: 2000, step: 1 })
-optionsFolder.addInput(params, "height", { min: 0, max: 2000, step: 1 })
 optionsFolder.addInput(params, "rayStep", { min: 0.001, max: 5, step: 0.001 })
 optionsFolder.addInput(params, "intensity", { min: 0.1, max: 5, step: 0.01 })
 optionsFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
@@ -502,15 +500,15 @@ let goRight = true
 const loop = () => {
 	const dt = clock.getDelta()
 
-	// let box = scene.getObjectByName("box")
+	let box = scene.getObjectByName("box")
 
-	// const val = goRight ? 2 : -2
-	// // box.position.z += val * dt * 0.875
-	// if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
-	// 	box.position.z = val
-	// 	goRight = !goRight
-	// }
-	// box.updateMatrixWorld()
+	const val = goRight ? 2 : -2
+	box.position.z += val * dt * 0.875
+	if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
+		box.position.z = val
+		goRight = !goRight
+	}
+	box.updateMatrixWorld()
 
 	stats.begin()
 

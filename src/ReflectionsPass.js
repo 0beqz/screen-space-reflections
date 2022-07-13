@@ -1,5 +1,4 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { Matrix4 } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
@@ -103,8 +102,8 @@ export class ReflectionsPass extends Pass {
 	}
 
 	setSize(width, height) {
-		this.renderTarget.setSize(width, height)
-		this.gBuffersRenderTarget.setSize(width, height)
+		this.renderTarget.setSize(width * this.ssrPass.resolutionScale, height * this.ssrPass.resolutionScale)
+		this.gBuffersRenderTarget.setSize(width * this.ssrPass.resolutionScale, height * this.ssrPass.resolutionScale)
 
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.setSize(width, height)

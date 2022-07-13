@@ -15,7 +15,7 @@ uniform mat4 _lastProjectionMatrix;
 uniform mat4 lastCameraMatrixWorld;
 
 uniform float samples;
-uniform float temporalResolveMixSamples;
+uniform float temporalResolveMix;
 
 varying vec2 vUv;
 
@@ -38,13 +38,8 @@ varying vec2 vUv;
 #define max8(a, b, c, d, e, f, g, h) max(a, max7(b, c, d, e, f, g, h))
 #define max9(a, b, c, d, e, f, g, h, i) max(a, max8(b, c, d, e, f, g, h, i))
 
-#define lum czm_luminance
-
-// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(vec3 rgb) {
-    // Algorithm from Chapter 10 of Graphics Shaders.
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(rgb, W);
+float grayscale(vec3 image) {
+    return dot(image, vec3(0.3, 0.59, 0.11));
 }
 
 void main() {
@@ -54,68 +49,61 @@ void main() {
     ivec2 size = textureSize(inputTexture, 0);
     vec2 pxSize = vec2(float(size.x), float(size.y));
 
-    vec3 c02 = texture2D(inputTexture, vUv + vec2(-1., 1.) / pxSize).rgb;
-    vec3 c12 = texture2D(inputTexture, vUv + vec2(0., 1.) / pxSize).rgb;
-    vec3 c22 = texture2D(inputTexture, vUv + vec2(1., 1.) / pxSize).rgb;
-    vec3 c01 = texture2D(inputTexture, vUv + vec2(-1., 0.) / pxSize).rgb;
+    vec2 px = 1. / pxSize;
+
+    // get neighbor pixels
+    vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
+    vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
+    vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
+    vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
     vec3 c11 = inputTexel.rgb;
-    vec3 c21 = texture2D(inputTexture, vUv + vec2(1., 0.) / pxSize).rgb;
-    vec3 c00 = texture2D(inputTexture, vUv + vec2(-1., -1.) / pxSize).rgb;
-    vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -1.) / pxSize).rgb;
-    vec3 c20 = texture2D(inputTexture, vUv + vec2(1., -1.) / pxSize).rgb;
+    vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
+    vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
+    vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
+    vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
 
     vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
     vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
 
-// reduces noise when moving camera and not using temporal resolving
-#ifndef TEMPORAL_RESOLVE
-    vec3 neighborColor = lum(c02) * c02 + lum(c12) * c12 + lum(c22) * c22 + lum(c01) * c01 + lum(c11) * c11 + lum(c21) * c21 +
-                         lum(c00) * c00 + lum(c10) * c10 + lum(c20) * c20;
-    neighborColor = inputTexel.rgb * 0.75 + neighborColor * 0.25;
-    if (samples < 2.) inputTexel.rgb = max(inputTexel.rgb, neighborColor * 0.75);
-#endif
+    // reduces noise when moving camera and not using temporal resolving
+    // #ifndef TEMPORAL_RESOLVE
+    // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
+    // neighborColor /= 9.;
+    // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
+    // #endif
 
 #ifdef TEMPORAL_RESOLVE
     vec2 velUv = texture2D(velocityTexture, vUv).xy;
     vec2 reprojectedUv = vUv - velUv;
 
-    float alpha = lastFrameReflectionsTexel.a;
-
-    // if a ray presumably hit nothing (reflection color is black) then decrease alpha by the given formula
-    // going by the formula, a pixel that never reflected anything during sampling should have an alpha of 0 in 14 samples
-    // we'll use that info to get rid of ghosting later
-    if (samples < 15.) {
-        if (length(inputTexel.rgb) < FLOAT_EPSILON) {
-            alpha -= 0.1 * (1. - 1. / (samples + 1.));
-            if (alpha < 0.) alpha = 0.;
-        } else {
-            alpha = 1.;
-        }
-    }
+    float movement = length(velUv);
 
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
         vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
-
-        float diff = 0.;
 
         // neighborhood clamping
         if (samples < 4.) {
             vec3 origColor = lastFrameReflectionsProjectedTexel.rgb;
             lastFrameReflectionsProjectedTexel.rgb = clamp(lastFrameReflectionsProjectedTexel.rgb, minNeighborColor, maxNeighborColor);
-
-            diff = distance(origColor, lastFrameReflectionsTexel.rgb);
         }
 
         if (length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
             lastFrameReflectionsTexel.rgb = lastFrameReflectionsProjectedTexel.rgb;
         } else {
-            // @todo: remove these lines!
             lastFrameReflectionsTexel.rgb += lastFrameReflectionsProjectedTexel.rgb;
             lastFrameReflectionsTexel.rgb /= 2.;
         }
 
-        // @todo: comment back in
-        // lastFrameReflectionsTexel.rgb = lastFrameReflectionsProjectedTexel.rgb;
+        lastFrameReflectionsTexel = lastFrameReflectionsProjectedTexel;
+    }
+
+    float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
+    movement *= 100.;
+
+    if (samples < 2. || movement < FLOAT_EPSILON) {
+        alpha = 0.05 + alpha;
+    } else {
+        alpha = 0.;
     }
 
     float mixVal = 1. / samples;
@@ -126,19 +114,20 @@ void main() {
     // calculate output color depending on the samples and lightness of the color
     vec3 newColor;
 
-    if (samples > 3. && length(lastFrameReflectionsTexel.rgb) < 0.01) {
-        // this will prevent the appearing of distracting colorful dots around the edge of a reflection once the camera has stopped moving
-        newColor = lastFrameReflectionsTexel.rgb;
+    if (1. / samples >= 1. - temporalResolveMix) {
+        newColor = lastFrameReflectionsTexel.rgb * (temporalResolveMix) + inputTexel.rgb * (1. - temporalResolveMix);
     } else {
-        if (samples <= temporalResolveMixSamples) {
-            float w = 1. / temporalResolveMixSamples;
-            newColor = lastFrameReflectionsTexel.rgb * (1. - w) + inputTexel.rgb * w;
-        } else {
-            newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
-        }
+        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
 
-    gl_FragColor = vec4(newColor, alpha);
+    if (samples > 4. && movement < FLOAT_EPSILON && length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
+        // this will prevent the appearing of distracting colorful dots around the edge of a reflection once the camera has stopped moving
+        newColor = lastFrameReflectionsTexel.rgb;
+    }
+
+    if (alpha < 1.) newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, (1. - alpha) * 0.25);
+
+    gl_FragColor = vec4(vec3(newColor), alpha);
 #else
     float samplesMultiplier = pow(samples / 32., 4.) + 1.;
     if (samples > 1.) inputTexel.rgb = lastFrameReflectionsTexel.rgb * (1. - 1. / (samples * samplesMultiplier)) + inputTexel.rgb / (samples * samplesMultiplier);

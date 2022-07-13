@@ -69,7 +69,7 @@ Default values of the optional `options` parameter:
 ```javascript
 const options = {
 	temporalResolve: true,
-	temporalResolveMixSamples: 6,
+	temporalResolveMix: 6,
 	staticNoise: false,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
@@ -107,7 +107,7 @@ Description:
 
 - `temporalResolve`: whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing"
 
-- `temporalResolveMixSamples`: an integer factor used to set how much the last frame should be blended in when the camera moves; higher values will result in less noise when moving the camera but more smear
+- `temporalResolveMix`: an integer factor used to set how much the last frame should be blended in when the camera moves; higher values will result in less noise when moving the camera but more smear
 
 - `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections depending on the roughness and depth of the reflection ray
 
