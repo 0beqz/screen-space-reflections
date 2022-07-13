@@ -129,8 +129,10 @@ void main() {
     float screenEdgefactor = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
     screenEdgefactor = max(0., screenEdgefactor);
 
-    vec3 SSR = texture2D(inputTexture, coords.xy).rgb;
-    SSR += texture2D(lastFrameReflectionsTexture, coords.xy).rgb;
+    vec4 SSRTexel = texture2D(inputTexture, coords.xy);
+    vec4 SSRTexelReflected = texture2D(lastFrameReflectionsTexture, coords.xy);
+
+    vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
 
     float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));
 
@@ -160,7 +162,7 @@ void main() {
     finalSSR = finalSSR * fresnelFactor * intensity;
     finalSSR = min(vec3(1.), finalSSR);
 
-    gl_FragColor = vec4(finalSSR, blurMix);
+    gl_FragColor = vec4(finalSSR, SSRTexelReflected.a);
 
 #include <encodings_fragment>
 }

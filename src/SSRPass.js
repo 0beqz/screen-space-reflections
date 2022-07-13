@@ -8,9 +8,10 @@ const zeroVec2 = new Vector2()
 
 export const defaultSSROptions = {
 	temporalResolve: true,
-	temporalResolveMixSamples: 6,
+	temporalResolveMix: 0.9,
 	maxSamples: 0,
 	staticNoise: false,
+	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
 	ENABLE_BLUR: true,
@@ -56,7 +57,7 @@ export class SSRPass extends Pass {
 
 		options = { ...defaultSSROptions, ...options }
 
-		this.#lastSize = { width: options.width, height: options.height }
+		this.#lastSize = { width: options.width, height: options.height, resolutionScale: options.resolutionScale }
 		this.#lastCameraTransform.position.copy(camera.position)
 		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
 
@@ -107,6 +108,10 @@ export class SSRPass extends Pass {
 					if (resetSamples) this.samples = 1
 
 					switch (key) {
+						case "resolutionScale":
+							this.setSize(options.width, options.height)
+							break
+
 						case "width":
 							this.setSize(value * dpr, options.height)
 							this.fullscreenMaterial.uniforms.g_InvResolutionDirection.value.set(1 / (value * dpr), 1 / options.height)
@@ -189,8 +194,8 @@ export class SSRPass extends Pass {
 							this.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
 							break
 
-						case "temporalResolveMixSamples":
-							this.composeReflectionsPass.fullscreenMaterial.uniforms.temporalResolveMixSamples.value = value
+						case "temporalResolveMix":
+							this.composeReflectionsPass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
 							break
 
 						// must be a uniform
@@ -210,11 +215,18 @@ export class SSRPass extends Pass {
 	}
 
 	setSize(width, height) {
-		if (width === this.#lastSize.width && height === this.#lastSize.height) return
+		if (
+			width === this.#lastSize.width &&
+			height === this.#lastSize.height &&
+			this.resolutionScale === this.#lastSize.resolutionScale
+		)
+			return
+
+		this.composeReflectionsPass.setSize(width, height)
 
 		this.reflectionsPass.setSize(width, height)
 
-		this.#lastSize = { width, height }
+		this.#lastSize = { width, height, resolutionScale: this.resolutionScale }
 	}
 
 	get reflectionUniforms() {

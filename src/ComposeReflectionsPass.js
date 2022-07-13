@@ -27,7 +27,7 @@ export class ComposeReflectionsPass extends Pass {
 				cameraMatrixWorld: new Uniform(new Matrix4()),
 				lastCameraMatrixWorld: new Uniform(new Matrix4()),
 				samples: new Uniform(1),
-				temporalResolveMixSamples: new Uniform(6)
+				temporalResolveMix: new Uniform(6)
 			},
 			vertexShader,
 			fragmentShader
@@ -35,6 +35,10 @@ export class ComposeReflectionsPass extends Pass {
 
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = ssrPass._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = ssrPass._camera.matrixWorld
+	}
+
+	setSize(width, height) {
+		this.renderTarget.setSize(width, height)
 	}
 
 	render(renderer) {
