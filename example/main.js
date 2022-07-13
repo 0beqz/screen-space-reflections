@@ -1,12 +1,10 @@
 import * as POSTPROCESSING from "postprocessing"
-import { SSRPass } from "screen-space-reflections"
+import { SSREffect, defaultSSROptions } from "screen-space-reflections"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { HalfFloatType } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { Pane } from "tweakpane"
-import { defaultSSROptions } from "../src/SSRPass"
 import "./style.css"
 
 window.addEventListener("resize", () => {
@@ -14,7 +12,7 @@ window.addEventListener("resize", () => {
 	camera.updateProjectionMatrix()
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
-	ssrPass.setSize(window.innerWidth, window.innerHeight)
+	ssrEffect.setSize(window.innerWidth, window.innerHeight)
 })
 
 const scene = new THREE.Scene()
@@ -63,7 +61,7 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 window.controls = controls
 
-const composer = new POSTPROCESSING.EffectComposer(renderer, { frameBufferType: HalfFloatType })
+const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
@@ -78,9 +76,8 @@ new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
 		kernelSize: POSTPROCESSING.KernelSize.HUGE,
 		mipmapBlur: true
 	})
-	console.log(bloomEffect)
 
-	composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
+	// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
 })
 
 let params = {
@@ -95,7 +92,7 @@ let params = {
 	maxSamples: 0,
 	staticNoise: false,
 	ENABLE_BLUR: true,
-	blurMix: 0.5,
+	blurMix: 0,
 	blurKernelSize: 5,
 	blurSharpness: 7.07,
 	rayStep: 0.534,
@@ -146,9 +143,9 @@ controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.465034267006313
 
 const defaultParams = { ...params }
 
-const ssrPass = new SSRPass(scene, camera, params)
-composer.addPass(ssrPass)
-window.ssrPass = ssrPass
+const ssrEffect = new SSREffect(scene, camera, params)
+composer.addPass(new POSTPROCESSING.EffectPass(camera, ssrEffect))
+window.ssrEffect = ssrEffect
 
 const gltflLoader = new GLTFLoader()
 
@@ -306,7 +303,7 @@ pane.on("change", ev => {
 	const { presetKey } = ev
 
 	if (Object.keys(defaultSSROptions).includes(presetKey)) {
-		ssrPass[presetKey] = ev.value
+		ssrEffect[presetKey] = ev.value
 	}
 })
 
@@ -314,9 +311,9 @@ pane.on("change", ev => {
 let renderModesList
 
 pane.addInput(params, "enabled").on("change", () => {
-	ssrPass.fullscreenMaterial.defines.RENDER_MODE = params.enabled ? 0 : 4
-	renderModesList.value = ssrPass.fullscreenMaterial.defines.RENDER_MODE
-	ssrPass.fullscreenMaterial.needsUpdate = true
+	ssrEffect.fullscreenMaterial.defines.RENDER_MODE = params.enabled ? 0 : 4
+	renderModesList.value = ssrEffect.fullscreenMaterial.defines.RENDER_MODE
+	ssrEffect.fullscreenMaterial.needsUpdate = true
 })
 
 const optionsFolder = pane.addFolder({ title: "Options" })
@@ -338,8 +335,8 @@ renderModesList = optionsFolder
 	.on("change", ev => {
 		const { value } = ev
 
-		ssrPass.fullscreenMaterial.defines.RENDER_MODE = value
-		ssrPass.fullscreenMaterial.needsUpdate = true
+		ssrEffect.fullscreenMaterial.defines.RENDER_MODE = value
+		ssrEffect.fullscreenMaterial.needsUpdate = true
 	})
 
 optionsFolder.addInput(params, "resolutionScale", { min: 0.125, max: 1, step: 0.125 })
@@ -383,7 +380,6 @@ optionsFolder.addInput(params, "ior", {
 })
 
 const blurFolder = pane.addFolder({ title: "Blur" })
-blurFolder.addInput(params, "ENABLE_BLUR")
 blurFolder.addInput(params, "blurMix", { min: 0, max: 1, step: 0.01 })
 blurFolder.addInput(params, "blurKernelSize", { min: 0, max: 10, step: 1 })
 blurFolder.addInput(params, "blurSharpness", { min: 0, max: 5, step: 0.01 })
@@ -392,11 +388,11 @@ const jitterFolder = pane.addFolder({ title: "Jitter", expanded: false })
 
 jitterFolder.addInput(params, "ENABLE_JITTERING").on("change", () => {
 	if (params.ENABLE_JITTERING) {
-		ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING = ""
+		ssrEffect.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING = ""
 	} else {
-		delete ssrPass.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING
+		delete ssrEffect.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING
 	}
-	ssrPass.reflectionsPass.fullscreenMaterial.needsUpdate = true
+	ssrEffect.reflectionsPass.fullscreenMaterial.needsUpdate = true
 })
 
 jitterFolder.addInput(params, "jitter", { min: 0, max: 0.5, step: 0.01 })
@@ -516,10 +512,10 @@ const loop = () => {
 		skinMesh = null
 	}
 
-	if (ssrPass) {
+	if (ssrEffect) {
 		for (const key of Object.keys(params)) {
-			if (key in ssrPass.reflectionUniforms) {
-				ssrPass.reflectionUniforms[key].value = params[key]
+			if (key in ssrEffect.reflectionUniforms) {
+				ssrEffect.reflectionUniforms[key].value = params[key]
 			}
 		}
 	}

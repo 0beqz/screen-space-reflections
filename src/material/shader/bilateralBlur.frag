@@ -23,9 +23,6 @@ uniform float g_Sharpness;
 uniform vec2 g_InvResolutionDirection;  // either set x to 1/width or y to 1/height
 uniform float kernelRadius;
 
-uniform float cameraNear;
-uniform float cameraFar;
-
 float getViewZ(const float depth) {
     return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
 }

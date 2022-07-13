@@ -14,15 +14,10 @@ uniform sampler2D depthTexture;
 uniform float samples;
 uniform float blurMix;
 
-varying vec2 vUv;
-
-#include <packing>
 // --
 #include <bilateralBlur>
 
-void main() {
-    vec4 inputTexel = texture2D(inputTexture, vUv);
-
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);
 
     vec3 reflectionClr = reflectionsTexel.xyz * 1.;
@@ -36,32 +31,30 @@ void main() {
 #endif
 
 #if RENDER_MODE == MODE_DEFAULT
-    gl_FragColor = vec4(inputTexel.rgb + reflectionClr, 1.);
+    outputColor = vec4(inputColor.rgb + reflectionClr, 1.);
 #endif
 
 #if RENDER_MODE == MODE_REFLECTIONS
-    gl_FragColor = vec4(reflectionClr, 1.);
+    outputColor = vec4(reflectionClr, 1.);
 #endif
 
 #if RENDER_MODE == MODE_RAW_REFLECTION
-    gl_FragColor = vec4(reflectionsTexel.xyz, 1.);
+    outputColor = vec4(reflectionsTexel.xyz, 1.);
 #endif
 
 #if RENDER_MODE == MODE_BLURRED_REFLECTIONS
 #ifdef ENABLE_BLUR
-    gl_FragColor = vec4(blurredReflectionsTexel.xyz, 1.);
+    outputColor = vec4(blurredReflectionsTexel.xyz, 1.);
 #endif
 #endif
 
 #if RENDER_MODE == MODE_INPUT
-    gl_FragColor = vec4(inputTexel.xyz, 1.);
+    outputColor = vec4(inputTexel.xyz, 1.);
 #endif
 
 #if RENDER_MODE == MODE_BLUR_MIX
 #ifdef ENABLE_BLUR
-    gl_FragColor = vec4(vec3(blurMix), 1.);
+    outputColor = vec4(vec3(blurMix), 1.);
 #endif
 #endif
-
-#include <encodings_fragment>
 }
