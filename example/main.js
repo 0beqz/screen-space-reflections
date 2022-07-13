@@ -2,6 +2,7 @@ import * as POSTPROCESSING from "postprocessing"
 import { SSRPass } from "screen-space-reflections"
 import Stats from "stats.js"
 import * as THREE from "three"
+import { HalfFloatType } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { Pane } from "tweakpane"
@@ -62,7 +63,7 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 window.controls = controls
 
-const composer = new POSTPROCESSING.EffectComposer(renderer)
+const composer = new POSTPROCESSING.EffectComposer(renderer, { frameBufferType: HalfFloatType })
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
@@ -71,7 +72,9 @@ new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
 	const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 4,
+		intensity: 1.75,
+		luminanceThreshold: 0.3,
+		luminanceSmoothing: 0.7,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE,
 		mipmapBlur: true
 	})
