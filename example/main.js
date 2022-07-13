@@ -70,26 +70,14 @@ composer.addPass(renderPass)
 new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
 	const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
-	let bloom1Options = {
-		intensity: 0.3,
-		blendFunction: POSTPROCESSING.BlendFunction.SCREEN,
+	const bloomEffect = new POSTPROCESSING.BloomEffect({
+		intensity: 4,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE,
-		luminanceThreshold: 0.26,
-		luminanceSmoothing: 0.5,
-		width: 600,
-		height: 400
-	}
+		mipmapBlur: true
+	})
+	console.log(bloomEffect)
 
-	let bloomEffect = new POSTPROCESSING.BloomEffect(bloom1Options)
-
-	composer.addPass(
-		new POSTPROCESSING.EffectPass(
-			camera,
-			// lutEffect,
-			bloomEffect,
-			new POSTPROCESSING.VignetteEffect({ offset: 0.4, darkness: 0.35 })
-		)
-	)
+	composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
 })
 
 let params = {
@@ -131,6 +119,9 @@ let params = {
 	USE_ROUGHNESSMAP: true
 }
 
+camera.position.set(11.002333350656253, 2.406571150547438, -2.833099999666251)
+controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.46503426700631345)
+
 // params.jitter = 0
 // params.jitterRough = 3
 // params.jitterSpread = 0.72
@@ -141,9 +132,11 @@ let params = {
 // params.rayFadeOut = 0.07
 // params.MAX_STEPS = 128
 // params.NUM_BINARY_SEARCH_STEPS = 0
-
-camera.position.set(11.002333350656253, 2.406571150547438, -2.833099999666251)
-controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.46503426700631345)
+// params.STRETCH_MISSED_RAYS = true
+// params.blurMix = 0.65
+// params.blurKernelSize = 7
+// params.blurSharpness = 2.77
+// params.rayFadeOut = 0.04
 
 // camera.position.set(-44.97245046706518, -1.5838993198634246, 15.961596242069124)
 // controls.target.set(-44.6043968840537, -1.421013025386915, 25.31290598262705)
@@ -390,7 +383,7 @@ const blurFolder = pane.addFolder({ title: "Blur" })
 blurFolder.addInput(params, "ENABLE_BLUR")
 blurFolder.addInput(params, "blurMix", { min: 0, max: 1, step: 0.01 })
 blurFolder.addInput(params, "blurKernelSize", { min: 0, max: 10, step: 1 })
-blurFolder.addInput(params, "blurSharpness", { min: 0, max: 10, step: 0.01 })
+blurFolder.addInput(params, "blurSharpness", { min: 0, max: 5, step: 0.01 })
 
 const jitterFolder = pane.addFolder({ title: "Jitter", expanded: false })
 
