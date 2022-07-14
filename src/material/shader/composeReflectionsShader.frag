@@ -35,32 +35,6 @@ varying vec2 vUv;
 void main() {
     vec4 inputTexel = texture2D(inputTexture, vUv);
 
-    ivec2 size = textureSize(inputTexture, 0);
-    vec2 pxSize = vec2(float(size.x), float(size.y));
-
-    vec2 px = 1. / pxSize;
-
-    // get neighbor pixels
-    vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
-    vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
-    vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
-    vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
-    vec3 c11 = inputTexel.rgb;
-    vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
-    vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
-    vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
-    vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
-
-    vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
-    vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
-
-    // reduces noise when moving camera and not using temporal resolving
-    // #ifndef TEMPORAL_RESOLVE
-    // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
-    // neighborColor /= 9.;
-    // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
-    // #endif
-
     vec4 lastFrameReflectionsTexel;
 
 #ifdef TEMPORAL_RESOLVE
@@ -69,11 +43,38 @@ void main() {
 
     float movement = length(velUv) * 100.;
 
+    // check if reprojected UV is valid
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
         lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
 
-        // neighborhood clamping
+        // neighborhood clamping (only for the first sample where the camera just moved)
         if (samples < 2.) {
+            ivec2 size = textureSize(inputTexture, 0);
+            vec2 pxSize = vec2(float(size.x), float(size.y));
+
+            vec2 px = 1. / pxSize;
+
+            // get neighbor pixels
+            vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
+            vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
+            vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
+            vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
+            vec3 c11 = inputTexel.rgb;
+            vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
+            vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
+            vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
+            vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
+
+            vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+            vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+
+            // reduces noise when moving camera and not using temporal resolving
+            // #ifndef TEMPORAL_RESOLVE
+            // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
+            // neighborColor /= 9.;
+            // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
+            // #endif
+
             vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
 
             lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, 0.3875);
@@ -83,11 +84,7 @@ void main() {
     }
 
     float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
-
     alpha = samples < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
-
-    float mixVal = (1. / samples) / EULER;
-    if (alpha < FLOAT_EPSILON && samples < 15.) mixVal += 0.3;
 
     // calculate output color depending on the samples and lightness of the color
     vec3 newColor;
@@ -103,6 +100,9 @@ void main() {
         newColor = lastFrameReflectionsTexel.rgb * (temporalResolveMix) + inputTexel.rgb * (1. - temporalResolveMix);
     } else {
         // default method that samples quite subtly
+        float mixVal = (1. / samples) / EULER;
+        if (alpha < FLOAT_EPSILON && samples < 15.) mixVal += 0.3;
+
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
 
@@ -110,6 +110,7 @@ void main() {
 #else
     lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
 
+    // smoothing for higher samples to get rid of "bland reflections" after a high amount of samples
     float samplesMultiplier = pow(samples / 32., 4.) + 1.;
     if (samples > 1.) inputTexel.rgb = lastFrameReflectionsTexel.rgb * (1. - 1. / (samples * samplesMultiplier)) + inputTexel.rgb / (samples * samplesMultiplier);
 
