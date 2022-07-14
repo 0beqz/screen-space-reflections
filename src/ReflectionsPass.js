@@ -111,6 +111,24 @@ export class ReflectionsPass extends Pass {
 		}
 	}
 
+	dispose() {
+		this.renderTarget.dispose()
+		this.gBuffersRenderTarget.dispose()
+		this.renderPass.dispose()
+		this.fullscreenMaterial.dispose()
+
+		if (!this.#USE_MRT) {
+			this.#webgl1DepthPass.dispose()
+			this.#webgl1VelocityPass.dispose()
+		}
+
+		this.lastFrameReflectionsTexture.dispose()
+
+		this.normalTexture = null
+		this.depthTexture = null
+		this.velocityTexture = null
+	}
+
 	#keepMaterialUpdated(normalDepthMaterial, origMat, prop, define) {
 		if (this.ssrPass[define]) {
 			if (origMat[prop] !== normalDepthMaterial[prop]) {
