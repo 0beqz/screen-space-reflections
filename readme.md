@@ -211,7 +211,6 @@ Here are two implementations for three.js and react-three-fiber:
 - [x] Reprojection blend moving objects well
 - [ ] Reprojection: support for video textures
 - [ ] Proper upsampling to still get quality reflections when using half-res buffers
-- [ ] Flickering at reflection edges when moving camera (reflections are disappearing and reappering): add smoother blending of last frame with current frame
 
 ## Credits
 
