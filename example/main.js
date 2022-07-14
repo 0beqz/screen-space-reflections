@@ -1,5 +1,5 @@
 import * as POSTPROCESSING from "postprocessing"
-import { SSREffect, defaultSSROptions } from "screen-space-reflections"
+import { defaultSSROptions, SSREffect } from "screen-space-reflections"
 import Stats from "stats.js"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
@@ -70,7 +70,7 @@ new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
 	const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 1.75,
+		intensity: 1,
 		luminanceThreshold: 0.3,
 		luminanceSmoothing: 0.7,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE,
@@ -82,16 +82,13 @@ new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
 
 const params = {
 	enabled: true,
-	floorRoughness: 1,
-	floorNormalScale: 1,
 	antialias: false,
-
 	resolutionScale: 1,
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
 	maxSamples: 0,
 	staticNoise: false,
-	ENABLE_BLUR: false,
+	ENABLE_BLUR: true,
 	blurMix: 0,
 	blurKernelSize: 5,
 	blurSharpness: 7.07,
@@ -113,7 +110,7 @@ const params = {
 	maxDepthDifference: 3,
 	STRETCH_MISSED_RAYS: false,
 	floorRoughness: 2.6,
-	floorNormalScale: 0,
+	floorNormalScale: 1,
 	useMRT: true,
 	USE_NORMALMAP: true,
 	USE_ROUGHNESSMAP: true
@@ -247,7 +244,6 @@ let didLoadVideoBackgroundAndDancer = false
 const useVideoBackgroundAndDancer = () => {
 	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-	params.ENABLE_BLUR = true
 	params.blurKernelSize = 2
 	params.ENABLE_JITTERING = true
 	params.jitter = 0.18
@@ -444,7 +440,6 @@ presetsFolder
 	.on("click", () => {
 		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 
-		params.ENABLE_BLUR = true
 		params.maxRoughness = 0.06
 		params.width = 1359
 		params.height = 804

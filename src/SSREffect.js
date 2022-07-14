@@ -93,6 +93,7 @@ export class SSREffect extends Effect {
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.velocityTexture.value = this.reflectionsPass.velocityTexture
 
 		this.uniforms.get("reflectionsTexture").value = this.composeReflectionsPass.renderTarget.texture
+		this.uniforms.get("depthTexture").value = this.reflectionsPass.depthTexture
 
 		this.setSize(options.width, options.height)
 

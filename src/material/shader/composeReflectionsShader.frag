@@ -34,7 +34,6 @@ varying vec2 vUv;
 
 void main() {
     vec4 inputTexel = texture2D(inputTexture, vUv);
-    vec4 lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
 
     ivec2 size = textureSize(inputTexture, 0);
     vec2 pxSize = vec2(float(size.x), float(size.y));
@@ -62,6 +61,8 @@ void main() {
     // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
     // #endif
 
+    vec4 lastFrameReflectionsTexel;
+
 #ifdef TEMPORAL_RESOLVE
     vec2 velUv = texture2D(velocityTexture, vUv).xy;
     vec2 reprojectedUv = vUv - velUv;
@@ -69,20 +70,16 @@ void main() {
     float movement = length(velUv) * 100.;
 
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
-        vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
+        lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
 
         // neighborhood clamping
-        if (samples < 4.) {
-            vec3 origColor = lastFrameReflectionsProjectedTexel.rgb;
-            lastFrameReflectionsProjectedTexel.rgb = clamp(lastFrameReflectionsProjectedTexel.rgb, minNeighborColor, maxNeighborColor);
-        }
+        if (samples < 2.) {
+            vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
 
-        if (length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
-            lastFrameReflectionsTexel.rgb = lastFrameReflectionsProjectedTexel.rgb;
-        } else {
-            lastFrameReflectionsTexel.rgb += lastFrameReflectionsProjectedTexel.rgb;
-            lastFrameReflectionsTexel.rgb /= 2.;
+            lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, 0.3875);
         }
+    } else {
+        lastFrameReflectionsTexel.rgb = inputTexel.rgb;
     }
 
     float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
@@ -109,10 +106,13 @@ void main() {
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
 
-    gl_FragColor = vec4(vec3(newColor), alpha);
+    gl_FragColor = vec4(newColor, alpha);
 #else
+    lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
+
     float samplesMultiplier = pow(samples / 32., 4.) + 1.;
     if (samples > 1.) inputTexel.rgb = lastFrameReflectionsTexel.rgb * (1. - 1. / (samples * samplesMultiplier)) + inputTexel.rgb / (samples * samplesMultiplier);
+
     gl_FragColor = vec4(inputTexel.rgb, inputTexel.a);
 #endif
 }

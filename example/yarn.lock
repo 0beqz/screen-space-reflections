@@ -15,7 +15,7 @@
   "resolved" "https://registry.npmjs.org/esbuild-windows-64/-/esbuild-windows-64-0.14.48.tgz"
   "version" "0.14.48"
 
-"esbuild@^0.14.27":
+"esbuild@^0.14.47":
   "integrity" "sha512-w6N1Yn5MtqK2U1/WZTX9ZqUVb8IOLZkZ5AdHkT6x3cHDMVsYWC7WPdiLmx19w3i4Rwzy5LqsEMtVihG3e4rFzA=="
   "resolved" "https://registry.npmjs.org/esbuild/-/esbuild-0.14.48.tgz"
   "version" "0.14.48"
@@ -85,7 +85,7 @@
   "resolved" "https://registry.npmjs.org/picomatch/-/picomatch-2.3.1.tgz"
   "version" "2.3.1"
 
-"postcss@^8.4.13":
+"postcss@^8.4.14":
   "integrity" "sha512-E398TUmfAYFPBSdzgeieK2Y1+1cpdxJx8yXbK/m57nRhKSmk1GB2tO4lbLBtlkfPQTDKfe4Xqv1ASWPpayPEig=="
   "resolved" "https://registry.npmjs.org/postcss/-/postcss-8.4.14.tgz"
   "version" "8.4.14"
@@ -99,7 +99,7 @@
   "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.28.3.tgz"
   "version" "6.28.3"
 
-"resolve@^1.22.0":
+"resolve@^1.22.1":
   "integrity" "sha512-nBpuuYuY5jFsli/JIs1oldw6fOQCBioohqWZg/2hiaOybXOft4lonv85uDOKXdf8rhyK159cxU5cDcK/NKk8zw=="
   "resolved" "https://registry.npmjs.org/resolve/-/resolve-1.22.1.tgz"
   "version" "1.22.1"
@@ -108,7 +108,7 @@
     "path-parse" "^1.0.7"
     "supports-preserve-symlinks-flag" "^1.0.0"
 
-"rollup@^2.59.0":
+"rollup@^2.75.6":
   "integrity" "sha512-VSE1iy0eaAYNCxEXaleThdFXqZJ42qDBatAwrfnPlENEZ8erQ+0LYX4JXOLPceWfZpV1VtZwZ3dFCuOZiSyFtQ=="
   "resolved" "https://registry.npmjs.org/rollup/-/rollup-2.75.7.tgz"
   "version" "2.75.7"
@@ -153,14 +153,14 @@
     "@rollup/pluginutils" "^4.2.1"
     "tslib" "^2.4.0"
 
-"vite@^2.9.9":
-  "integrity" "sha512-AsOBAaT0AD7Mhe8DuK+/kE4aWYFMx/i0ZNi98hJclxb4e0OhQcZYUrvLjIaQ8e59Ui7txcvKMiJC1yftqpQoDw=="
-  "resolved" "https://registry.npmjs.org/vite/-/vite-2.9.13.tgz"
-  "version" "2.9.13"
+"vite@^3.0.0":
+  "integrity" "sha512-M7phQhY3+fRZa0H+1WzI6N+/onruwPTBTMvaj7TzgZ0v2TE+N2sdLKxJOfOv9CckDWt5C4HmyQP81xB4dwRKzA=="
+  "resolved" "https://registry.npmjs.org/vite/-/vite-3.0.0.tgz"
+  "version" "3.0.0"
   dependencies:
-    "esbuild" "^0.14.27"
-    "postcss" "^8.4.13"
-    "resolve" "^1.22.0"
-    "rollup" "^2.59.0"
+    "esbuild" "^0.14.47"
+    "postcss" "^8.4.14"
+    "resolve" "^1.22.1"
+    "rollup" "^2.75.6"
   optionalDependencies:
     "fsevents" "~2.3.2"
