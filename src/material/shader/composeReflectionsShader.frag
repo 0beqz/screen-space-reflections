@@ -8,12 +8,6 @@ uniform sampler2D velocityTexture;
 uniform float width;
 uniform float height;
 
-uniform mat4 _projectionMatrix;
-uniform mat4 cameraMatrixWorld;
-
-uniform mat4 _lastProjectionMatrix;
-uniform mat4 lastCameraMatrixWorld;
-
 uniform float samples;
 uniform float temporalResolveMix;
 
@@ -37,10 +31,6 @@ varying vec2 vUv;
 #define max7(a, b, c, d, e, f, g) max(a, max6(b, c, d, e, f, g))
 #define max8(a, b, c, d, e, f, g, h) max(a, max7(b, c, d, e, f, g, h))
 #define max9(a, b, c, d, e, f, g, h, i) max(a, max8(b, c, d, e, f, g, h, i))
-
-float grayscale(vec3 image) {
-    return dot(image, vec3(0.3, 0.59, 0.11));
-}
 
 void main() {
     vec4 inputTexel = texture2D(inputTexture, vUv);
@@ -76,7 +66,7 @@ void main() {
     vec2 velUv = texture2D(velocityTexture, vUv).xy;
     vec2 reprojectedUv = vUv - velUv;
 
-    float movement = length(velUv);
+    float movement = length(velUv) * 100.;
 
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
         vec4 lastFrameReflectionsProjectedTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
@@ -93,39 +83,31 @@ void main() {
             lastFrameReflectionsTexel.rgb += lastFrameReflectionsProjectedTexel.rgb;
             lastFrameReflectionsTexel.rgb /= 2.;
         }
-
-        lastFrameReflectionsTexel = lastFrameReflectionsProjectedTexel;
     }
 
     float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
-    movement *= 100.;
 
-    if (samples < 2. || movement < FLOAT_EPSILON) {
-        alpha = 0.05 + alpha;
-    } else {
-        alpha = 0.;
-    }
+    alpha = samples < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
 
-    float mixVal = 1. / samples;
-    mixVal /= EULER;
-
+    float mixVal = (1. / samples) / EULER;
     if (alpha < FLOAT_EPSILON && samples < 15.) mixVal += 0.3;
 
     // calculate output color depending on the samples and lightness of the color
     vec3 newColor;
 
-    if (1. / samples >= 1. - temporalResolveMix) {
-        newColor = lastFrameReflectionsTexel.rgb * (temporalResolveMix) + inputTexel.rgb * (1. - temporalResolveMix);
-    } else {
-        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
-    }
-
-    if (samples > 4. && movement < FLOAT_EPSILON && length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
+    if (alpha < 1.) {
+        // the reflections aren't correct anymore (e.g. due to occlusion from moving object) so we need to have inputTexel influence the reflections more
+        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, (1. - alpha) * 0.25);
+    } else if (samples > 4. && movement < FLOAT_EPSILON && length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
         // this will prevent the appearing of distracting colorful dots around the edge of a reflection once the camera has stopped moving
         newColor = lastFrameReflectionsTexel.rgb;
+    } else if (1. / samples >= 1. - temporalResolveMix) {
+        // the default way to sample the reflections evenly for the first "1 / temporalResolveMix" frames
+        newColor = lastFrameReflectionsTexel.rgb * (temporalResolveMix) + inputTexel.rgb * (1. - temporalResolveMix);
+    } else {
+        // default method that samples quite subtly
+        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
-
-    if (alpha < 1.) newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, (1. - alpha) * 0.25);
 
     gl_FragColor = vec4(vec3(newColor), alpha);
 #else

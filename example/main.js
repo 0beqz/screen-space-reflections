@@ -80,7 +80,7 @@ new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
 	// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
 })
 
-let params = {
+const params = {
 	enabled: true,
 	floorRoughness: 1,
 	floorNormalScale: 1,
@@ -91,7 +91,7 @@ let params = {
 	temporalResolveMix: 0.9,
 	maxSamples: 0,
 	staticNoise: false,
-	ENABLE_BLUR: true,
+	ENABLE_BLUR: false,
 	blurMix: 0,
 	blurKernelSize: 5,
 	blurSharpness: 7.07,
@@ -144,8 +144,11 @@ controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.465034267006313
 const defaultParams = { ...params }
 
 const ssrEffect = new SSREffect(scene, camera, params)
-composer.addPass(new POSTPROCESSING.EffectPass(camera, ssrEffect))
 window.ssrEffect = ssrEffect
+
+let ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
+composer.addPass(ssrPass)
+window.ssrPass = ssrPass
 
 const gltflLoader = new GLTFLoader()
 
@@ -307,37 +310,39 @@ pane.on("change", ev => {
 	}
 })
 
-// eslint-disable-next-line prefer-const
-let renderModesList
-
 pane.addInput(params, "enabled").on("change", () => {
-	ssrEffect.fullscreenMaterial.defines.RENDER_MODE = params.enabled ? 0 : 4
-	renderModesList.value = ssrEffect.fullscreenMaterial.defines.RENDER_MODE
-	ssrEffect.fullscreenMaterial.needsUpdate = true
+	if (params.enabled) {
+		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
+		composer.addPass(ssrPass)
+		window.ssrPass = ssrPass
+	} else {
+		composer.removePass(ssrPass)
+		window.ssrPass = null
+	}
 })
 
 const optionsFolder = pane.addFolder({ title: "Options" })
 
-renderModesList = optionsFolder
-	.addBlade({
-		view: "list",
-		label: "Render Mode",
-		options: [
-			{ text: "Default", value: 0 },
-			{ text: "Reflections", value: 1 },
-			{ text: "Raw Reflections", value: 2 },
-			{ text: "Blurred Reflections", value: 3 },
-			{ text: "Input Frame", value: 4 },
-			{ text: "Blur Mix Value", value: 5 }
-		],
-		value: 0
-	})
-	.on("change", ev => {
-		const { value } = ev
+// const renderModesList = optionsFolder
+// 	.addBlade({
+// 		view: "list",
+// 		label: "Render Mode",
+// 		options: [
+// 			{ text: "Default", value: 0 },
+// 			{ text: "Reflections", value: 1 },
+// 			{ text: "Raw Reflections", value: 2 },
+// 			{ text: "Blurred Reflections", value: 3 },
+// 			{ text: "Input Frame", value: 4 },
+// 			{ text: "Blur Mix Value", value: 5 }
+// 		],
+// 		value: 0
+// 	})
+// 	.on("change", ev => {
+// 		const { value } = ev
 
-		ssrEffect.fullscreenMaterial.defines.RENDER_MODE = value
-		ssrEffect.fullscreenMaterial.needsUpdate = true
-	})
+// 		ssrEffect.fullscreenMaterial.defines.RENDER_MODE = value
+// 		ssrEffect.fullscreenMaterial.needsUpdate = true
+// 	})
 
 optionsFolder.addInput(params, "resolutionScale", { min: 0.125, max: 1, step: 0.125 })
 optionsFolder.addInput(params, "temporalResolve")
@@ -487,20 +492,20 @@ document.body.appendChild(stats.dom)
 
 const clock = new THREE.Clock()
 
-let goRight = true
+// let goRight = true
 
 const loop = () => {
 	const dt = clock.getDelta()
 
-	let box = scene.getObjectByName("box")
+	// let box = scene.getObjectByName("box")
 
-	const val = goRight ? 2 : -2
-	box.position.z += val * dt * 0.875
-	if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
-		box.position.z = val
-		goRight = !goRight
-	}
-	box.updateMatrixWorld()
+	// const val = goRight ? 2 : -2
+	// box.position.z += val * dt * 0.875
+	// if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
+	// 	box.position.z = val
+	// 	goRight = !goRight
+	// }
+	// box.updateMatrixWorld()
 
 	stats.begin()
 

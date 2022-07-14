@@ -1,10 +1,10 @@
 ﻿import { Pass } from "postprocessing"
-import { Matrix4, NearestFilter, ShaderMaterial, Uniform, WebGLRenderTarget } from "three"
+import { NearestFilter, ShaderMaterial, Uniform, WebGLRenderTarget } from "three"
 import vertexShader from "./material/shader/basicVertexShader.vert"
 import fragmentShader from "./material/shader/composeReflectionsShader.frag"
 
 export class ComposeReflectionsPass extends Pass {
-	constructor(ssrPass) {
+	constructor() {
 		super("ComposeReflectionsPass")
 
 		this.renderTarget = new WebGLRenderTarget(
@@ -22,19 +22,18 @@ export class ComposeReflectionsPass extends Pass {
 				inputTexture: new Uniform(null),
 				lastFrameReflectionsTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
-				_projectionMatrix: new Uniform(new Matrix4()),
-				_lastProjectionMatrix: new Uniform(new Matrix4()),
-				cameraMatrixWorld: new Uniform(new Matrix4()),
-				lastCameraMatrixWorld: new Uniform(new Matrix4()),
 				samples: new Uniform(1),
 				temporalResolveMix: new Uniform(6)
 			},
 			vertexShader,
 			fragmentShader
 		})
+	}
 
-		this.fullscreenMaterial.uniforms._projectionMatrix.value = ssrPass._camera.projectionMatrix
-		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = ssrPass._camera.matrixWorld
+	dispose() {
+		this.renderTarget.dispose()
+
+		this.fullscreenMaterial.dispose()
 	}
 
 	setSize(width, height) {

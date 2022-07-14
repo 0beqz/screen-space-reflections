@@ -58,7 +58,7 @@ export class SSREffect extends Effect {
 
 	constructor(scene, camera, options = defaultSSROptions) {
 		super("SSRPass", finalFragmentShader, {
-			type: "ComposeReflectionsMaterial",
+			type: "FinalSSRMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
@@ -71,6 +71,7 @@ export class SSREffect extends Effect {
 			]),
 			defines: new Map([["RENDER_MODE", "0"]])
 		})
+
 		this._scene = scene
 		this._camera = camera
 
@@ -83,15 +84,15 @@ export class SSREffect extends Effect {
 		// returns just the calculates reflections
 		this.reflectionsPass = new ReflectionsPass(this, options)
 
-		this.composeReflectionsPass = new ComposeReflectionsPass(this)
-
-		this.uniforms.get("reflectionsTexture").value = this.composeReflectionsPass.renderTarget.texture
+		this.composeReflectionsPass = new ComposeReflectionsPass()
 
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.inputTexture.value =
 			this.reflectionsPass.renderTarget.texture
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value =
 			this.reflectionsPass.lastFrameReflectionsTexture
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.velocityTexture.value = this.reflectionsPass.velocityTexture
+
+		this.uniforms.get("reflectionsTexture").value = this.composeReflectionsPass.renderTarget.texture
 
 		this.setSize(options.width, options.height)
 
@@ -242,9 +243,7 @@ export class SSREffect extends Effect {
 		return this.reflectionsPass.fullscreenMaterial.uniforms
 	}
 
-	update(renderer, inputTexture) {
-		this.samples = this.staticNoise ? 1 : this.samples + 1
-
+	checkNeedsResample() {
 		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
 		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
 
@@ -254,8 +253,26 @@ export class SSREffect extends Effect {
 			this.#lastCameraTransform.position.copy(this._camera.position)
 			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
 		}
+	}
 
-		if (this.maxSamples === 0 || this.samples <= this.maxSamples) {
+	dispose() {
+		super.dispose()
+
+		this.reflectionsPass.dispose()
+		this.composeReflectionsPass.dispose()
+
+		console.log("dispose!")
+	}
+
+	update(renderer, inputTexture) {
+		this.samples = this.staticNoise ? 1 : this.samples + 1
+
+		this.checkNeedsResample()
+
+		// update uniforms
+		this.uniforms.get("samples").value = this.samples
+
+		if (this.staticNoise || this.maxSamples === 0 || this.samples <= this.maxSamples) {
 			// render reflections of current frame
 			this.reflectionsPass.render(renderer, inputTexture)
 
@@ -269,14 +286,5 @@ export class SSREffect extends Effect {
 				renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
 			}
 		}
-
-		// update uniforms
-		this.uniforms.get("samples").value = this.samples
-
-		// save last camera projection matrix and matrix world to compute the velocity in the next frame (for reprojection)
-		this.composeReflectionsPass.fullscreenMaterial.uniforms._lastProjectionMatrix.value.copy(
-			this._camera.projectionMatrix
-		)
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 	}
 }
