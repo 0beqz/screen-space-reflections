@@ -39,7 +39,7 @@ export default [
 	},
 	{
 		input: `./src/index.js`,
-		output: { file: `dist/index.cjs.js`, format: "cjs" },
+		output: { file: `dist/index.cjs`, format: "cjs" },
 		external,
 		plugins: [glslify(), babel(getBabelOptions({ useESModules: false })), resolve({ extensions })]
 	}
