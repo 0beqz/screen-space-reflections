@@ -3,23 +3,15 @@
 Implements performant Screen Space Reflections in three.js.
 <br></br>
 [<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots/1.png">](https://screen-space-reflections.vercel.app/?dancer=true)
-Glossy Reflections
 <br></br>
 [<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//2.png">](https://screen-space-reflections.vercel.app/?dancer=true)
-Clean Reflections
 <br></br>
-[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//3.png">](https://screen-space-reflections.vercel.app/?desert=true)
-Example scene
-
-<br>
 
 ## Demos
 
-- [Dancer with Animated Background](https://screen-space-reflections.vercel.app/?dancer=true)
-
 - [Basic](https://screen-space-reflections.vercel.app/)
 
-- [Desert](https://screen-space-reflections.vercel.app/?desert=true)
+- [Animated Background](https://screen-space-reflections.vercel.app/?dancer=true)
 
 react-three-fiber demos:
 
@@ -54,11 +46,14 @@ npm i screen-space-reflections
 Then add it to your code like so:
 
 ```javascript
-import { SSRPass } from "screen-space-reflections"
+import { SSREffect } from "screen-space-reflections"
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 
-const ssrPass = new SSRPass(scene, camera, options?)
+const ssrEffect = new SSREffect(scene, camera, options?)
+
+const ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
+
 composer.addPass(ssrPass)
 ```
 
@@ -70,6 +65,7 @@ Default values of the optional `options` parameter:
 const options = {
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
+	temporalResolveCorrectionMix: 0.3875,
 	maxSamples: 0,
 	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
@@ -100,27 +96,28 @@ const options = {
 }
 ```
 
-Description:
+<details>
+  <summary>Description of the properties:</summary>
 
-- `width`: width of the SSRPass
+- `width`: width of the SSREffect
 
-- `height`: height of the SSRPass
+- `height`: height of the SSREffect
 
 - `temporalResolve`: whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing"
 
 - `temporalResolveMix`: a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look
 
-- `temporalResolveCorrectionMix`: a value between 0 and 1 to set how much the reprojected reflection should be corrected; higher values will reduce smearing but will result in less flickering at "reflection edges
+- `temporalResolveCorrectionMix`: a value between 0 and 1 to set how much the reprojected reflection should be corrected; higher values will reduce smearing but will result in less flickering at reflection edges
 
 - `maxSamples`: the maximum number of samples for reflections; settings it to 0 means unlimited samples; setting it to a value like 6 can help make camera movements less disruptive when calculating reflections
 
-- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections depending on the roughness and depth of the reflection ray; this option can't be changed during run-time
+- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections with the raw ones depending on the blurMix value
 
 - `blurMix`: how much the blurred reflections should be mixed with the raw reflections
 
 - `blurSharpness`: the sharpness of the Bilateral Filter used to blur reflections
 
-- `blurKernelSize`: the kernel size of the blur pass which is used to blur reflections; higher kernel sizes will result in blurrier reflections with more artifacts
+- `blurKernelSize`: the kernel size of the Bilateral Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts
 
 - `rayStep`: how much the reflection ray should travel in each of its iteration; higher values will give deeper reflections but with more artifacts
 
@@ -156,6 +153,10 @@ Description:
 
 - `USE_NORMALMAP`: if normal maps should be taken account of when calculating reflections
 
+</details>
+
+<br>
+
 ## Features
 
 - Temporal Reprojection to re-use the last frame and thus reduce noise
@@ -164,17 +165,25 @@ Description:
 - Early out cases to compute only possible reflections and boost performance
 - Using an edge-preserving bilateral blur filter to keep details while blurring noise
 
+## What's new in v2
+
+- Introduced Temporal Reprojection to reduce noise for the reflections when moving the camera by reprojection the last frame's reflection into the current one
+- Implemented accumulative sampling by saving and re-using the last frame's reflections to accumulate especially jittered reflections over frames
+- Made all SSR-related options (e.g. `thickness`, `ior`, `rayStep`,...) reactive so that you now just need to set `ssrEffect.rayStep = value` for example to update values
+- Fixed jittering so that it's actually correct from all angles (it used to be less intense the higher you were looking down at a reflection)
+- Removed Kawase Blur in favor of Bilateral Blur to preserve edges and keep details as the blur method of the SSR effect
+- Changed the SSR implementation from a pass to an effect to improve performance
+- Optimizations regarding computation of required buffers and reflections
+
 ## Tips
+
+<details>
+  <summary>Expand to view tips</summary>
 
 ### Getting the right look
 
 SSR usually needs a lot of tweaking before it looks alright in a scene, so using a GUI where you can easily modify all values is highly recommended.
-The demo uses [tweakpane](https://cocopon.github.io/tweakpane/) as the GUI. If you want to use it, check out how it's initalized and used in the demo: https://github.com/0beqz/screen-space-reflections/blob/main/src/index.js.
-<br>
-
-### Handling noise
-
-To smooth out noise from jittering, set the `blurKernelSize` to 2 or 3 and increase `maxRoughness` precisely while using rather low values for `blurWidth` and `blurHeight`. This will blur out reflections the "deeper" they are.
+The demo uses [tweakpane](https://cocopon.github.io/tweakpane/) as the GUI. If you want to use it, check out how it's initalized and used in the demo: https://github.com/0beqz/screen-space-reflections/blob/main/example/main.js.
 <br>
 
 ### Getting rid of artifacts
@@ -215,7 +224,7 @@ However, it will check if a mesh's material's map is a `VideoTexture` and will k
 If your material is not using a `VideoTexture` but is still animated (e.g. it's a custom animated shader material), then you can get updated reflections for it by setting
 `mesh.material.userData.needsUpatedReflections = true`. This will make the SSR effect recalculate its reflections each frame.
 
-### Server Side Rendering
+### Server Side Rendering and `window` being undefined
 
 If you are using Server Side Rendering and don't have access to the `window` object then the SSR effect won't be able to set the correct width and height for its passes.
 So once you have access to the `window` object, set the correct width and height of the SSR effect using:
@@ -224,13 +233,12 @@ So once you have access to the `window` object, set the correct width and height
 ssrEffect.setSize(window.innerWidth, window.innerHeight)
 ```
 
+  </details>
+  <br>
+
 ## Todos
 
-- [x] Add Temporal Filtering to reduce noise
-- [x] Use a Bilateral Filter to reduce noise
 - [ ] Reprojection: support skinned meshes
-- [x] Reprojection blend moving objects well
-- [ ] Reprojection: support for video textures
 - [ ] Proper upsampling to still get quality reflections when using half-res buffers
 
 ## Credits
