@@ -2,9 +2,9 @@
 
 Implements performant Screen Space Reflections in three.js.
 <br></br>
-[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots/1.png">](https://screen-space-reflections.vercel.app/?dancer=true)
+[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots/1.png">](https://screen-space-reflections.vercel.app)
 <br></br>
-[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//2.png">](https://screen-space-reflections.vercel.app/?dancer=true)
+<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//2.png">
 <br></br>
 
 ## Demos
