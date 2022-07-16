@@ -228,7 +228,7 @@ gltflLoader.load(
 		if (urlParams.get("dancer") === "true") useVideoBackground()
 	},
 	ev => {
-		const progress = Math.round((ev.loaded / 5499528) * 100)
+		const progress = Math.round((ev.loaded / 1127388) * 100)
 		document.querySelector("#loading").textContent = progress + "%"
 	}
 )
