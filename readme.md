@@ -167,7 +167,7 @@ const options = {
 
 ## What's new in v2
 
-- Introduced Temporal Reprojection to reduce noise for the reflections when moving the camera by reprojection the last frame's reflection into the current one
+- Introduced Temporal Reprojection to reduce noise for the reflections when moving the camera by reprojecting the last frame's reflections into the current one
 - Implemented accumulative sampling by saving and re-using the last frame's reflections to accumulate especially jittered reflections over frames
 - Made all SSR-related options (e.g. `thickness`, `ior`, `rayStep`,...) reactive so that you now just need to set `ssrEffect.rayStep = value` for example to update values
 - Fixed jittering so that it's actually correct from all angles (it used to be less intense the higher you were looking down at a reflection)
