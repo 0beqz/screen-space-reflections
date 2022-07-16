@@ -119,6 +119,8 @@ export class SSREffect extends Effect {
 					return options[key]
 				},
 				set(value) {
+					if (options[key] === value && needsUpdate) return
+
 					options[key] = value
 
 					if (!noResetSamplesProperties.includes(key)) this.samples = 1

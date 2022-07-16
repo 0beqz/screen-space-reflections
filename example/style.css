@@ -6,6 +6,7 @@
 body,
 html {
 	overflow: hidden;
+	background: black;
 }
 
 .webgl {
@@ -15,4 +16,23 @@ html {
 	width: 100%;
 	height: 100%;
 	background: #000000;
+}
+
+#loading {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: white;
+	font-size: 2rem;
+	letter-spacing: 1px;
+	z-index: 99999;
+	background: black;
+	width: 100vw;
+	height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+		"Segoe UI Emoji";
 }

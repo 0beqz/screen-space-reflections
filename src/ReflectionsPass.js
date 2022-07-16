@@ -16,7 +16,6 @@ import { VelocityPass } from "./passes/VelocityPass.js"
 export class ReflectionsPass extends Pass {
 	#defaultMaterials = {}
 	#normalDepthMaterials = {}
-	#options = {}
 	#USE_MRT = false
 	#webgl1DepthPass = null
 	#webgl1VelocityPass = null
@@ -28,7 +27,6 @@ export class ReflectionsPass extends Pass {
 		this.ssrPass = ssrPass
 		this._scene = ssrPass._scene
 		this._camera = ssrPass._camera
-		this.#options = options
 
 		this.fullscreenMaterial = new ReflectionsMaterial()
 
