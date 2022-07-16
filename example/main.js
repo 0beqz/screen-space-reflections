@@ -152,74 +152,89 @@ const gltflLoader = new GLTFLoader()
 let floorMesh
 let emitterMesh
 
-gltflLoader.load("scene.glb", asset => {
-	scene.add(asset.scene)
-	asset.scene.traverse(c => {
-		if (c.material) {
-			c.material.normalScale.setScalar(1)
-			if (c.name.includes("heli") || c.name.includes("plane")) {
-				c.material.roughness = 0.1
-				c.material.metalness = 1
-				c.material.color.multiplyScalar(0.075)
-			}
+const url = window.location.href + "/scene.glb"
 
-			// c.material.roughness = 0.2
-			// c.material.metalness = 0.9
-			// c.material.color.setScalar(0.8)
-			// c.material.normalScale.setScalar(2.5)
+fetch(url, { method: "HEAD" }).then(result => {
+	const fileSize = result.headers.get("content-length")
 
-			if (c.material.name.toLowerCase().includes("shd")) {
-				c.material.roughness = 0.1
-				c.material.metalness = 0.6
-				c.material.color.multiplyScalar(0.08)
-			}
+	gltflLoader.load(
+		url,
+		asset => {
+			document.querySelector("#loading").remove()
+
+			scene.add(asset.scene)
+			asset.scene.traverse(c => {
+				if (c.material) {
+					c.material.normalScale.setScalar(1)
+					if (c.name.includes("heli") || c.name.includes("plane")) {
+						c.material.roughness = 0.1
+						c.material.metalness = 1
+						c.material.color.multiplyScalar(0.075)
+					}
+
+					// c.material.roughness = 0.2
+					// c.material.metalness = 0.9
+					// c.material.color.setScalar(0.8)
+					// c.material.normalScale.setScalar(2.5)
+
+					if (c.material.name.toLowerCase().includes("shd")) {
+						c.material.roughness = 0.1
+						c.material.metalness = 0.6
+						c.material.color.multiplyScalar(0.08)
+					}
+				}
+
+				c.updateMatrixWorld()
+
+				if (c.name === "Plane") floorMesh = c
+
+				if (c.name === "Cube") {
+					emitterMesh = c
+					c.material.emissiveMap = null
+					c.material.emissive.setScalar(0)
+					c.material.roughness = 3
+
+					c.material.side = THREE.FrontSide
+				}
+			})
+
+			const box = new THREE.Mesh(
+				new THREE.BoxBufferGeometry(2, 2, 2),
+				new THREE.MeshStandardMaterial({
+					color: 0,
+					metalness: 1,
+					roughness: 0
+				})
+			)
+			box.position.set(4, 1, 4)
+			box.updateMatrixWorld()
+
+			const box2 = new THREE.Mesh(
+				new THREE.CylinderBufferGeometry(0.5, 0.5, 3, 32, 32),
+				new THREE.MeshStandardMaterial({
+					color: 0,
+					metalness: 1,
+					roughness: 0
+				})
+			)
+			box2.position.set(4, 1, -3.5)
+			box2.updateMatrixWorld()
+
+			box.name = "box"
+
+			scene.add(box)
+			scene.add(box2)
+
+			loop()
+
+			const urlParams = new URLSearchParams(window.location.search)
+			if (urlParams.get("dancer") === "true") useVideoBackground()
+		},
+		ev => {
+			const progress = Math.round((ev.loaded / fileSize) * 100)
+			document.querySelector("#loading").textContent = progress + "%"
 		}
-
-		c.updateMatrixWorld()
-
-		if (c.name === "Plane") floorMesh = c
-
-		if (c.name === "Cube") {
-			emitterMesh = c
-			c.material.emissiveMap = null
-			c.material.emissive.setScalar(0)
-			c.material.roughness = 3
-
-			c.material.side = THREE.FrontSide
-		}
-	})
-
-	const box = new THREE.Mesh(
-		new THREE.BoxBufferGeometry(2, 2, 2),
-		new THREE.MeshStandardMaterial({
-			color: 0,
-			metalness: 1,
-			roughness: 0
-		})
 	)
-	box.position.set(4, 1, 4)
-	box.updateMatrixWorld()
-
-	const box2 = new THREE.Mesh(
-		new THREE.CylinderBufferGeometry(0.5, 0.5, 3, 32, 32),
-		new THREE.MeshStandardMaterial({
-			color: 0,
-			metalness: 1,
-			roughness: 0
-		})
-	)
-	box2.position.set(4, 1, -3.5)
-	box2.updateMatrixWorld()
-
-	box.name = "box"
-
-	scene.add(box)
-	scene.add(box2)
-
-	loop()
-
-	const urlParams = new URLSearchParams(window.location.search)
-	if (urlParams.get("dancer") === "true") useVideoBackground()
 })
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
