@@ -15,7 +15,6 @@ export class VelocityPass extends Pass {
 	#defaultMaterials = {}
 	#velocityMaterials = {}
 	#prevProjectionMatrix = new Matrix4()
-	#prevViewMatrix = new Matrix4()
 
 	constructor(scene, camera) {
 		super("VelocityPass")
@@ -55,7 +54,10 @@ export class VelocityPass extends Pass {
 
 				const velocityMaterial = this.#velocityMaterials[c.material.uuid]
 
-				velocityMaterial.uniforms.prevModelViewMatrix.value.multiplyMatrices(this.#prevViewMatrix, c.matrixWorld)
+				velocityMaterial.uniforms.prevModelViewMatrix.value.multiplyMatrices(
+					this._camera.matrixWorldInverse,
+					c.matrixWorld
+				)
 				velocityMaterial.uniforms.prevProjectionMatrix.value = this.#prevProjectionMatrix
 
 				if (c.userData.prevModelViewMatrix) {
@@ -87,7 +89,7 @@ export class VelocityPass extends Pass {
 			if (c.material) {
 				if (c.userData.prevModelViewMatrix === undefined) c.userData.prevModelViewMatrix = new Matrix4()
 
-				c.userData.prevModelViewMatrix.multiplyMatrices(this.#prevViewMatrix, c.matrixWorld)
+				c.userData.prevModelViewMatrix.multiplyMatrices(this._camera.matrixWorldInverse, c.matrixWorld)
 
 				c.material = this.#defaultMaterials[c.material._originalUuid]
 			}
@@ -103,7 +105,6 @@ export class VelocityPass extends Pass {
 
 		this.#unsetVelocityMaterialInScene()
 
-		this.#prevViewMatrix.copy(this._camera.matrixWorldInverse)
 		this.#prevProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 }

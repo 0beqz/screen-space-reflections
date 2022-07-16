@@ -225,17 +225,17 @@ export class ReflectionsPass extends Pass {
 	}
 
 	render(renderer, inputTexture) {
+		this.#setNormalDepthRoughnessMaterialInScene()
+		renderer.setRenderTarget(this.gBuffersRenderTarget)
+		this.renderPass.render(renderer, this.gBuffersRenderTarget, this.gBuffersRenderTarget)
+		this.#unsetNormalDepthRoughnessMaterialInScene()
+
 		// render depth and velocity in seperate passes
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
 
 			if (this.ssrPass.temporalResolve) this.#webgl1VelocityPass.render(renderer, inputTexture)
 		}
-
-		this.#setNormalDepthRoughnessMaterialInScene()
-		renderer.setRenderTarget(this.gBuffersRenderTarget)
-		this.renderPass.render(renderer, this.gBuffersRenderTarget, this.gBuffersRenderTarget)
-		this.#unsetNormalDepthRoughnessMaterialInScene()
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.ssrPass.samples
