@@ -1,3 +1,3 @@
-﻿import { SSRPass } from "./SSRPass"
+﻿import { SSREffect, defaultSSROptions } from "./SSREffect"
 
-export { SSRPass }
+export { SSREffect, defaultSSROptions }
