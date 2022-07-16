@@ -5,11 +5,10 @@ uniform sampler2D inputTexture;
 uniform sampler2D lastFrameReflectionsTexture;
 uniform sampler2D velocityTexture;
 
-uniform float width;
-uniform float height;
-
 uniform float samples;
+uniform float maxSamples;
 uniform float temporalResolveMix;
+uniform float temporalResolveCorrectionMix;
 
 varying vec2 vUv;
 
@@ -37,57 +36,67 @@ void main() {
 
     vec4 lastFrameReflectionsTexel;
 
+    vec3 newColor;
+
 #ifdef TEMPORAL_RESOLVE
     vec2 velUv = texture2D(velocityTexture, vUv).xy;
-    vec2 reprojectedUv = vUv - velUv;
-
     float movement = length(velUv) * 100.;
 
-    // check if reprojected UV is valid
-    if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
-        lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
+    // if samples is 1 then the camera should have moved and we should reproject the last frame
+    if (samples < 2.) {
+        vec2 reprojectedUv = vUv - velUv;
 
-        // neighborhood clamping (only for the first sample where the camera just moved)
-        if (samples < 2.) {
-            ivec2 size = textureSize(inputTexture, 0);
-            vec2 pxSize = vec2(float(size.x), float(size.y));
+        // check if reprojected UV is valid
+        if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
+            lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
 
-            vec2 px = 1. / pxSize;
+            // neighborhood clamping (only for the first sample where the camera just moved)
+            if (samples < 2.) {
+                ivec2 size = textureSize(inputTexture, 0);
+                vec2 pxSize = vec2(float(size.x), float(size.y));
 
-            // get neighbor pixels
-            vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
-            vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
-            vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
-            vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
-            vec3 c11 = inputTexel.rgb;
-            vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
-            vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
-            vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
-            vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
+                vec2 px = 1. / pxSize;
 
-            vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
-            vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+                // get neighbor pixels
+                vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
+                vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
+                vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
+                vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
+                vec3 c11 = inputTexel.rgb;
+                vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
+                vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
+                vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
+                vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
 
-            // reduces noise when moving camera and not using temporal resolving
-            // #ifndef TEMPORAL_RESOLVE
-            // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
-            // neighborColor /= 9.;
-            // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
-            // #endif
+                vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+                vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
 
-            vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
+                // reduces noise when moving camera and not using temporal resolving
+                // #ifndef TEMPORAL_RESOLVE
+                // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
+                // neighborColor /= 9.;
+                // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
+                // #endif
 
-            lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, 0.3875);
+                vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
+
+                lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, temporalResolveCorrectionMix);
+            }
+        } else {
+            lastFrameReflectionsTexel.rgb = inputTexel.rgb;
         }
     } else {
-        lastFrameReflectionsTexel.rgb = inputTexel.rgb;
+        // the camera didn't move and we can just use the last frame using the UV coordinates of this texel
+        lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
     }
 
     float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
     alpha = samples < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
 
-    // calculate output color depending on the samples and lightness of the color
-    vec3 newColor;
+    if (maxSamples != 0. && samples > maxSamples && alpha > 1. - FLOAT_EPSILON) {
+        gl_FragColor = lastFrameReflectionsTexel;
+        return;
+    }
 
     if (alpha < 1.) {
         // the reflections aren't correct anymore (e.g. due to occlusion from moving object) so we need to have inputTexel influence the reflections more
@@ -109,11 +118,24 @@ void main() {
     gl_FragColor = vec4(newColor, alpha);
 #else
     lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
+    vec2 velUv = texture2D(velocityTexture, vUv).xy;
+    float movement = length(velUv) * 100.;
 
-    // smoothing for higher samples to get rid of "bland reflections" after a high amount of samples
-    float samplesMultiplier = pow(samples / 32., 4.) + 1.;
-    if (samples > 1.) inputTexel.rgb = lastFrameReflectionsTexel.rgb * (1. - 1. / (samples * samplesMultiplier)) + inputTexel.rgb / (samples * samplesMultiplier);
+    float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
+    alpha = samples < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
 
-    gl_FragColor = vec4(inputTexel.rgb, inputTexel.a);
+    if (maxSamples != 0. && samples > maxSamples && alpha > 1. - FLOAT_EPSILON) {
+        newColor = lastFrameReflectionsTexel.rgb;
+    } else {
+        // smoothing for higher samples to get rid of "bland reflections" after a high amount of samples
+        float samplesMultiplier = pow(samples / 32., 4.) + 1.;
+        if (samples > 1. && alpha > 1. - FLOAT_EPSILON) {
+            newColor = lastFrameReflectionsTexel.rgb * (1. - 1. / (samples * samplesMultiplier)) + inputTexel.rgb / (samples * samplesMultiplier);
+        } else {
+            newColor = inputTexel.rgb;
+        }
+    }
+
+    gl_FragColor = vec4(newColor, alpha);
 #endif
 }

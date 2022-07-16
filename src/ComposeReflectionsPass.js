@@ -4,8 +4,10 @@ import vertexShader from "./material/shader/basicVertexShader.vert"
 import fragmentShader from "./material/shader/composeReflectionsShader.frag"
 
 export class ComposeReflectionsPass extends Pass {
-	constructor() {
+	constructor(ssrEffect) {
 		super("ComposeReflectionsPass")
+
+		this.ssrEffect = ssrEffect
 
 		this.renderTarget = new WebGLRenderTarget(
 			typeof window !== "undefined" ? window.innerWidth : 2000,
@@ -23,7 +25,9 @@ export class ComposeReflectionsPass extends Pass {
 				lastFrameReflectionsTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
 				samples: new Uniform(1),
-				temporalResolveMix: new Uniform(6)
+				maxSamples: new Uniform(0),
+				temporalResolveMix: new Uniform(0.9),
+				temporalResolveCorrectionMix: new Uniform(0.3875)
 			},
 			vertexShader,
 			fragmentShader
@@ -41,6 +45,8 @@ export class ComposeReflectionsPass extends Pass {
 	}
 
 	render(renderer) {
+		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.samples
+
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 	}

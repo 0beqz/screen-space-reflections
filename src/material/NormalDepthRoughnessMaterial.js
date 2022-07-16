@@ -78,6 +78,7 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                     #endif
 
                     #ifdef TEMPORAL_RESOLVE
+                        #ifndef NEEDS_UPDATED_REFLECTIONS
                         transformed = vec3( position );
                         
                         newPosition = modelViewMatrix * vec4( transformed, 1.0 );
@@ -87,6 +88,7 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                         prevPosition = prevProjectionMatrix * prevPosition;
 
                         // gl_Position = mix( newPosition, prevPosition, interpolateGeometry );
+                        #endif
                     #endif
 
                 }
@@ -143,17 +145,21 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                         gDepth = depthColor;
 
                         #ifdef TEMPORAL_RESOLVE
-                            vec3 pos0 = prevPosition.xyz / prevPosition.w;
-                            pos0 += 1.0;
-                            pos0 /= 2.0;
+                            #ifdef NEEDS_UPDATED_REFLECTIONS
+                                gVelocity = vec4(1., 1., 1., 1.);
+                            #else
+                                vec3 pos0 = prevPosition.xyz / prevPosition.w;
+                                pos0 += 1.0;
+                                pos0 /= 2.0;
 
-                            vec3 pos1 = newPosition.xyz / newPosition.w;
-                            pos1 += 1.0;
-                            pos1 /= 2.0;
+                                vec3 pos1 = newPosition.xyz / newPosition.w;
+                                pos1 += 1.0;
+                                pos1 /= 2.0;
 
-                            vec3 vel = pos1 - pos0;
-                            
-                            gVelocity = vec4( vel * intensity, 1.0 );
+                                vec3 vel = pos1 - pos0;
+                                
+                                gVelocity = vec4( vel * intensity, 1.0 );
+                            #endif
                         #endif
 
                     #else
