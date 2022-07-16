@@ -11,7 +11,7 @@
 	"rules": {
 		"require-jsdoc": "off",
 		"no-undef": "error",
-		"indent": ["error", "tab"],
+		"indent": ["error", "tab", { "SwitchCase": 1 }],
 		"no-tabs": "off",
 		"linebreak-style": "off",
 		"quotes": ["error", "double"],
