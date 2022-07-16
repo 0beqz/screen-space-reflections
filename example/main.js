@@ -70,14 +70,14 @@ composer.addPass(renderPass)
 // 	const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
 // 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-// 		intensity: 1,
-// 		luminanceThreshold: 0.3,
+// 		intensity: 4,
+// 		luminanceThreshold: 0.4,
 // 		luminanceSmoothing: 0.7,
 // 		kernelSize: POSTPROCESSING.KernelSize.HUGE,
 // 		mipmapBlur: true
 // 	})
 
-// 	composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
+// 	composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
 // })
 
 const params = {
