@@ -96,6 +96,10 @@ export const VelocityShader = {
 			varying vec4 newPosition;
 
 			void main() {
+				#ifdef NEEDS_UPDATED_REFLECTIONS
+					gl_FragColor = vec4(1., 1., 1., 1. );
+					return;
+				#endif
 
 				vec3 pos0 = prevPosition.xyz / prevPosition.w;
 				pos0 += 1.0;

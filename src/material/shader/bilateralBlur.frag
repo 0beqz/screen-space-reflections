@@ -27,12 +27,12 @@ float getViewZ(const float depth) {
     return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
 }
 
-// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(vec3 rgb) {
-    // Algorithm from Chapter 10 of Graphics Shaders.
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(rgb, W);
-}
+// // source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
+// float czm_luminance(vec3 rgb) {
+//     // Algorithm from Chapter 10 of Graphics Shaders.
+//     const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+//     return dot(rgb, W);
+// }
 
 vec4 BlurFunction(sampler2D texSource, sampler2D texLinearDepth, vec2 uv, float r, vec4 center_c, float center_d, inout float w_total, in float radius) {
     vec4 c = texture2D(texSource, uv);
@@ -41,7 +41,7 @@ vec4 BlurFunction(sampler2D texSource, sampler2D texLinearDepth, vec2 uv, float 
     float BlurSigma = radius * 0.5;
     float BlurFalloff = 1.0 / (2.0 * BlurSigma * BlurSigma);
 
-    float ddiff = (d - center_d) * g_Sharpness * 5.;
+    float ddiff = (d - center_d) * g_Sharpness * 10.;
     float w = exp2(-r * r * BlurFalloff - ddiff * ddiff);
     w_total += w;
 
@@ -51,7 +51,7 @@ vec4 BlurFunction(sampler2D texSource, sampler2D texLinearDepth, vec2 uv, float 
 vec4 blur(sampler2D blurTexture, sampler2D depthTexture) {
     vec4 center_c = texture2D(blurTexture, vUv);
     float center_d = getViewZ(1. / unpackRGBAToDepth(texture2D(depthTexture, vUv)));
-    float luminance = czm_luminance(center_c.rgb);
+    // float luminance = czm_luminance(center_c.rgb);
 
     float radius = kernelRadius;  //(1. - mix(luminance * luminance, 0., 0.5)) * kernelRadius + 1.;
 

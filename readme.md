@@ -69,8 +69,9 @@ Default values of the optional `options` parameter:
 ```javascript
 const options = {
 	temporalResolve: true,
-	temporalResolveMix: 6,
-	staticNoise: false,
+	temporalResolveMix: 0.9,
+	maxSamples: 0,
+	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
 	ENABLE_BLUR: true,
@@ -107,9 +108,13 @@ Description:
 
 - `temporalResolve`: whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing"
 
-- `temporalResolveMix`: an integer factor used to set how much the last frame should be blended in when the camera moves; higher values will result in less noise when moving the camera but more smear
+- `temporalResolveMix`: a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look
 
-- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections depending on the roughness and depth of the reflection ray
+- `temporalResolveCorrectionMix`: a value between 0 and 1 to set how much the reprojected reflection should be corrected; higher values will reduce smearing but will result in less flickering at "reflection edges
+
+- `maxSamples`: the maximum number of samples for reflections; settings it to 0 means unlimited samples; setting it to a value like 6 can help make camera movements less disruptive when calculating reflections
+
+- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections depending on the roughness and depth of the reflection ray; this option can't be changed during run-time
 
 - `blurMix`: how much the blurred reflections should be mixed with the raw reflections
 
@@ -145,7 +150,7 @@ Description:
 
 - `STRETCH_MISSED_RAYS`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
 
-- `USE_MRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run
+- `USE_MRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run; this setting can't be changed during run-time
 
 - `USE_ROUGHNESSMAP`: if roughness maps should be taken account of when calculating reflections
 
@@ -153,11 +158,11 @@ Description:
 
 ## Features
 
-- Temporal Reprojection to reduce noise
-- Jittering and blurring reflections to approximate glossy reflections
+- Temporal Reprojection to re-use the last frame and thus reduce noise
+- Jittering and blurring reflections to approximate rough reflections
 - Using three.js' WebGLMultipleRenderTarget (WebGL2 only) to improve performance when rendering scene normals, depth and roughness
 - Early out cases to compute only possible reflections and boost performance
-- Blurring reflections using Kawase Blur Pass for better performance over a Gaussian Blur Pass
+- Using an edge-preserving bilateral blur filter to keep details while blurring noise
 
 ## Tips
 
@@ -202,6 +207,22 @@ Here are two implementations for three.js and react-three-fiber:
 - [Gist to include box-projected env-maps in three.js](https://gist.github.com/0beqz/8d51b4ae16d68021a09fb504af708fca)
 - [useBoxProjectedEnv in react-three-fiber](https://github.com/pmndrs/drei#useboxprojectedenv)
   <br>
+
+### Getting updated reflections for animated materials
+
+By default, the SSR effect won't really update reflections if the camera is not moving and no mesh in the view is moving.
+However, it will check if a mesh's material's map is a `VideoTexture` and will keep its reflections updated each frame.
+If your material is not using a `VideoTexture` but is still animated (e.g. it's a custom animated shader material), then you can get updated reflections for it by setting
+`mesh.material.userData.needsUpatedReflections = true`. This will make the SSR effect recalculate its reflections each frame.
+
+### Server Side Rendering
+
+If you are using Server Side Rendering and don't have access to the `window` object then the SSR effect won't be able to set the correct width and height for its passes.
+So once you have access to the `window` object, set the correct width and height of the SSR effect using:
+
+```javascript
+ssrEffect.setSize(window.innerWidth, window.innerHeight)
+```
 
 ## Todos
 

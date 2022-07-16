@@ -15,8 +15,8 @@ const zeroVec2 = new Vector2()
 export const defaultSSROptions = {
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
+	temporalResolveCorrectionMix: 0.3875,
 	maxSamples: 0,
-	staticNoise: false,
 	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
@@ -63,11 +63,11 @@ export class SSREffect extends Effect {
 				["inputTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
 				["depthTexture", new Uniform(null)],
-				["samples", new Uniform(1)],
-				["blurMix", new Uniform(0.5)],
-				["g_Sharpness", new Uniform(1)],
+				["samples", new Uniform(0)],
+				["blurMix", new Uniform(0)],
+				["g_Sharpness", new Uniform(0)],
 				["g_InvResolutionDirection", new Uniform(new Vector2())],
-				["kernelRadius", new Uniform(16)]
+				["kernelRadius", new Uniform(0)]
 			]),
 			defines: new Map([["RENDER_MODE", "0"]])
 		})
@@ -84,7 +84,7 @@ export class SSREffect extends Effect {
 		// returns just the calculates reflections
 		this.reflectionsPass = new ReflectionsPass(this, options)
 
-		this.composeReflectionsPass = new ComposeReflectionsPass()
+		this.composeReflectionsPass = new ComposeReflectionsPass(this)
 
 		this.composeReflectionsPass.fullscreenMaterial.uniforms.inputTexture.value =
 			this.reflectionsPass.renderTarget.texture
@@ -121,15 +121,7 @@ export class SSREffect extends Effect {
 				set(value) {
 					options[key] = value
 
-					let resetSamples = true
-					for (const prop of noResetSamplesProperties) {
-						if (prop === key) {
-							resetSamples = false
-							break
-						}
-					}
-
-					if (resetSamples) this.samples = 1
+					if (!noResetSamplesProperties.includes(key)) this.samples = 1
 
 					switch (key) {
 						case "resolutionScale":
@@ -137,13 +129,19 @@ export class SSREffect extends Effect {
 							break
 
 						case "width":
+							if (value === undefined) return
 							this.setSize(value * dpr, options.height)
 							this.uniforms.get("g_InvResolutionDirection").value.set(1 / (value * dpr), 1 / options.height)
 							break
 
 						case "height":
+							if (value === undefined) return
 							this.setSize(options.width, value * dpr)
 							this.uniforms.get("g_InvResolutionDirection").value.set(1 / options.width, 1 / (value * dpr))
+							break
+
+						case "maxSamples":
+							this.composeReflectionsPass.fullscreenMaterial.uniforms.maxSamples.value = this.maxSamples
 							break
 
 						case "blurMix":
@@ -209,6 +207,10 @@ export class SSREffect extends Effect {
 							this.composeReflectionsPass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
 							break
 
+						case "temporalResolveCorrectionMix":
+							this.composeReflectionsPass.fullscreenMaterial.uniforms.temporalResolveCorrectionMix.value = value
+							break
+
 						// must be a uniform
 						default:
 							if (reflectionPassFullscreenMaterialUniformsKeys.includes(key)) {
@@ -234,14 +236,9 @@ export class SSREffect extends Effect {
 			return
 
 		this.composeReflectionsPass.setSize(width, height)
-
 		this.reflectionsPass.setSize(width, height)
 
 		this.#lastSize = { width, height, resolutionScale: this.resolutionScale }
-	}
-
-	get reflectionUniforms() {
-		return this.reflectionsPass.fullscreenMaterial.uniforms
 	}
 
 	checkNeedsResample() {
@@ -261,31 +258,22 @@ export class SSREffect extends Effect {
 
 		this.reflectionsPass.dispose()
 		this.composeReflectionsPass.dispose()
-
-		console.log("dispose!")
 	}
 
 	update(renderer, inputTexture) {
-		this.samples = this.staticNoise ? 1 : this.samples + 1
-
+		this.samples++
 		this.checkNeedsResample()
 
 		// update uniforms
 		this.uniforms.get("samples").value = this.samples
 
-		if (this.staticNoise || this.maxSamples === 0 || this.samples <= this.maxSamples) {
-			// render reflections of current frame
-			this.reflectionsPass.render(renderer, inputTexture)
+		// render reflections of current frame
+		this.reflectionsPass.render(renderer, inputTexture)
 
-			// compose reflection of last and current frame into one reflection
-			this.composeReflectionsPass.fullscreenMaterial.uniforms.samples.value = this.samples
-			this.composeReflectionsPass.render(renderer)
+		// compose reflection of last and current frame into one reflection
+		this.composeReflectionsPass.render(renderer)
 
-			if (!this.staticNoise || this.temporalResolve) {
-				// save reflections of this frame
-				renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
-				renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
-			}
-		}
+		renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
+		renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
 	}
 }

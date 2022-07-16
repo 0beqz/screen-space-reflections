@@ -4,7 +4,7 @@ import {
 	HalfFloatType,
 	NearestFilter,
 	RGBAFormat,
-	UnsignedByteType,
+	VideoTexture,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
@@ -21,8 +21,6 @@ export class ReflectionsPass extends Pass {
 	#webgl1DepthPass = null
 	#webgl1VelocityPass = null
 	samples = 1
-
-	staticNoise = false
 
 	constructor(ssrPass, options = {}) {
 		super("ReflectionsPass")
@@ -51,17 +49,12 @@ export class ReflectionsPass extends Pass {
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 3, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter,
-				generateMipmaps: true,
 				type: HalfFloatType
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[0]
 			this.depthTexture = this.gBuffersRenderTarget.texture[1]
 			this.velocityTexture = this.gBuffersRenderTarget.texture[2]
-
-			this.depthTexture.type = UnsignedByteType
-
-			this.fullscreenMaterial.defines.USE_ROUGHNESSMAP = true
 		} else {
 			// depth pass
 			this.#webgl1DepthPass = new DepthPass(this._scene, this._camera)
@@ -92,6 +85,8 @@ export class ReflectionsPass extends Pass {
 		}
 
 		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.lastFrameReflectionsTexture.minFilter = NearestFilter
+		this.lastFrameReflectionsTexture.magFilter = NearestFilter
 
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
@@ -104,6 +99,19 @@ export class ReflectionsPass extends Pass {
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssrPass.resolutionScale, height * this.ssrPass.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width * this.ssrPass.resolutionScale, height * this.ssrPass.resolutionScale)
+
+		this.lastFrameReflectionsTexture.dispose()
+		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.lastFrameReflectionsTexture.minFilter = NearestFilter
+		this.lastFrameReflectionsTexture.magFilter = NearestFilter
+
+		this.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value = this.lastFrameReflectionsTexture
+		this.fullscreenMaterial.needsUpdate = true
+
+		this.ssrPass.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value =
+			this.lastFrameReflectionsTexture
+
+		this.ssrPass.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
 
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.setSize(width, height)
@@ -164,8 +172,6 @@ export class ReflectionsPass extends Pass {
 					if (this.#USE_MRT) normalDepthMaterial.defines.USE_MRT = ""
 					normalDepthMaterial._originalUuid = c.material.uuid
 
-					normalDepthMaterial.extensions.derivatives = true
-
 					Object.defineProperty(normalDepthMaterial.uniforms.roughness, "value", {
 						get() {
 							return origMat.roughness || 0
@@ -184,6 +190,21 @@ export class ReflectionsPass extends Pass {
 
 				this.#keepMaterialUpdated(normalDepthMaterial, origMat, "normalMap", "USE_NORMALMAP")
 				this.#keepMaterialUpdated(normalDepthMaterial, origMat, "roughnessMap", "USE_ROUGHNESSMAP")
+
+				const needsUpatedReflections =
+					c.material.userData.needsUpatedReflections || c.material.map instanceof VideoTexture
+
+				// mark the material as "ANIMATED" so that, when using temporal resolve, we get updated reflections
+				if (needsUpatedReflections && !Object.keys(normalDepthMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
+					normalDepthMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
+					normalDepthMaterial.needsUpdate = true
+				} else if (
+					!needsUpatedReflections &&
+					Object.keys(normalDepthMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")
+				) {
+					delete normalDepthMaterial.defines.NEEDS_UPDATED_REFLECTIONS
+					normalDepthMaterial.needsUpdate = true
+				}
 
 				c.material = normalDepthMaterial
 			}
@@ -220,8 +241,6 @@ export class ReflectionsPass extends Pass {
 		this.fullscreenMaterial.uniforms.samples.value = this.ssrPass.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
-		this.fullscreenMaterial.uniforms.width.value = this.renderTarget.width
-		this.fullscreenMaterial.uniforms.height.value = this.renderTarget.height
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

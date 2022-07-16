@@ -66,19 +66,19 @@ window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
-new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
-	const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
+// new POSTPROCESSING.LUT3dlLoader().load("starwars.3dl", lutTexture => {
+// 	const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
-	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 1,
-		luminanceThreshold: 0.3,
-		luminanceSmoothing: 0.7,
-		kernelSize: POSTPROCESSING.KernelSize.HUGE,
-		mipmapBlur: true
-	})
+// 	const bloomEffect = new POSTPROCESSING.BloomEffect({
+// 		intensity: 1,
+// 		luminanceThreshold: 0.3,
+// 		luminanceSmoothing: 0.7,
+// 		kernelSize: POSTPROCESSING.KernelSize.HUGE,
+// 		mipmapBlur: true
+// 	})
 
-	// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
-})
+// 	composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
+// })
 
 const params = {
 	enabled: true,
@@ -86,8 +86,8 @@ const params = {
 	resolutionScale: 1,
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
+	temporalResolveCorrectionMix: 0.3875,
 	maxSamples: 0,
-	staticNoise: false,
 	ENABLE_BLUR: true,
 	blurMix: 0,
 	blurKernelSize: 5,
@@ -97,9 +97,9 @@ const params = {
 	maxRoughness: 0.99,
 	ENABLE_JITTERING: true,
 	jitter: 0,
-	jitterRough: 2,
-	jitterSpread: 3.37,
-	roughnessFadeOut: 0.51,
+	jitterRough: 1.24,
+	jitterSpread: 4,
+	roughnessFadeOut: 1,
 	rayFadeOut: 1.03,
 	maxDepth: 1,
 	thickness: 3.5,
@@ -111,7 +111,7 @@ const params = {
 	STRETCH_MISSED_RAYS: false,
 	floorRoughness: 2.6,
 	floorNormalScale: 1,
-	useMRT: true,
+	USE_MRT: true,
 	USE_NORMALMAP: true,
 	USE_ROUGHNESSMAP: true
 }
@@ -216,82 +216,53 @@ gltflLoader.load("scene.glb", asset => {
 	scene.add(box)
 	scene.add(box2)
 
-	// if (floorMesh) floorMesh.material.roughness = 0
-	// if (floorMesh) floorMesh.material.roughnessMap = null
-	// floorMesh.material.map.repeat.setScalar(16)
-
 	loop()
 
 	const urlParams = new URLSearchParams(window.location.search)
-	if (urlParams.get("dancer") === "true") useVideoBackgroundAndDancer()
+	if (urlParams.get("dancer") === "true") useVideoBackground()
 })
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-// new RGBELoader().load("env.hdr", tex => {
-// 	const envMap = pmremGenerator.fromEquirectangular(tex).texture
-// 	envMap.minFilter = THREE.LinearFilter
-
-// 	scene.environment = envMap
-// 	scene.background = envMap
-// })
-
 let mixer
 let skinMesh
-let didLoadVideoBackgroundAndDancer = false
 
-const useVideoBackgroundAndDancer = () => {
-	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
+const useVideoBackground = () => {
+	if (emitterMesh.material._videoMap) {
+		emitterMesh.material.map = emitterMesh.material._videoMap
+	} else {
+		const video = document.getElementById("video")
+		video.src = "video.mp4"
+		video.playbackRate = 2
+		video.play()
+		const videoTexture = new THREE.VideoTexture(video)
+		emitterMesh.material._oldMap = emitterMesh.material.map
+		emitterMesh.material.map = videoTexture
+		emitterMesh.material._videoMap = videoTexture
 
-	params.blurKernelSize = 2
-	params.ENABLE_JITTERING = true
-	params.jitter = 0.18
-	params.jitterRough = 0.36
-	params.jitterSpread = 0.34
-	params.intensity = 2
-	params.roughnessFadeOut = 1
-	params.rayFadeOut = 1.14
-	params.MAX_STEPS = 64
-	params.rayStep = 0.2
+		ssrEffect.samples = 0
+	}
 
-	params.ior = 1.23
+	// gltflLoader.load("skin.glb", asset => {
+	// 	skinMesh = asset.scene
+	// 	skinMesh.scale.multiplyScalar(2.1)
+	// 	skinMesh.position.set(2.5, 0, 0)
+	// 	skinMesh.rotation.y += Math.PI / 2
+	// 	skinMesh.updateMatrixWorld()
+	// 	skinMesh.traverse(c => {
+	// 		if (c.material) {
+	// 			c.material.roughness = 0
+	// 			c.material.metalness = 1
+	// 		}
+	// 	})
+	// 	scene.add(asset.scene)
+	// 	mixer = new THREE.AnimationMixer(skinMesh)
+	// 	const clips = asset.animations
 
-	params.floorRoughness = 1.5
-	params.floorNormalScale = 1.85
-
-	pane.refresh()
-
-	if (didLoadVideoBackgroundAndDancer) return
-	didLoadVideoBackgroundAndDancer = true
-
-	const video = document.getElementById("video")
-	video.src = "video.mp4"
-	video.playbackRate = 2
-	video.play()
-	window.video = video
-	const videoTexture = new THREE.VideoTexture(video)
-	emitterMesh.material.map = videoTexture
-
-	gltflLoader.load("skin.glb", asset => {
-		skinMesh = asset.scene
-		skinMesh.scale.multiplyScalar(2.1)
-		skinMesh.position.set(2.5, 0, 0)
-		skinMesh.rotation.y += Math.PI / 2
-		skinMesh.updateMatrixWorld()
-		skinMesh.traverse(c => {
-			if (c.material) {
-				c.material.roughness = 0
-				c.material.metalness = 1
-			}
-		})
-		scene.add(asset.scene)
-		mixer = new THREE.AnimationMixer(skinMesh)
-		const clips = asset.animations
-
-		const action = mixer.clipAction(clips[0])
-		action.play()
-	})
+	// 	const action = mixer.clipAction(clips[0])
+	// 	action.play()
+	// })
 }
 
 const pane = new Pane()
@@ -318,33 +289,11 @@ pane.addInput(params, "enabled").on("change", () => {
 })
 
 const optionsFolder = pane.addFolder({ title: "Options" })
-
-// const renderModesList = optionsFolder
-// 	.addBlade({
-// 		view: "list",
-// 		label: "Render Mode",
-// 		options: [
-// 			{ text: "Default", value: 0 },
-// 			{ text: "Reflections", value: 1 },
-// 			{ text: "Raw Reflections", value: 2 },
-// 			{ text: "Blurred Reflections", value: 3 },
-// 			{ text: "Input Frame", value: 4 },
-// 			{ text: "Blur Mix Value", value: 5 }
-// 		],
-// 		value: 0
-// 	})
-// 	.on("change", ev => {
-// 		const { value } = ev
-
-// 		ssrEffect.fullscreenMaterial.defines.RENDER_MODE = value
-// 		ssrEffect.fullscreenMaterial.needsUpdate = true
-// 	})
-
 optionsFolder.addInput(params, "resolutionScale", { min: 0.125, max: 1, step: 0.125 })
 optionsFolder.addInput(params, "temporalResolve")
 optionsFolder.addInput(params, "temporalResolveMix", { min: 0, max: 0.975, step: 0.001 })
+optionsFolder.addInput(params, "temporalResolveCorrectionMix", { min: 0, max: 1, step: 0.0001 })
 optionsFolder.addInput(params, "maxSamples", { min: 0, max: 16, step: 1 })
-optionsFolder.addInput(params, "staticNoise")
 optionsFolder.addInput(params, "rayStep", { min: 0.001, max: 5, step: 0.001 })
 optionsFolder.addInput(params, "intensity", { min: 0.1, max: 5, step: 0.01 })
 optionsFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
@@ -387,18 +336,10 @@ blurFolder.addInput(params, "blurSharpness", { min: 0, max: 5, step: 0.01 })
 
 const jitterFolder = pane.addFolder({ title: "Jitter", expanded: false })
 
-jitterFolder.addInput(params, "ENABLE_JITTERING").on("change", () => {
-	if (params.ENABLE_JITTERING) {
-		ssrEffect.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING = ""
-	} else {
-		delete ssrEffect.reflectionsPass.fullscreenMaterial.defines.USE_JITTERING
-	}
-	ssrEffect.reflectionsPass.fullscreenMaterial.needsUpdate = true
-})
-
+jitterFolder.addInput(params, "ENABLE_JITTERING")
 jitterFolder.addInput(params, "jitter", { min: 0, max: 0.5, step: 0.01 })
 jitterFolder.addInput(params, "jitterRough", { min: 0, max: 3, step: 0.01 })
-jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 3, step: 0.01 })
+jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 5, step: 0.01 })
 
 const definesFolder = pane.addFolder({ title: "Steps", expanded: false })
 
@@ -431,54 +372,21 @@ presetsFolder
 	.on("click", () => {
 		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
 		pane.refresh()
+
+		if (emitterMesh.material._oldMap) emitterMesh.material.map = emitterMesh.material._oldMap
+
+		ssrEffect.samples = 0
 	})
 
 presetsFolder
 	.addButton({
-		title: "Fast"
+		title: "Animated Background"
 	})
 	.on("click", () => {
 		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
-
-		params.maxRoughness = 0.06
-		params.width = 1359
-		params.height = 804
-		params.blurKernelSize = 1
-		params.ENABLE_JITTERING = false
-		params.maxDepthDifference = 6
-
-		params.rayFadeOut = 2.72
-
-		params.rayStep = 3.232
-		params.MAX_STEPS = 4
-		params.NUM_BINARY_SEARCH_STEPS = 7
-
 		pane.refresh()
-	})
 
-presetsFolder
-	.addButton({
-		title: "High Quality"
-	})
-	.on("click", () => {
-		for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
-
-		params.MAX_STEPS = 256
-		params.rayStep = 0.055
-		params.intensity = 1
-		params.floorNormalScale = 0
-		params.floorRoughness = 0
-		params.maxRoughness = 0
-
-		pane.refresh()
-	})
-
-presetsFolder
-	.addButton({
-		title: "Video Background with Dancer"
-	})
-	.on("click", () => {
-		useVideoBackgroundAndDancer()
+		useVideoBackground()
 	})
 
 const stats = new Stats()
@@ -510,14 +418,6 @@ const loop = () => {
 		mixer.update(dt)
 		skinMesh.updateMatrixWorld()
 		skinMesh = null
-	}
-
-	if (ssrEffect) {
-		for (const key of Object.keys(params)) {
-			if (key in ssrEffect.reflectionUniforms) {
-				ssrEffect.reflectionUniforms[key].value = params[key]
-			}
-		}
 	}
 
 	composer.render()

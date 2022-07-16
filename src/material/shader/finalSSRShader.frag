@@ -20,14 +20,12 @@ uniform float blurMix;
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);
 
-    vec3 reflectionClr = reflectionsTexel.xyz * 1.;
+    vec3 reflectionClr = reflectionsTexel.xyz;
 
 #ifdef ENABLE_BLUR
     vec4 blurredReflectionsTexel = blur(reflectionsTexture, depthTexture);
 
     reflectionClr = mix(reflectionClr, blurredReflectionsTexel.xyz, blurMix);
-    // reflectionClr = 2.5 * mix(reflectionClr, vec3(0.), 0.35 * pow(SQRT_3 - length(reflectionClr), 1.5));
-    reflectionClr = max(vec3(0.), reflectionClr);
 #endif
 
 #if RENDER_MODE == MODE_DEFAULT
@@ -49,7 +47,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 #endif
 
 #if RENDER_MODE == MODE_INPUT
-    outputColor = vec4(inputTexel.xyz, 1.);
+    outputColor = vec4(inputColor.xyz, 1.);
 #endif
 
 #if RENDER_MODE == MODE_BLUR_MIX
