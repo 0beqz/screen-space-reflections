@@ -16,7 +16,6 @@ import { VelocityPass } from "./passes/VelocityPass.js"
 const isWebGL2Available = () => {
 	try {
 		const canvas = document.createElement("canvas")
-		console.log("yes")
 		return !!(window.WebGL2RenderingContext && canvas.getContext("webgl2"))
 	} catch (e) {
 		return false
