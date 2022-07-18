@@ -8,10 +8,20 @@ import {
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
-import WEBGL from "three/examples/jsm/capabilities/WebGL.js"
 import { NormalDepthRoughnessMaterial } from "./material/NormalDepthRoughnessMaterial.js"
 import { ReflectionsMaterial } from "./material/ReflectionsMaterial.js"
 import { VelocityPass } from "./passes/VelocityPass.js"
+
+// from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
+const isWebGL2Available = () => {
+	try {
+		const canvas = document.createElement("canvas")
+		console.log("yes")
+		return !!(window.WebGL2RenderingContext && canvas.getContext("webgl2"))
+	} catch (e) {
+		return false
+	}
+}
 
 export class ReflectionsPass extends Pass {
 	#defaultMaterials = {}
@@ -40,7 +50,7 @@ export class ReflectionsPass extends Pass {
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		this.#USE_MRT = options.USE_MRT && WEBGL.isWebGL2Available()
+		this.#USE_MRT = options.USE_MRT && isWebGL2Available()
 
 		if (this.#USE_MRT) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
