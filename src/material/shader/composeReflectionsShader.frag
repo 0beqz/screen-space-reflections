@@ -39,54 +39,60 @@ void main() {
     vec3 newColor;
 
 #ifdef TEMPORAL_RESOLVE
-    vec2 velUv = texture2D(velocityTexture, vUv).xy;
+    vec4 velocityTexel = texture2D(velocityTexture, vUv);
+
+    // filter out sky
+    if (velocityTexel.a > 1. - FLOAT_EPSILON) {
+        return;
+    }
+
+    vec2 velUv = velocityTexel.xy;
     float movement = length(velUv) * 100.;
 
-    // if samples is 1 then the camera should have moved and we should reproject the last frame
-    if (samples < 2.) {
+    if (movement > 0.) {
         vec2 reprojectedUv = vUv - velUv;
 
-        // check if reprojected UV is valid
+        // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
         if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
             lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
-
             // neighborhood clamping (only for the first sample where the camera just moved)
-            if (samples < 2.) {
-                ivec2 size = textureSize(inputTexture, 0);
-                vec2 pxSize = vec2(float(size.x), float(size.y));
+            ivec2 size = textureSize(inputTexture, 0);
+            vec2 pxSize = vec2(float(size.x), float(size.y));
 
-                vec2 px = 1. / pxSize;
+            vec2 px = 1. / pxSize;
 
-                // get neighbor pixels
-                vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
-                vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
-                vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
-                vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
-                vec3 c11 = inputTexel.rgb;
-                vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
-                vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
-                vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
-                vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
+            // get neighbor pixels
+            vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
+            vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
+            vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
+            vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
+            vec3 c11 = inputTexel.rgb;
+            vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
+            vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
+            vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
+            vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
 
-                vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
-                vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+            vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+            vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
 
-                // reduces noise when moving camera and not using temporal resolving
-                // #ifndef TEMPORAL_RESOLVE
-                // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
-                // neighborColor /= 9.;
-                // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
-                // #endif
+            // reduces noise when moving camera and not using temporal resolving
+            // #ifndef TEMPORAL_RESOLVE
+            // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
+            // neighborColor /= 9.;
+            // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
+            // #endif
 
-                vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
+            vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
 
-                lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, temporalResolveCorrectionMix);
-            }
+            float mixFactor = temporalResolveCorrectionMix * (1. + movement);
+            mixFactor = min(mixFactor, 1.);
+
+            lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, mixFactor);
         } else {
+            // reprojected UV coordinates are outside of screen, so just use the current frame for it
             lastFrameReflectionsTexel.rgb = inputTexel.rgb;
         }
     } else {
-        // the camera didn't move and we can just use the last frame using the UV coordinates of this texel
         lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
     }
 
@@ -114,8 +120,6 @@ void main() {
 
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
-
-    gl_FragColor = vec4(newColor, alpha);
 #else
     lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
     vec2 velUv = texture2D(velocityTexture, vUv).xy;
@@ -136,6 +140,7 @@ void main() {
         }
     }
 
-    gl_FragColor = vec4(newColor, alpha);
 #endif
+
+    gl_FragColor = vec4(newColor, alpha);
 }

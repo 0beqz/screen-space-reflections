@@ -1,5 +1,6 @@
-﻿import { GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, UniformsUtils, Vector2 } from "three"
-import { VelocityShader } from "./VelocityShader"
+﻿import { ShaderChunk } from "three"
+import { GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, UniformsUtils, Vector2 } from "three"
+import { prev_skinning_pars_vertex, VelocityShader } from "./VelocityShader"
 
 // WebGL1: will render normals to RGB channel and roughness to A channel
 // WebGL2: will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
@@ -11,7 +12,8 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
 
 			defines: {
 				USE_UV: "",
-				TEMPORAL_RESOLVE: ""
+				TEMPORAL_RESOLVE: "",
+				MAX_BONES: 256
 			},
 
 			uniforms: {
@@ -30,6 +32,9 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
 
                 #ifdef TEMPORAL_RESOLVE
 
+                ${ShaderChunk.skinning_pars_vertex}
+			${prev_skinning_pars_vertex}
+
                 uniform mat4 prevProjectionMatrix;
                 uniform mat4 prevModelViewMatrix;
                 uniform float interpolateGeometry;
@@ -46,7 +51,6 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                 #include <displacementmap_pars_vertex>
                 #include <normal_pars_vertex>
                 #include <morphtarget_pars_vertex>
-                #include <skinning_pars_vertex>
                 #include <logdepthbuf_pars_vertex>
                 #include <clipping_planes_pars_vertex>
 
@@ -60,7 +64,6 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                     #include <normal_vertex>
                     #include <begin_vertex>
                     #include <morphtarget_vertex>
-                    #include <skinning_vertex>
                     #include <displacementmap_vertex>
                     #include <project_vertex>
                     #include <logdepthbuf_vertex>
@@ -78,17 +81,26 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                     #endif
 
                     #ifdef TEMPORAL_RESOLVE
-                        #ifndef NEEDS_UPDATED_REFLECTIONS
+                        // #ifndef NEEDS_UPDATED_REFLECTIONS
                         transformed = vec3( position );
-                        
+
+                        ${ShaderChunk.skinning_vertex}
                         newPosition = modelViewMatrix * vec4( transformed, 1.0 );
+
+                        transformed = vec3( position );
+
+                        ${ShaderChunk.skinbase_vertex
+													.replace(/mat4 /g, "")
+													.replace(/getBoneMatrix/g, "getPrevBoneMatrix")}
+		${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
+                        
                         prevPosition = prevModelViewMatrix * vec4( transformed, 1.0 );
 
                         newPosition =  projectionMatrix * newPosition;
                         prevPosition = prevProjectionMatrix * prevPosition;
 
-                        // gl_Position = mix( newPosition, prevPosition, interpolateGeometry );
-                        #endif
+                        gl_Position = mix( newPosition, prevPosition, interpolateGeometry );
+                        // #endif
                     #endif
 
                 }
@@ -108,7 +120,6 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                 #include <clipping_planes_pars_fragment>
 
                 #include <roughnessmap_pars_fragment>
-
                 
                 #ifdef USE_MRT
                     layout(location = 0) out vec4 gNormal;
@@ -132,16 +143,26 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                     #include <logdepthbuf_fragment>
                     #include <normal_fragment_begin>
                     #include <normal_fragment_maps>
-                    #include <roughnessmap_fragment>
+                    
+                    float roughnessFactor = roughness;
+                    
+                    if(roughness > 10.0e9){
+                        roughnessFactor = 1.;
+                    }else{
+                        #ifdef USE_ROUGHNESSMAP
+                            vec4 texelRoughness = texture2D( roughnessMap, vUv );
+                            // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
+                            roughnessFactor *= texelRoughness.g;
+                        #endif
+                    }
 
                     vec3 normalColor = packNormalToRGB( normal );
-                    float roughnessValue = min(1., roughnessFactor);
 
                     #ifdef USE_MRT
                         float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
                         gNormal = vec4( normalColor, 1.0 );
-                        gNormal.a = roughnessValue;
+                        gNormal.a = roughnessFactor;
                         gDepth = depthColor;
 
                         #ifdef TEMPORAL_RESOLVE
@@ -157,13 +178,15 @@ export class NormalDepthRoughnessMaterial extends ShaderMaterial {
                                 pos1 /= 2.0;
 
                                 vec3 vel = pos1 - pos0;
+
+                                float skyVal = fragCoordZ == 0. ? 1. : 0.;
                                 
-                                gVelocity = vec4( vel * intensity, 1.0 );
+                                gVelocity = vec4( vel * intensity, skyVal);
                             #endif
                         #endif
 
                     #else
-                        gl_FragColor = vec4(normalColor, roughnessValue);
+                        gl_FragColor = vec4(normalColor, roughnessFactor);
                     #endif
 
                 }

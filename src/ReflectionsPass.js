@@ -1,4 +1,6 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+import { FloatType } from "three"
+import { DataTexture } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
@@ -30,12 +32,12 @@ export class ReflectionsPass extends Pass {
 	#webgl1VelocityPass = null
 	samples = 1
 
-	constructor(ssrPass, options = {}) {
+	constructor(ssrEffect, options = {}) {
 		super("ReflectionsPass")
 
-		this.ssrPass = ssrPass
-		this._scene = ssrPass._scene
-		this._camera = ssrPass._camera
+		this.ssrEffect = ssrEffect
+		this._scene = ssrEffect._scene
+		this._camera = ssrEffect._camera
 
 		this.fullscreenMaterial = new ReflectionsMaterial()
 
@@ -52,7 +54,7 @@ export class ReflectionsPass extends Pass {
 		this.#USE_MRT = options.USE_MRT && isWebGL2Available()
 
 		if (this.#USE_MRT) {
-			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
+			// buffers: normal, depth, velocity (3), roughness will be written to the alpha channel of the normal buffer
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 3, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter,
@@ -104,8 +106,8 @@ export class ReflectionsPass extends Pass {
 	}
 
 	setSize(width, height) {
-		this.renderTarget.setSize(width * this.ssrPass.resolutionScale, height * this.ssrPass.resolutionScale)
-		this.gBuffersRenderTarget.setSize(width * this.ssrPass.resolutionScale, height * this.ssrPass.resolutionScale)
+		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
+		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
 
 		this.lastFrameReflectionsTexture.dispose()
 		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
@@ -115,10 +117,10 @@ export class ReflectionsPass extends Pass {
 		this.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value = this.lastFrameReflectionsTexture
 		this.fullscreenMaterial.needsUpdate = true
 
-		this.ssrPass.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value =
+		this.ssrEffect.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value =
 			this.lastFrameReflectionsTexture
 
-		this.ssrPass.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
+		this.ssrEffect.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
 
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.setSize(width, height)
@@ -145,7 +147,7 @@ export class ReflectionsPass extends Pass {
 	}
 
 	#keepMaterialUpdated(normalDepthMaterial, origMat, prop, define) {
-		if (this.ssrPass[define]) {
+		if (this.ssrEffect[define]) {
 			if (origMat[prop] !== normalDepthMaterial[prop]) {
 				normalDepthMaterial[prop] = origMat[prop]
 				normalDepthMaterial.uniforms[prop].value = origMat[prop]
@@ -179,9 +181,14 @@ export class ReflectionsPass extends Pass {
 					if (this.#USE_MRT) normalDepthMaterial.defines.USE_MRT = ""
 					normalDepthMaterial._originalUuid = c.material.uuid
 
+					const ssrEffect = this.ssrEffect
+
 					Object.defineProperty(normalDepthMaterial.uniforms.roughness, "value", {
 						get() {
-							return origMat.roughness || 0
+							const roughness =
+								ssrEffect.selection.size === 0 || ssrEffect.selection.has(c) ? origMat.roughness || 0 : 10e10
+
+							return roughness
 						},
 						set(_) {}
 					})
@@ -201,7 +208,7 @@ export class ReflectionsPass extends Pass {
 				const needsUpatedReflections =
 					c.material.userData.needsUpatedReflections || c.material.map instanceof VideoTexture
 
-				// mark the material as "ANIMATED" so that, when using temporal resolve, we get updated reflections
+				// mark the material as "NEEDS_UPDATED_REFLECTIONS" so that, when using temporal resolve, we get updated reflections
 				if (needsUpatedReflections && !Object.keys(normalDepthMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
 					normalDepthMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
 					normalDepthMaterial.needsUpdate = true
@@ -213,20 +220,55 @@ export class ReflectionsPass extends Pass {
 					normalDepthMaterial.needsUpdate = true
 				}
 
+				if (c.skeleton) {
+					normalDepthMaterial.defines.USE_SKINNING = ""
+					normalDepthMaterial.defines.BONE_TEXTURE = ""
+
+					this.#updateBoneTexture(normalDepthMaterial, c.skeleton, "boneTexture", "boneMatrices")
+				}
+
 				c.material = normalDepthMaterial
 			}
 		})
 	}
 
+	#updateBoneTexture(material, skeleton, uniformName, boneMatricesName) {
+		let boneMatrices = material[boneMatricesName]
+
+		if (
+			material[boneMatricesName] === undefined ||
+			material[boneMatricesName].length !== skeleton.boneMatrices.length
+		) {
+			delete material[boneMatricesName]
+			boneMatrices = new Float32Array(skeleton.boneMatrices.length)
+			material[boneMatricesName] = boneMatrices
+		}
+
+		material[boneMatricesName].set(skeleton.boneMatrices)
+
+		const size = Math.sqrt(skeleton.boneMatrices.length / 4)
+		const boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
+		boneTexture.needsUpdate = true
+
+		if (material.uniforms[uniformName].value) material.uniforms[uniformName].value.dispose()
+		material.uniforms[uniformName].value = boneTexture
+	}
+
 	#unsetNormalDepthRoughnessMaterialInScene() {
 		this._scene.traverse(c => {
+			if (!c.material) return
+
+			const origMat = this.#defaultMaterials[c.material._originalUuid]
+
 			if (c.material?.type === "NormalDepthRoughnessMaterial") {
 				c.material.uniforms.prevProjectionMatrix.value.copy(this._camera.projectionMatrix)
 				c.material.uniforms.prevModelViewMatrix.value.copy(c.modelViewMatrix)
 
 				c.material.uniforms.prevModelViewMatrix.value.multiplyMatrices(this._camera.matrixWorldInverse, c.matrixWorld)
 
-				c.material = this.#defaultMaterials[c.material._originalUuid]
+				if (c.skeleton) this.#updateBoneTexture(c.material, c.skeleton, "prevBoneTexture", "prevBoneMatrices")
+
+				c.material = origMat
 			}
 		})
 	}
@@ -241,11 +283,11 @@ export class ReflectionsPass extends Pass {
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
 
-			if (this.ssrPass.temporalResolve) this.#webgl1VelocityPass.render(renderer, inputTexture)
+			if (this.ssrEffect.temporalResolve) this.#webgl1VelocityPass.render(renderer, inputTexture)
 		}
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture.texture
-		this.fullscreenMaterial.uniforms.samples.value = this.ssrPass.samples
+		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
