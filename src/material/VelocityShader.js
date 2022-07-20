@@ -66,6 +66,7 @@ export const VelocityShader = {
 		prevBoneTexture: { value: null },
 		interpolateGeometry: { value: 0 },
 		intensity: { value: 1 },
+		boneTexture: { value: null },
 
 		alphaTest: { value: 0.0 },
 		map: { value: null },

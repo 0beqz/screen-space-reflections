@@ -63,12 +63,7 @@ void main() {
 
     float roughness = normalTexel.a;
 
-    if (roughness > maxRoughness) {
-        gl_FragColor = EARLY_OUT_COLOR;
-        return;
-    }
-
-    if (roughness > 1. - FLOAT_EPSILON && roughnessFadeOut > 1. - FLOAT_EPSILON) {
+    if (roughness > maxRoughness || (roughness > 1. - FLOAT_EPSILON && roughnessFadeOut > 1. - FLOAT_EPSILON)) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }

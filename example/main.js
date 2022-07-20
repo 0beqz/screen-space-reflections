@@ -7,6 +7,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { Pane } from "tweakpane"
 import "./style.css"
 
+let ssrEffect, ssrPass
+
 window.addEventListener("resize", () => {
 	camera.aspect = window.innerWidth / window.innerHeight
 	camera.updateProjectionMatrix()
@@ -140,19 +142,12 @@ controls.target.set(-0.0036586000844819433, 1.006404176473826, 0.465034267006313
 
 const defaultParams = { ...params }
 
-const ssrEffect = new SSREffect(scene, camera, params)
-window.ssrEffect = ssrEffect
-
-let ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
-composer.addPass(ssrPass)
-window.ssrPass = ssrPass
-
 const gltflLoader = new GLTFLoader()
 
 let floorMesh
 let emitterMesh
 
-const url = window.location.href + "/scene.glb"
+const url = "scene.glb"
 
 gltflLoader.load(
 	url,
@@ -222,6 +217,14 @@ gltflLoader.load(
 		scene.add(box)
 		scene.add(box2)
 
+		// now init SSR effect
+		ssrEffect = new SSREffect(scene, camera, params)
+		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
+		composer.addPass(ssrPass)
+
+		window.ssrEffect = ssrEffect
+		window.ssrPass = ssrPass
+
 		loop()
 
 		const urlParams = new URLSearchParams(window.location.search)
@@ -276,6 +279,26 @@ const useVideoBackground = () => {
 	// })
 }
 
+// gltflLoader.load("skin.glb", asset => {
+// 	skinMesh = asset.scene
+// 	skinMesh.scale.multiplyScalar(2.1)
+// 	skinMesh.position.set(2.5, 0, 0)
+// 	skinMesh.rotation.y += Math.PI / 2
+// 	skinMesh.updateMatrixWorld()
+// 	skinMesh.traverse(c => {
+// 		if (c.material) {
+// 			c.material.roughness = 0
+// 			c.material.metalness = 1
+// 		}
+// 	})
+// 	scene.add(asset.scene)
+// 	mixer = new THREE.AnimationMixer(skinMesh)
+// 	const clips = asset.animations
+
+// 	const action = mixer.clipAction(clips[0])
+// 	action.play()
+// })
+
 const pane = new Pane()
 window.pane = pane
 pane.containerElem_.style.userSelect = "none"
@@ -309,7 +332,7 @@ optionsFolder.addInput(params, "rayStep", { min: 0.001, max: 5, step: 0.001 })
 optionsFolder.addInput(params, "intensity", { min: 0.1, max: 5, step: 0.01 })
 optionsFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
 optionsFolder.addInput(params, "maxDepth", {
-	min: 0.99,
+	min: 0,
 	max: 1,
 	step: 0.00001
 })
@@ -428,7 +451,7 @@ const loop = () => {
 	if (skinMesh) {
 		mixer.update(dt)
 		skinMesh.updateMatrixWorld()
-		skinMesh = null
+		// skinMesh = null
 	}
 
 	composer.render()

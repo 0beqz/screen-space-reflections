@@ -1,4 +1,4 @@
-﻿import { Effect } from "postprocessing"
+﻿import { Effect, Selection } from "postprocessing"
 import { Quaternion, Uniform, Vector2, Vector3 } from "three"
 import { ComposeReflectionsPass } from "./ComposeReflectionsPass.js"
 import bilateralBlur from "./material/shader/bilateralBlur.frag"
@@ -55,9 +55,10 @@ export class SSREffect extends Effect {
 		position: new Vector3(),
 		quaternion: new Quaternion()
 	}
+	selection = new Selection()
 
 	constructor(scene, camera, options = defaultSSROptions) {
-		super("SSRPass", finalFragmentShader, {
+		super("SSREffect", finalFragmentShader, {
 			type: "FinalSSRMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
