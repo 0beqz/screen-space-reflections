@@ -159,9 +159,9 @@ export class ReflectionsPass extends Pass {
 			if (c.material) {
 				const originalMaterial = c.material
 
-				let mrtMaterial
+				let [cachedOriginalMaterial, mrtMaterial] = this.#cachedMaterials.get(c) || []
 
-				if (!this.#cachedMaterials.has(c)) {
+				if (!this.#cachedMaterials.has(c) || originalMaterial !== cachedOriginalMaterial) {
 					mrtMaterial = new MRTMaterial()
 
 					if (this.#USE_MRT) mrtMaterial.defines.USE_MRT = ""
@@ -179,9 +179,6 @@ export class ReflectionsPass extends Pass {
 					if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
 
 					this.#cachedMaterials.set(c, [originalMaterial, mrtMaterial])
-				} else {
-					// each entry saves a tuple of (original material, MRT material)
-					mrtMaterial = this.#cachedMaterials.get(c)[1]
 				}
 
 				// update the child's MRT material
