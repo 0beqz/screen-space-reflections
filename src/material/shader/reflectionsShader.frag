@@ -157,7 +157,7 @@ void main() {
     finalSSR = finalSSR * fresnelFactor * intensity;
     finalSSR = min(vec3(1.), finalSSR);
 
-    gl_FragColor = vec4(finalSSR, SSRTexelReflected.a);
+    gl_FragColor = vec4(finalSSR, SSRTexel.a);
 
 #include <encodings_fragment>
 }
