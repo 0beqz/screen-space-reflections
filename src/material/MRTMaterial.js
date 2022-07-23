@@ -1,14 +1,23 @@
-﻿import { ShaderChunk } from "three"
-import { GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, UniformsUtils, Vector2 } from "three"
+﻿import {
+	GLSL3,
+	Matrix3,
+	ShaderChunk,
+	ShaderMaterial,
+	TangentSpaceNormalMap,
+	Uniform,
+	UniformsUtils,
+	Vector2
+} from "three"
 import { prev_skinning_pars_vertex, VelocityShader } from "./VelocityShader"
 
 // WebGL1: will render normals to RGB channel and roughness to A channel
 // WebGL2: will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
+// and velocity to "gVelocity" buffer
 
-export class NormalDepthRoughnessMaterial extends ShaderMaterial {
+export class MRTMaterial extends ShaderMaterial {
 	constructor() {
 		super({
-			type: "NormalDepthRoughnessMaterial",
+			type: "MRTMaterial",
 
 			defines: {
 				USE_UV: "",

@@ -10,7 +10,11 @@
 
 uniform sampler2D inputTexture;
 uniform sampler2D reflectionsTexture;
+
+#ifdef ENABLE_BLUR
 uniform sampler2D depthTexture;
+#endif
+
 uniform float samples;
 uniform float blurMix;
 

@@ -2,7 +2,7 @@
 #define FLOAT_EPSILON 0.00001
 
 uniform sampler2D inputTexture;
-uniform sampler2D lastFrameReflectionsTexture;
+uniform sampler2D accumulatedReflectionsTexture;
 uniform sampler2D velocityTexture;
 
 uniform float samples;
@@ -54,7 +54,7 @@ void main() {
 
         // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
         if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
-            lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, reprojectedUv);
+            lastFrameReflectionsTexel = texture2D(accumulatedReflectionsTexture, reprojectedUv);
             // neighborhood clamping (only for the first sample where the camera just moved)
             ivec2 size = textureSize(inputTexture, 0);
             vec2 pxSize = vec2(float(size.x), float(size.y));
@@ -93,7 +93,7 @@ void main() {
             lastFrameReflectionsTexel.rgb = inputTexel.rgb;
         }
     } else {
-        lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
+        lastFrameReflectionsTexel = texture2D(accumulatedReflectionsTexture, vUv);
     }
 
     float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
@@ -121,7 +121,7 @@ void main() {
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
 #else
-    lastFrameReflectionsTexel = texture2D(lastFrameReflectionsTexture, vUv);
+    lastFrameReflectionsTexel = texture2D(accumulatedReflectionsTexture, vUv);
     vec2 velUv = texture2D(velocityTexture, vUv).xy;
     float movement = length(velUv) * 100.;
 
