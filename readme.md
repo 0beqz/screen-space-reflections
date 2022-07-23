@@ -222,7 +222,7 @@ Here are two implementations for three.js and react-three-fiber:
 By default, the SSR effect won't really update reflections if the camera is not moving and no mesh in the view is moving.
 However, it will check if a mesh's material's map is a `VideoTexture` and will keep its reflections updated each frame.
 If your material is not using a `VideoTexture` but is still animated (e.g. it's a custom animated shader material), then you can get updated reflections for it by setting
-`mesh.material.userData.needsUpatedReflections = true`. This will make the SSR effect recalculate its reflections each frame.
+`mesh.material.userData.needsUpdatedReflections = true`. This will make the SSR effect recalculate its reflections each frame.
 
 ### Server Side Rendering and `window` being undefined
 
