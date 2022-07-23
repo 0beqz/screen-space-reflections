@@ -157,7 +157,9 @@ void main() {
     finalSSR = finalSSR * fresnelFactor * intensity;
     finalSSR = min(vec3(1.), finalSSR);
 
-    gl_FragColor = vec4(finalSSR, SSRTexel.a);
+    float alpha = hitPos.z == 1. ? SSRTexel.a : SSRTexelReflected.a;
+
+    gl_FragColor = vec4(finalSSR, alpha);
 
 #include <encodings_fragment>
 }
@@ -205,10 +207,8 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
             // filter out sky
             if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
 #else
-            projectedCoord.xy = BinarySearch(dir, hitPos, rayHitDepthDifference);
+            return BinarySearch(dir, hitPos, rayHitDepthDifference);
 #endif
-
-            return projectedCoord.xy;
         }
 
         steps++;
@@ -220,6 +220,9 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
 #endif
 
     rayHitDepthDifference = unpackedDepth;
+
+    // since hitPos isn't used anywhere we can use it to mark that this reflection would have been invalid
+    hitPos.z = 1.;
 
     return projectedCoord.xy;
 }
@@ -263,10 +266,6 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
     projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
     projectedCoord.xy /= projectedCoord.w;
     projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
-
-#ifndef STRETCH_MISSED_RAYS
-    if (projectedCoord.x > 1. || projectedCoord.y > 1.) return INVALID_RAY_COORDS;
-#endif
 
     rayHitDepthDifference = unpackedDepth;
 

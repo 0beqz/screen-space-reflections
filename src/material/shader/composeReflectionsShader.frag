@@ -106,7 +106,7 @@ void main() {
 
     if (alpha < 1.) {
         // the reflections aren't correct anymore (e.g. due to occlusion from moving object) so we need to have inputTexel influence the reflections more
-        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, (1. - alpha) * 0.25);
+        newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, (1. - alpha) * temporalResolveCorrectionMix);
     } else if (samples > 4. && movement < FLOAT_EPSILON && length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
         // this will prevent the appearing of distracting colorful dots around the edge of a reflection once the camera has stopped moving
         newColor = lastFrameReflectionsTexel.rgb;
