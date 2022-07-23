@@ -1,7 +1,7 @@
 ﻿varying vec2 vUv;
 
 uniform sampler2D inputTexture;
-uniform sampler2D lastFrameReflectionsTexture;
+uniform sampler2D accumulatedReflectionsTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
 
@@ -125,7 +125,7 @@ void main() {
     screenEdgefactor = max(0., screenEdgefactor);
 
     vec4 SSRTexel = texture2D(inputTexture, coords.xy);
-    vec4 SSRTexelReflected = texture2D(lastFrameReflectionsTexture, coords.xy);
+    vec4 SSRTexelReflected = texture2D(accumulatedReflectionsTexture, coords.xy);
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
 

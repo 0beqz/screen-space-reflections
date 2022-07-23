@@ -96,7 +96,7 @@ export class VelocityPass extends Pass {
 		})
 	}
 
-	render(renderer, inputTexture) {
+	render(renderer) {
 		this.#setVelocityMaterialInScene()
 
 		renderer.setRenderTarget(this.renderTarget)

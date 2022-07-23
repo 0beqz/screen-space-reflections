@@ -10,17 +10,15 @@ const finalFragmentShader = fragmentShader
 	.replace("#include <helperFunctions>", helperFunctions)
 	.replace("#include <bilateralBlur>", bilateralBlur)
 
-const zeroVec2 = new Vector2()
-
 export const defaultSSROptions = {
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
-	temporalResolveCorrectionMix: 0.3875,
+	temporalResolveCorrectionMix: 1,
 	maxSamples: 0,
 	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
-	ENABLE_BLUR: true,
+	ENABLE_BLUR: false,
 	blurMix: 0.5,
 	blurKernelSize: 8,
 	blurSharpness: 0.5,
@@ -30,7 +28,7 @@ export const defaultSSROptions = {
 	ENABLE_JITTERING: false,
 	jitter: 0.1,
 	jitterSpread: 0.1,
-	jitterRough: 0.1,
+	jitterRough: 0,
 	roughnessFadeOut: 1,
 	rayFadeOut: 0,
 	MAX_STEPS: 20,
@@ -49,13 +47,13 @@ export const defaultSSROptions = {
 const noResetSamplesProperties = ["ENABLE_BLUR", "blurSharpness", "blurKernelSize", "blurMix"]
 
 export class SSREffect extends Effect {
-	#lastSize
 	samples = 0
+	selection = new Selection()
+	#lastSize
 	#lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
 	}
-	selection = new Selection()
 
 	constructor(scene, camera, options = defaultSSROptions) {
 		super("SSREffect", finalFragmentShader, {
@@ -78,23 +76,22 @@ export class SSREffect extends Effect {
 
 		options = { ...defaultSSROptions, ...options }
 
+		// set up passes
+
+		this.composeReflectionsPass = new ComposeReflectionsPass(this, options)
+		this.reflectionsPass = new ReflectionsPass(this, options)
+
+		const { uniforms } = this.composeReflectionsPass.fullscreenMaterial
+
+		uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
+		uniforms.accumulatedReflectionsTexture.value = this.reflectionsPass.accumulatedReflectionsTexture
+		uniforms.velocityTexture.value = this.reflectionsPass.velocityTexture
+
+		this.uniforms.get("reflectionsTexture").value = this.composeReflectionsPass.renderTarget.texture
+
 		this.#lastSize = { width: options.width, height: options.height, resolutionScale: options.resolutionScale }
 		this.#lastCameraTransform.position.copy(camera.position)
 		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
-
-		// returns just the calculates reflections
-		this.reflectionsPass = new ReflectionsPass(this, options)
-
-		this.composeReflectionsPass = new ComposeReflectionsPass(this)
-
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.inputTexture.value =
-			this.reflectionsPass.renderTarget.texture
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value =
-			this.reflectionsPass.lastFrameReflectionsTexture
-		this.composeReflectionsPass.fullscreenMaterial.uniforms.velocityTexture.value = this.reflectionsPass.velocityTexture
-
-		this.uniforms.get("reflectionsTexture").value = this.composeReflectionsPass.renderTarget.texture
-		this.uniforms.get("depthTexture").value = this.reflectionsPass.depthTexture
 
 		this.setSize(options.width, options.height)
 
@@ -104,6 +101,7 @@ export class SSREffect extends Effect {
 	#makeOptionsReactive(options) {
 		// this can't be toggled during run-time
 		if (options.ENABLE_BLUR) {
+			this.uniforms.get("depthTexture").value = this.reflectionsPass.depthTexture
 			this.defines.set("ENABLE_BLUR", "")
 			this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""
 		}
@@ -191,8 +189,6 @@ export class SSREffect extends Effect {
 							break
 
 						case "USE_NORMALMAP":
-							break
-
 						case "USE_ROUGHNESSMAP":
 							break
 
@@ -263,7 +259,7 @@ export class SSREffect extends Effect {
 		this.composeReflectionsPass.dispose()
 	}
 
-	update(renderer, inputTexture) {
+	update(renderer, inputBuffer) {
 		this.samples++
 		this.checkNeedsResample()
 
@@ -271,12 +267,9 @@ export class SSREffect extends Effect {
 		this.uniforms.get("samples").value = this.samples
 
 		// render reflections of current frame
-		this.reflectionsPass.render(renderer, inputTexture)
+		this.reflectionsPass.render(renderer, inputBuffer)
 
 		// compose reflection of last and current frame into one reflection
 		this.composeReflectionsPass.render(renderer)
-
-		renderer.setRenderTarget(this.composeReflectionsPass.renderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.reflectionsPass.lastFrameReflectionsTexture)
 	}
 }

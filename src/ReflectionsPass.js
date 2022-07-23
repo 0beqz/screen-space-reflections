@@ -1,8 +1,8 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { FloatType } from "three"
-import { DataTexture } from "three"
+import { Matrix4 } from "three"
 import {
-	FramebufferTexture,
+	DataTexture,
+	FloatType,
 	HalfFloatType,
 	NearestFilter,
 	RGBAFormat,
@@ -10,7 +10,7 @@ import {
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
-import { NormalDepthRoughnessMaterial } from "./material/NormalDepthRoughnessMaterial.js"
+import { MRTMaterial } from "./material/MRTMaterial.js"
 import { ReflectionsMaterial } from "./material/ReflectionsMaterial.js"
 import { VelocityPass } from "./passes/VelocityPass.js"
 
@@ -25,17 +25,17 @@ const isWebGL2Available = () => {
 }
 
 export class ReflectionsPass extends Pass {
-	#defaultMaterials = {}
-	#normalDepthMaterials = {}
+	#ssrEffect
+	#cachedMaterials = new WeakMap()
+	#prevProjectionMatrix = new Matrix4()
 	#USE_MRT = false
 	#webgl1DepthPass = null
 	#webgl1VelocityPass = null
-	samples = 1
 
 	constructor(ssrEffect, options = {}) {
 		super("ReflectionsPass")
 
-		this.ssrEffect = ssrEffect
+		this.#ssrEffect = ssrEffect
 		this._scene = ssrEffect._scene
 		this._camera = ssrEffect._camera
 
@@ -93,34 +93,22 @@ export class ReflectionsPass extends Pass {
 			this.velocityTexture = this.#webgl1VelocityPass.renderTarget.texture
 		}
 
-		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.lastFrameReflectionsTexture.minFilter = NearestFilter
-		this.lastFrameReflectionsTexture.magFilter = NearestFilter
-
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value = this.lastFrameReflectionsTexture
+		this.fullscreenMaterial.uniforms.accumulatedReflectionsTexture.value =
+			this.#ssrEffect.composeReflectionsPass.accumulatedReflectionsTexture
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 	}
 
 	setSize(width, height) {
-		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
-		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
+		this.renderTarget.setSize(width * this.#ssrEffect.resolutionScale, height * this.#ssrEffect.resolutionScale)
+		this.gBuffersRenderTarget.setSize(width * this.#ssrEffect.resolutionScale, height * this.#ssrEffect.resolutionScale)
 
-		this.lastFrameReflectionsTexture.dispose()
-		this.lastFrameReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.lastFrameReflectionsTexture.minFilter = NearestFilter
-		this.lastFrameReflectionsTexture.magFilter = NearestFilter
-
-		this.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value = this.lastFrameReflectionsTexture
+		this.fullscreenMaterial.uniforms.accumulatedReflectionsTexture.value =
+			this.#ssrEffect.composeReflectionsPass.accumulatedReflectionsTexture
 		this.fullscreenMaterial.needsUpdate = true
-
-		this.ssrEffect.composeReflectionsPass.fullscreenMaterial.uniforms.lastFrameReflectionsTexture.value =
-			this.lastFrameReflectionsTexture
-
-		this.ssrEffect.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
 
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.setSize(width, height)
@@ -139,95 +127,93 @@ export class ReflectionsPass extends Pass {
 			this.#webgl1VelocityPass.dispose()
 		}
 
-		this.lastFrameReflectionsTexture.dispose()
-
 		this.normalTexture = null
 		this.depthTexture = null
 		this.velocityTexture = null
 	}
 
-	#keepMaterialUpdated(normalDepthMaterial, origMat, prop, define) {
-		if (this.ssrEffect[define]) {
-			if (origMat[prop] !== normalDepthMaterial[prop]) {
-				normalDepthMaterial[prop] = origMat[prop]
-				normalDepthMaterial.uniforms[prop].value = origMat[prop]
+	#keepMaterialMapUpdated(mrtMaterial, originalMaterial, prop, define) {
+		if (this.#ssrEffect[define]) {
+			if (originalMaterial[prop] !== mrtMaterial[prop]) {
+				mrtMaterial[prop] = originalMaterial[prop]
+				mrtMaterial.uniforms[prop].value = originalMaterial[prop]
 
-				if (origMat[prop]) {
-					normalDepthMaterial.defines[define] = ""
+				if (originalMaterial[prop]) {
+					mrtMaterial.defines[define] = ""
 				} else {
-					delete normalDepthMaterial.defines[define]
+					delete mrtMaterial.defines[define]
 				}
 
-				normalDepthMaterial.needsUpdate = true
+				mrtMaterial.needsUpdate = true
 			}
-		} else if (normalDepthMaterial[prop] !== undefined) {
-			normalDepthMaterial[prop] = undefined
-			normalDepthMaterial.uniforms[prop].value = undefined
-			delete normalDepthMaterial.defines[define]
-			normalDepthMaterial.needsUpdate = true
+		} else if (mrtMaterial[prop] !== undefined) {
+			mrtMaterial[prop] = undefined
+			mrtMaterial.uniforms[prop].value = undefined
+			delete mrtMaterial.defines[define]
+			mrtMaterial.needsUpdate = true
 		}
 	}
 
-	#setNormalDepthRoughnessMaterialInScene() {
+	#setMRTMaterialInScene() {
 		this._scene.traverse(c => {
 			if (c.material) {
-				const origMat = c.material
-				this.#defaultMaterials[c.material.uuid] = origMat
+				const originalMaterial = c.material
 
-				if (this.#normalDepthMaterials[origMat.uuid] === undefined) {
-					this.#normalDepthMaterials[origMat.uuid] = new NormalDepthRoughnessMaterial()
+				let mrtMaterial
 
-					const normalDepthMaterial = this.#normalDepthMaterials[origMat.uuid]
-					if (this.#USE_MRT) normalDepthMaterial.defines.USE_MRT = ""
-					normalDepthMaterial._originalUuid = c.material.uuid
+				if (!this.#cachedMaterials.has(c)) {
+					mrtMaterial = new MRTMaterial()
 
-					const ssrEffect = this.ssrEffect
+					if (this.#USE_MRT) mrtMaterial.defines.USE_MRT = ""
 
-					Object.defineProperty(normalDepthMaterial.uniforms.roughness, "value", {
-						get() {
-							const roughness =
-								ssrEffect.selection.size === 0 || ssrEffect.selection.has(c) ? origMat.roughness || 0 : 10e10
+					mrtMaterial.uniforms.prevProjectionMatrix.value = this.#prevProjectionMatrix
 
-							return roughness
-						},
-						set(_) {}
-					})
+					mrtMaterial.normalScale = originalMaterial.normalScale
+					mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
-					normalDepthMaterial.normalScale = origMat.normalScale
-					normalDepthMaterial.uniforms.normalScale.value = origMat.normalScale
+					const map =
+						originalMaterial.map ||
+						originalMaterial.normalMap ||
+						originalMaterial.roughnessMap ||
+						originalMaterial.metalnessMap
+					if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
 
-					const map = origMat.map || origMat.normalMap || origMat.roughnessMap || origMat.metalnessMap
-					if (map) normalDepthMaterial.uniforms.uvTransform.value = map.matrix
+					this.#cachedMaterials.set(c, [originalMaterial, mrtMaterial])
+				} else {
+					// each entry saves a tuple of (original material, MRT material)
+					mrtMaterial = this.#cachedMaterials.get(c)[1]
 				}
 
-				const normalDepthMaterial = this.#normalDepthMaterials[c.material.uuid]
+				// update the child's MRT material
 
-				this.#keepMaterialUpdated(normalDepthMaterial, origMat, "normalMap", "USE_NORMALMAP")
-				this.#keepMaterialUpdated(normalDepthMaterial, origMat, "roughnessMap", "USE_ROUGHNESSMAP")
+				this.#keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP")
+				this.#keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP")
 
 				const needsUpatedReflections =
 					c.material.userData.needsUpatedReflections || c.material.map instanceof VideoTexture
 
 				// mark the material as "NEEDS_UPDATED_REFLECTIONS" so that, when using temporal resolve, we get updated reflections
-				if (needsUpatedReflections && !Object.keys(normalDepthMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
-					normalDepthMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
-					normalDepthMaterial.needsUpdate = true
-				} else if (
-					!needsUpatedReflections &&
-					Object.keys(normalDepthMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")
-				) {
-					delete normalDepthMaterial.defines.NEEDS_UPDATED_REFLECTIONS
-					normalDepthMaterial.needsUpdate = true
+				if (needsUpatedReflections && !Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
+					mrtMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
+					mrtMaterial.needsUpdate = true
+				} else if (!needsUpatedReflections && Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
+					delete mrtMaterial.defines.NEEDS_UPDATED_REFLECTIONS
+					mrtMaterial.needsUpdate = true
 				}
 
 				if (c.skeleton) {
-					normalDepthMaterial.defines.USE_SKINNING = ""
-					normalDepthMaterial.defines.BONE_TEXTURE = ""
+					mrtMaterial.defines.USE_SKINNING = ""
+					mrtMaterial.defines.BONE_TEXTURE = ""
 
-					this.#updateBoneTexture(normalDepthMaterial, c.skeleton, "boneTexture", "boneMatrices")
+					this.#updateBoneTexture(mrtMaterial, c.skeleton, "boneTexture", "boneMatrices")
 				}
 
-				c.material = normalDepthMaterial
+				mrtMaterial.uniforms.roughness.value =
+					this.#ssrEffect.selection.size === 0 || this.#ssrEffect.selection.has(c)
+						? originalMaterial.roughness || 0
+						: 10e10
+
+				c.material = mrtMaterial
 			}
 		})
 	}
@@ -235,10 +221,7 @@ export class ReflectionsPass extends Pass {
 	#updateBoneTexture(material, skeleton, uniformName, boneMatricesName) {
 		let boneMatrices = material[boneMatricesName]
 
-		if (
-			material[boneMatricesName] === undefined ||
-			material[boneMatricesName].length !== skeleton.boneMatrices.length
-		) {
+		if (material[boneMatricesName]?.length !== skeleton.boneMatrices.length) {
 			delete material[boneMatricesName]
 			boneMatrices = new Float32Array(skeleton.boneMatrices.length)
 			material[boneMatricesName] = boneMatrices
@@ -254,40 +237,40 @@ export class ReflectionsPass extends Pass {
 		material.uniforms[uniformName].value = boneTexture
 	}
 
-	#unsetNormalDepthRoughnessMaterialInScene() {
+	#unsetMRTMaterialInScene() {
 		this._scene.traverse(c => {
-			if (!c.material) return
-
-			const origMat = this.#defaultMaterials[c.material._originalUuid]
-
-			if (c.material?.type === "NormalDepthRoughnessMaterial") {
-				c.material.uniforms.prevProjectionMatrix.value.copy(this._camera.projectionMatrix)
+			if (c.material?.type === "MRTMaterial") {
 				c.material.uniforms.prevModelViewMatrix.value.copy(c.modelViewMatrix)
-
-				c.material.uniforms.prevModelViewMatrix.value.multiplyMatrices(this._camera.matrixWorldInverse, c.matrixWorld)
 
 				if (c.skeleton) this.#updateBoneTexture(c.material, c.skeleton, "prevBoneTexture", "prevBoneMatrices")
 
-				c.material = origMat
+				// set material back to the original one
+				const [originalMaterial] = this.#cachedMaterials.get(c)
+
+				c.material = originalMaterial
 			}
 		})
+
+		this.#prevProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 
-	render(renderer, inputTexture) {
-		this.#setNormalDepthRoughnessMaterialInScene()
+	render(renderer, inputBuffer) {
+		this.#setMRTMaterialInScene()
+
 		renderer.setRenderTarget(this.gBuffersRenderTarget)
 		this.renderPass.render(renderer, this.gBuffersRenderTarget, this.gBuffersRenderTarget)
-		this.#unsetNormalDepthRoughnessMaterialInScene()
+
+		this.#unsetMRTMaterialInScene()
 
 		// render depth and velocity in seperate passes
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
 
-			if (this.ssrEffect.temporalResolve) this.#webgl1VelocityPass.render(renderer, inputTexture)
+			if (this.#ssrEffect.temporalResolve) this.#webgl1VelocityPass.render(renderer)
 		}
 
-		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture.texture
-		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.samples
+		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
+		this.fullscreenMaterial.uniforms.samples.value = this.#ssrEffect.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
