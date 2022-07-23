@@ -186,14 +186,14 @@ export class ReflectionsPass extends Pass {
 				this.#keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP")
 				this.#keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP")
 
-				const needsUpatedReflections =
-					c.material.userData.needsUpatedReflections || c.material.map instanceof VideoTexture
+				const needsUpdatedReflections =
+					c.material.userData.needsUpdatedReflections || c.material.map instanceof VideoTexture
 
 				// mark the material as "NEEDS_UPDATED_REFLECTIONS" so that, when using temporal resolve, we get updated reflections
-				if (needsUpatedReflections && !Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
+				if (needsUpdatedReflections && !Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
 					mrtMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
 					mrtMaterial.needsUpdate = true
-				} else if (!needsUpatedReflections && Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
+				} else if (!needsUpdatedReflections && Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
 					delete mrtMaterial.defines.NEEDS_UPDATED_REFLECTIONS
 					mrtMaterial.needsUpdate = true
 				}

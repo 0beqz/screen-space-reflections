@@ -64,15 +64,15 @@ export class VelocityPass extends Pass {
 					velocityMaterial.uniforms.prevModelViewMatrix.value.copy(c.userData.prevModelViewMatrix)
 				}
 
-				const needsUpatedReflections =
-					c.material.userData.needsUpatedReflections || c.material.map instanceof VideoTexture
+				const needsUpdatedReflections =
+					c.material.userData.needsUpdatedReflections || c.material.map instanceof VideoTexture
 
 				// mark the material as "ANIMATED" so that, when using temporal resolve, we get updated reflections
-				if (needsUpatedReflections && !Object.keys(velocityMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
+				if (needsUpdatedReflections && !Object.keys(velocityMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
 					velocityMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
 					velocityMaterial.needsUpdate = true
 				} else if (
-					!needsUpatedReflections &&
+					!needsUpdatedReflections &&
 					Object.keys(velocityMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")
 				) {
 					delete velocityMaterial.defines.NEEDS_UPDATED_REFLECTIONS
