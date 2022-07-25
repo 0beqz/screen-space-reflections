@@ -2,9 +2,9 @@
 
 Implements performant Screen Space Reflections in three.js.
 <br></br>
-[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots/1.png">](https://screen-space-reflections.vercel.app)
+[<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots/1.jpg">](https://screen-space-reflections.vercel.app)
 <br></br>
-<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//2.png">
+<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//2.jpg">
 <br></br>
 
 ## Demos
@@ -18,17 +18,6 @@ react-three-fiber demos:
 - [Rover](https://codesandbox.io/s/ssr-rover-leixne?file=/src/Sophia-v1.js)
 
 - [three.js journey scene](https://codesandbox.io/s/ssr-threejs-journey-84he6c)
-
-## Run Locally
-
-If you'd like to test this project and run it locally, run these commands:
-
-```
-git clone https://github.com/0beqz/screen-space-reflections
-cd screen-space-reflections/example
-npm i --force
-npm run dev
-```
 
 ## Usage
 
@@ -59,7 +48,8 @@ composer.addPass(ssrPass)
 
 ### Options
 
-Default values of the optional `options` parameter:
+<details>
+<summary>Default values of the optional "options" parameter</summary>
 
 ```javascript
 const options = {
@@ -96,8 +86,10 @@ const options = {
 }
 ```
 
+</details>
+
 <details>
-  <summary>Description of the properties:</summary>
+  <summary>Description of the properties</summary>
 
 - `width`: width of the SSREffect
 
@@ -155,7 +147,35 @@ const options = {
 
 </details>
 
+### ❗ Highly recommended: Use a GUI to tweak the options
+Since the right options for an SSR effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSR effect for the first time in it without any configuration. This can have multiple causes such as `rayStep` being way too low for your scene for example. So to find out which SSR options are right for your scene, you should use a GUI to find the right values easily.
+The [example](https://github.com/0beqz/screen-space-reflections/tree/main/example) already comes with a simple one-file GUI [`SSRDebugGUI.js`](https://github.com/0beqz/screen-space-reflections/blob/main/example/SSRDebugGUI.js) that you can use in your project like so:
+- First install the npm package of the module used for the GUI:
+```
+npm i tweakpane
+```
+
+- then just copy the `SSRDebugGUI.js` to your project and initialize it like so in your scene:
+```javascript
+import { SSRDebugGUI } from "./SSRDebugGUI"
+
+const gui = new SSRDebugGUI(ssrEffect, options)
+```
+
+That's it, you should now have the GUI you can see in the [example scene](https://screen-space-reflections.vercel.app/). The `options` parameter is optional for the SSRDebugGUI and will default to the default options if no `options` parameter is given.
+
 <br>
+
+## Run Locally
+
+If you'd like to test this project and run it locally, run these commands:
+
+```
+git clone https://github.com/0beqz/screen-space-reflections
+cd screen-space-reflections/example
+npm i --force
+npm run dev
+```
 
 ## Features
 
@@ -179,18 +199,11 @@ const options = {
 
 <details>
   <summary>Expand to view tips</summary>
-
-### Getting the right look
-
-SSR usually needs a lot of tweaking before it looks alright in a scene, so using a GUI where you can easily modify all values is highly recommended.
-The demo uses [tweakpane](https://cocopon.github.io/tweakpane/) as the GUI. If you want to use it, check out how it's initalized and used in the demo: https://github.com/0beqz/screen-space-reflections/blob/main/example/main.js.
-<br>
-
 ### Getting rid of artifacts
 
 If you are getting artifacts, for example:
 <br>
-<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//artifacts.png" width="50%">
+<img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//artifacts.jpg" width="50%">
 
 Then try the following:
 
