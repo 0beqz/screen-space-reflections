@@ -283,10 +283,6 @@ gltflLoader.load(url, asset => {
 				title: "Animated Background"
 			})
 			.on("click", () => {
-				for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
-				params.temporalResolveCorrectionMix = 0.1
-				gui.pane.refresh()
-
 				useVideoBackground()
 			})
 
@@ -340,6 +336,10 @@ new THREE.TextureLoader().load("envRoom.webp", tex => {
 })
 
 const useVideoBackground = () => {
+	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
+	params.temporalResolveCorrectionMix = 0.1
+	if (gui) gui.pane.refresh()
+
 	if (emitterMesh.material._videoMap) {
 		emitterMesh.material.map = emitterMesh.material._videoMap
 		emitterMesh.material.emissiveMap = emitterMesh.material._videoMap
@@ -354,7 +354,7 @@ const useVideoBackground = () => {
 		emitterMesh.material.emissiveMap = videoTexture
 		emitterMesh.material._videoMap = videoTexture
 
-		ssrEffect.samples = 0
+		if (ssrEffect) ssrEffect.samples = 0
 	}
 }
 
