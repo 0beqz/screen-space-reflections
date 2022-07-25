@@ -299,7 +299,7 @@ gltflLoader.load(url, asset => {
 		})
 
 		const vignetteEffect = new POSTPROCESSING.VignetteEffect({
-			darkness: 0.5
+			darkness: 0.3675
 		})
 
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
