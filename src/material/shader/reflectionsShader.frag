@@ -160,8 +160,6 @@ void main() {
     float alpha = hitPos.z == 1. ? SSRTexel.a : SSRTexelReflected.a;
 
     gl_FragColor = vec4(finalSSR, alpha);
-
-#include <encodings_fragment>
 }
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {

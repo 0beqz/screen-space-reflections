@@ -1,5 +1,6 @@
 ﻿import { Pass } from "postprocessing"
 import { RGBAFormat } from "three"
+import { HalfFloatType } from "three"
 import { NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget, FramebufferTexture } from "three"
 import vertexShader from "./material/shader/basicVertexShader.vert"
 import fragmentShader from "./material/shader/composeReflectionsShader.frag"
@@ -19,7 +20,8 @@ export class ComposeReflectionsPass extends Pass {
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter
+			magFilter: NearestFilter,
+			type: HalfFloatType
 		})
 
 		this.fullscreenMaterial = new ShaderMaterial({
@@ -61,6 +63,7 @@ export class ComposeReflectionsPass extends Pass {
 		this.accumulatedReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
 		this.accumulatedReflectionsTexture.minFilter = NearestFilter
 		this.accumulatedReflectionsTexture.magFilter = NearestFilter
+		this.accumulatedReflectionsTexture.type = HalfFloatType
 	}
 
 	render(renderer) {
