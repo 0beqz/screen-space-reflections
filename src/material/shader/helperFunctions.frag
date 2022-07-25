@@ -25,6 +25,14 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
     return view.xyz;
 }
 
+// vec2 worldSpaceToScreenSpace(vec3 worldPos){
+//     vec4 ssPos = _projectionMatrix * inverse(cameraMatrixWorld) * vec4(worldPos, 1.0);
+//     ssPos.xy /= ssPos.w;
+//     ssPos.xy = ssPos.xy * 0.5 + 0.5;
+
+//     return ssPos.xy;
+// }
+
 #define Scale (vec3(0.8, 0.8, 0.8))
 #define K (19.19)
 

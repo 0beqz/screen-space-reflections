@@ -19,7 +19,6 @@ export let lastMoveTime = 0
 let speedMultiplier = 1
 
 let playerOnFloor = false
-let flyMode = false
 let cinematicMode = false
 
 let lastSpacePressTime = 0
@@ -76,17 +75,6 @@ document.addEventListener("keydown", event => {
 document.addEventListener("keyup", event => {
 	if (document.pointerLockElement !== document.body) return
 
-	if (event.code === "Space") {
-		const now = performance.now()
-
-		if (now - lastSpacePressTime < 300) {
-			flyMode = !flyMode
-			if (!flyMode) setPosition(playerObject.position.clone().sub(new THREE.Vector3(0, height, 0)))
-		}
-
-		lastSpacePressTime = now
-	}
-
 	keyStates[event.code] = false
 })
 
@@ -112,7 +100,7 @@ function setPosition(position) {
 	playerCollider.start.copy(position)
 	playerCollider.end.copy(position)
 
-	if (!flyMode) playerCollider.end.y += height
+	playerCollider.end.y += height
 }
 
 export function spawnPlayer() {
@@ -128,69 +116,27 @@ function updatePlayer(deltaTime) {
 		return
 	}
 
-	playerObject.rotation.x = THREE.MathUtils.clamp(playerObject.rotation.x, -Math.PI / 2, Math.PI / 2)
+	let damping = Math.exp(-15 * deltaTime) - 1
 
-	if (flyMode) {
-		let speed = -(keyStates["ShiftLeft"] ? 0.75 : 0.375) * 0.25
+	if (!playerOnFloor) {
+		playerVelocity.y -= GRAVITY * deltaTime
 
-		if ((keyStates["keyW"] || keyStates["keyS"]) && (keyStates["keyA"] || keyStates["keyD"])) {
-			speed *= 0.5 ** 0.5
+		// small air resistance
+		damping *= 0.1
+
+		if (playerObject.position.y < -10) {
+			spawnPlayer()
 		}
-		if (
-			(keyStates["keyW"] || keyStates["keyS"] || keyStates["keyA"] || keyStates["keyD"]) &&
-			(keyStates["keyA"] || keyStates["keyD"])
-		) {
-			speed *= 0.5 ** 0.5
-		}
-
-		camera.getWorldDirection(playerDirection).multiplyScalar(speed)
-
-		if (keyStates["KeyS"]) {
-			playerObject.position.add(playerDirection)
-		} else if (keyStates["KeyW"]) {
-			playerObject.position.sub(playerDirection)
-		}
-
-		getSideVector().multiplyScalar(speed)
-
-		if (keyStates["KeyA"]) {
-			playerObject.position.add(playerDirection)
-		} else if (keyStates["KeyD"]) {
-			playerObject.position.sub(playerDirection)
-		}
-
-		playerObject.rotation.x += Math.PI / 2
-		camera.getWorldDirection(playerDirection).multiplyScalar(speed)
-		playerObject.rotation.x -= Math.PI / 2
-
-		if (keyStates["KeyQ"]) {
-			playerObject.position.add(playerDirection)
-		} else if (keyStates["KeyE"]) {
-			playerObject.position.sub(playerDirection)
-		}
-	} else {
-		let damping = Math.exp(-15 * deltaTime) - 1
-
-		if (!playerOnFloor) {
-			playerVelocity.y -= GRAVITY * deltaTime
-
-			// small air resistance
-			damping *= 0.1
-
-			if (playerObject.position.y < -10) {
-				spawnPlayer()
-			}
-		}
-
-		playerVelocity.addScaledVector(playerVelocity, damping)
-
-		const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime)
-		playerCollider.translate(deltaPosition)
-
-		playerCollisions()
-
-		playerObject.position.copy(playerCollider.end)
 	}
+
+	playerVelocity.addScaledVector(playerVelocity, damping)
+
+	const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime)
+	playerCollider.translate(deltaPosition)
+
+	playerCollisions()
+
+	playerObject.position.copy(playerCollider.end)
 
 	playerObject.updateMatrixWorld()
 }

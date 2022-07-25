@@ -1,20 +1,17 @@
 ﻿import { Pass } from "postprocessing"
-import { VideoTexture } from "three"
 import {
 	FrontSide,
 	HalfFloatType,
-	Matrix4,
 	NearestFilter,
 	ShaderMaterial,
 	UniformsUtils,
+	VideoTexture,
 	WebGLRenderTarget
 } from "three"
 import { VelocityShader } from "../material/VelocityShader.js"
 
 export class VelocityPass extends Pass {
-	#defaultMaterials = {}
-	#velocityMaterials = {}
-	#prevProjectionMatrix = new Matrix4()
+	#cachedMaterials = new WeakMap()
 
 	constructor(scene, camera) {
 		super("VelocityPass")
@@ -36,32 +33,19 @@ export class VelocityPass extends Pass {
 	#setVelocityMaterialInScene() {
 		this._scene.traverse(c => {
 			if (c.material) {
-				const origMat = c.material
-				this.#defaultMaterials[c.material.uuid] = origMat
+				const originalMaterial = c.material
 
-				if (this.#velocityMaterials[origMat.uuid] === undefined) {
-					this.#velocityMaterials[origMat.uuid] = new ShaderMaterial({
+				let [cachedOriginalMaterial, velocityMaterial] = this.#cachedMaterials.get(c) || []
+
+				if (!this.#cachedMaterials.has(c) || originalMaterial !== cachedOriginalMaterial) {
+					velocityMaterial = new ShaderMaterial({
 						uniforms: UniformsUtils.clone(VelocityShader.uniforms),
 						vertexShader: VelocityShader.vertexShader,
 						fragmentShader: VelocityShader.fragmentShader,
 						side: FrontSide
 					})
 
-					const velocityMaterial = this.#velocityMaterials[origMat.uuid]
-					velocityMaterial._originalUuid = c.material.uuid
-					velocityMaterial.extensions.derivatives = true
-				}
-
-				const velocityMaterial = this.#velocityMaterials[c.material.uuid]
-
-				velocityMaterial.uniforms.prevModelViewMatrix.value.multiplyMatrices(
-					this._camera.matrixWorldInverse,
-					c.matrixWorld
-				)
-				velocityMaterial.uniforms.prevProjectionMatrix.value = this.#prevProjectionMatrix
-
-				if (c.userData.prevModelViewMatrix) {
-					velocityMaterial.uniforms.prevModelViewMatrix.value.copy(c.userData.prevModelViewMatrix)
+					this.#cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 				}
 
 				const needsUpdatedReflections =
@@ -79,6 +63,11 @@ export class VelocityPass extends Pass {
 					velocityMaterial.needsUpdate = true
 				}
 
+				velocityMaterial.uniforms.velocityMatrix.value.multiplyMatrices(
+					this._camera.projectionMatrix,
+					c.modelViewMatrix
+				)
+
 				c.material = velocityMaterial
 			}
 		})
@@ -87,13 +76,17 @@ export class VelocityPass extends Pass {
 	#unsetVelocityMaterialInScene() {
 		this._scene.traverse(c => {
 			if (c.material) {
-				if (c.userData.prevModelViewMatrix === undefined) c.userData.prevModelViewMatrix = new Matrix4()
+				c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 
-				c.userData.prevModelViewMatrix.multiplyMatrices(this._camera.matrixWorldInverse, c.matrixWorld)
+				const [originalMaterial] = this.#cachedMaterials.get(c)
 
-				c.material = this.#defaultMaterials[c.material._originalUuid]
+				c.material = originalMaterial
 			}
 		})
+	}
+
+	setSize(width, height) {
+		this.renderTarget.setSize(width, height)
 	}
 
 	render(renderer) {
@@ -104,7 +97,5 @@ export class VelocityPass extends Pass {
 		renderer.render(this._scene, this._camera)
 
 		this.#unsetVelocityMaterialInScene()
-
-		this.#prevProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 }

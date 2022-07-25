@@ -44,25 +44,22 @@ export const velocity_vertex = /* glsl */ `
 		// Get the current vertex position
 		transformed = vec3( position );
 		${ShaderChunk.skinning_vertex}
-		newPosition = modelViewMatrix * vec4( transformed, 1.0 );
+		newPosition = velocityMatrix * vec4( transformed, 1.0 );
 
 		// Get the previous vertex position
 		transformed = vec3( position );
 		${ShaderChunk.skinbase_vertex.replace(/mat4 /g, "").replace(/getBoneMatrix/g, "getPrevBoneMatrix")}
 		${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
-		prevPosition = prevModelViewMatrix * vec4( transformed, 1.0 );
+		prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
-		newPosition =  projectionMatrix * newPosition;
-		prevPosition = prevProjectionMatrix * prevPosition;
-
-		gl_Position = mix( newPosition, prevPosition, interpolateGeometry );
+		gl_Position = newPosition;
 
 	`
 
 export const VelocityShader = {
 	uniforms: {
-		prevProjectionMatrix: { value: new Matrix4() },
-		prevModelViewMatrix: { value: new Matrix4() },
+		prevVelocityMatrix: { value: new Matrix4() },
+		velocityMatrix: { value: new Matrix4() },
 		prevBoneTexture: { value: null },
 		interpolateGeometry: { value: 0 },
 		intensity: { value: 1 },
@@ -78,8 +75,8 @@ export const VelocityShader = {
 			${ShaderChunk.skinning_pars_vertex}
 			${prev_skinning_pars_vertex}
 
-			uniform mat4 prevProjectionMatrix;
-			uniform mat4 prevModelViewMatrix;
+			uniform mat4 velocityMatrix;
+			uniform mat4 prevVelocityMatrix;
 			uniform float interpolateGeometry;
 			varying vec4 prevPosition;
 			varying vec4 newPosition;
@@ -102,17 +99,16 @@ export const VelocityShader = {
 					return;
 				#endif
 
-				vec3 pos0 = prevPosition.xyz / prevPosition.w;
-				pos0 += 1.0;
-				pos0 /= 2.0;
+				vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
+				vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
-				vec3 pos1 = newPosition.xyz / newPosition.w;
-				pos1 += 1.0;
-				pos1 /= 2.0;
-
-				vec3 vel = pos1 - pos0;
-				gl_FragColor = vec4( vel * intensity, 1.0 );
+				vec2 vel = pos1 - pos0;
+				
+				gl_FragColor = vec4( vel, 0., 1. );
 
 			}
-		`
+		`,
+	defines: {
+		MAX_BONES: 256
+	}
 }

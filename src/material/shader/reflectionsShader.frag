@@ -140,7 +140,7 @@ void main() {
     reflectionDistance += 1.;
 
     if (rayFadeOut != 0.) {
-        float opacity = 1. / (reflectionDistance * reflectionDistance * rayFadeOut * 0.01);
+        float opacity = 1. / (reflectionDistance * rayFadeOut * 0.1);
         if (opacity > 1.) opacity = 1.;
         finalSSR *= opacity;
     }

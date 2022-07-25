@@ -1,7 +1,14 @@
 ﻿import { Pass } from "postprocessing"
-import { RGBAFormat } from "three"
-import { HalfFloatType } from "three"
-import { NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget, FramebufferTexture } from "three"
+import {
+	FramebufferTexture,
+	HalfFloatType,
+	NearestFilter,
+	RGBAFormat,
+	ShaderMaterial,
+	Uniform,
+	Vector2,
+	WebGLRenderTarget
+} from "three"
 import vertexShader from "./material/shader/basicVertexShader.vert"
 import fragmentShader from "./material/shader/composeReflectionsShader.frag"
 
@@ -21,7 +28,8 @@ export class ComposeReflectionsPass extends Pass {
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			type: HalfFloatType
+			type: HalfFloatType,
+			depthBuffer: false
 		})
 
 		this.fullscreenMaterial = new ShaderMaterial({
