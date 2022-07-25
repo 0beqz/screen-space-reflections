@@ -304,18 +304,25 @@ gltflLoader.load(url, asset => {
 
 	loop()
 
-	setTimeout(() => document.querySelector("#loading").remove(), 50)
-
 	const urlParams = new URLSearchParams(window.location.search)
 	if (urlParams.get("dancer") === "true") useVideoBackground()
 })
 
+const loadingEl = document.querySelector("#loading")
+
 let loadedCount = 0
+const loadFiles = 29
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
-	const progress = Math.round((loadedCount / 30) * 100)
-	document.querySelector("#loading").textContent = progress + "%"
+	if (loadedCount === loadFiles) {
+		setTimeout(() => {
+			if (loadingEl) loadingEl.remove()
+		}, 150)
+	}
+
+	const progress = Math.round((loadedCount / loadFiles) * 100)
+	if (loadingEl) loadingEl.textContent = progress + "%"
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
