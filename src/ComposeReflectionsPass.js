@@ -21,7 +21,8 @@ export class ComposeReflectionsPass extends Pass {
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			type: HalfFloatType
+			type: HalfFloatType,
+			depthBuffer: false
 		})
 
 		this.fullscreenMaterial = new ShaderMaterial({

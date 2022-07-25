@@ -102,17 +102,15 @@ export const VelocityShader = {
 					return;
 				#endif
 
-				vec3 pos0 = prevPosition.xyz / prevPosition.w;
-				pos0 += 1.0;
-				pos0 /= 2.0;
+				vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
+				vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
-				vec3 pos1 = newPosition.xyz / newPosition.w;
-				pos1 += 1.0;
-				pos1 /= 2.0;
-
-				vec3 vel = pos1 - pos0;
-				gl_FragColor = vec4( vel * intensity, 1.0 );
+				vec2 vel = pos1 - pos0;
+				gl_FragColor = vec4( vel * intensity, 1.0, 1.0 );
 
 			}
-		`
+		`,
+	defines: {
+		MAX_BONES: 256
+	}
 }

@@ -1,15 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { Matrix4 } from "three"
-import {
-	DataTexture,
-	FloatType,
-	HalfFloatType,
-	NearestFilter,
-	RGBAFormat,
-	VideoTexture,
-	WebGLMultipleRenderTargets,
-	WebGLRenderTarget
-} from "three"
+import { Matrix4, NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import { MRTMaterial } from "./material/MRTMaterial.js"
 import { ReflectionsMaterial } from "./material/ReflectionsMaterial.js"
 import { VelocityPass } from "./passes/VelocityPass.js"
@@ -46,7 +36,8 @@ export class ReflectionsPass extends Pass {
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter
+			magFilter: NearestFilter,
+			depthBuffer: false
 		})
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
@@ -55,15 +46,13 @@ export class ReflectionsPass extends Pass {
 
 		if (this.#USE_MRT) {
 			// buffers: normal, depth, velocity (3), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 3, {
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 2, {
 				minFilter: NearestFilter,
-				magFilter: NearestFilter,
-				type: HalfFloatType
+				magFilter: NearestFilter
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[0]
 			this.depthTexture = this.gBuffersRenderTarget.texture[1]
-			this.velocityTexture = this.gBuffersRenderTarget.texture[2]
 		} else {
 			// depth pass
 			this.#webgl1DepthPass = new DepthPass(this._scene, this._camera)
@@ -88,10 +77,10 @@ export class ReflectionsPass extends Pass {
 
 			this.normalTexture = this.gBuffersRenderTarget.texture
 			this.depthTexture = this.#webgl1DepthPass.texture
-
-			this.#webgl1VelocityPass = new VelocityPass(this._scene, this._camera)
-			this.velocityTexture = this.#webgl1VelocityPass.renderTarget.texture
 		}
+
+		this.#webgl1VelocityPass = new VelocityPass(this._scene, this._camera)
+		this.velocityTexture = this.#webgl1VelocityPass.renderTarget.texture
 
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
@@ -112,8 +101,8 @@ export class ReflectionsPass extends Pass {
 
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.setSize(width, height)
-			this.#webgl1VelocityPass.setSize(width, height)
 		}
+		this.#webgl1VelocityPass.setSize(width, height)
 	}
 
 	dispose() {
@@ -162,11 +151,11 @@ export class ReflectionsPass extends Pass {
 				let [cachedOriginalMaterial, mrtMaterial] = this.#cachedMaterials.get(c) || []
 
 				if (!this.#cachedMaterials.has(c) || originalMaterial !== cachedOriginalMaterial) {
+					if (mrtMaterial) mrtMaterial.dispose()
+
 					mrtMaterial = new MRTMaterial()
 
 					if (this.#USE_MRT) mrtMaterial.defines.USE_MRT = ""
-
-					mrtMaterial.uniforms.prevProjectionMatrix.value = this.#prevProjectionMatrix
 
 					mrtMaterial.normalScale = originalMaterial.normalScale
 					mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
@@ -186,25 +175,6 @@ export class ReflectionsPass extends Pass {
 				this.#keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP")
 				this.#keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP")
 
-				const needsUpdatedReflections =
-					c.material.userData.needsUpdatedReflections || c.material.map instanceof VideoTexture
-
-				// mark the material as "NEEDS_UPDATED_REFLECTIONS" so that, when using temporal resolve, we get updated reflections
-				if (needsUpdatedReflections && !Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
-					mrtMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
-					mrtMaterial.needsUpdate = true
-				} else if (!needsUpdatedReflections && Object.keys(mrtMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
-					delete mrtMaterial.defines.NEEDS_UPDATED_REFLECTIONS
-					mrtMaterial.needsUpdate = true
-				}
-
-				if (c.skeleton) {
-					mrtMaterial.defines.USE_SKINNING = ""
-					mrtMaterial.defines.BONE_TEXTURE = ""
-
-					this.#updateBoneTexture(mrtMaterial, c.skeleton, "boneTexture", "boneMatrices")
-				}
-
 				mrtMaterial.uniforms.roughness.value =
 					this.#ssrEffect.selection.size === 0 || this.#ssrEffect.selection.has(c)
 						? originalMaterial.roughness || 0
@@ -215,32 +185,9 @@ export class ReflectionsPass extends Pass {
 		})
 	}
 
-	#updateBoneTexture(material, skeleton, uniformName, boneMatricesName) {
-		let boneMatrices = material[boneMatricesName]
-
-		if (material[boneMatricesName]?.length !== skeleton.boneMatrices.length) {
-			delete material[boneMatricesName]
-			boneMatrices = new Float32Array(skeleton.boneMatrices.length)
-			material[boneMatricesName] = boneMatrices
-		}
-
-		material[boneMatricesName].set(skeleton.boneMatrices)
-
-		const size = Math.sqrt(skeleton.boneMatrices.length / 4)
-		const boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
-		boneTexture.needsUpdate = true
-
-		if (material.uniforms[uniformName].value) material.uniforms[uniformName].value.dispose()
-		material.uniforms[uniformName].value = boneTexture
-	}
-
 	#unsetMRTMaterialInScene() {
 		this._scene.traverse(c => {
 			if (c.material?.type === "MRTMaterial") {
-				c.material.uniforms.prevModelViewMatrix.value.copy(c.modelViewMatrix)
-
-				if (c.skeleton) this.#updateBoneTexture(c.material, c.skeleton, "prevBoneTexture", "prevBoneMatrices")
-
 				// set material back to the original one
 				const [originalMaterial] = this.#cachedMaterials.get(c)
 
@@ -262,9 +209,9 @@ export class ReflectionsPass extends Pass {
 		// render depth and velocity in seperate passes
 		if (!this.#USE_MRT) {
 			this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
-
-			if (this.#ssrEffect.temporalResolve) this.#webgl1VelocityPass.render(renderer)
 		}
+
+		if (this.#ssrEffect.temporalResolve) this.#webgl1VelocityPass.render(renderer)
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.#ssrEffect.samples

@@ -42,9 +42,9 @@ void main() {
     vec4 velocityTexel = texture2D(velocityTexture, vUv);
 
     // filter out sky
-    if (velocityTexel.a > 1. - FLOAT_EPSILON) {
-        return;
-    }
+    // if (velocityTexel.a > 1. - FLOAT_EPSILON) {
+    //     return;
+    // }
 
     vec2 velUv = velocityTexel.xy;
     float movement = length(velUv) * 100.;

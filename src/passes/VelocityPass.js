@@ -1,19 +1,20 @@
 ﻿import { Pass } from "postprocessing"
-import { VideoTexture } from "three"
 import {
-	FrontSide,
+	Data3DTexture,
+	FloatType,
 	HalfFloatType,
 	Matrix4,
 	NearestFilter,
+	RGBAFormat,
 	ShaderMaterial,
 	UniformsUtils,
+	VideoTexture,
 	WebGLRenderTarget
 } from "three"
 import { VelocityShader } from "../material/VelocityShader.js"
 
 export class VelocityPass extends Pass {
-	#defaultMaterials = {}
-	#velocityMaterials = {}
+	#cachedMaterials = new WeakMap()
 	#prevProjectionMatrix = new Matrix4()
 
 	constructor(scene, camera) {
@@ -36,32 +37,23 @@ export class VelocityPass extends Pass {
 	#setVelocityMaterialInScene() {
 		this._scene.traverse(c => {
 			if (c.material) {
-				const origMat = c.material
-				this.#defaultMaterials[c.material.uuid] = origMat
+				const originalMaterial = c.material
 
-				if (this.#velocityMaterials[origMat.uuid] === undefined) {
-					this.#velocityMaterials[origMat.uuid] = new ShaderMaterial({
+				let [cachedOriginalMaterial, velocityMaterial] = this.#cachedMaterials.get(c) || []
+
+				if (!this.#cachedMaterials.has(c) || originalMaterial !== cachedOriginalMaterial) {
+					if (velocityMaterial) velocityMaterial.dispose()
+
+					velocityMaterial = new ShaderMaterial({
 						uniforms: UniformsUtils.clone(VelocityShader.uniforms),
 						vertexShader: VelocityShader.vertexShader,
 						fragmentShader: VelocityShader.fragmentShader,
-						side: FrontSide
+						type: "VelocityMaterial"
 					})
 
-					const velocityMaterial = this.#velocityMaterials[origMat.uuid]
-					velocityMaterial._originalUuid = c.material.uuid
-					velocityMaterial.extensions.derivatives = true
-				}
+					velocityMaterial.uniforms.prevProjectionMatrix.value = this.#prevProjectionMatrix
 
-				const velocityMaterial = this.#velocityMaterials[c.material.uuid]
-
-				velocityMaterial.uniforms.prevModelViewMatrix.value.multiplyMatrices(
-					this._camera.matrixWorldInverse,
-					c.matrixWorld
-				)
-				velocityMaterial.uniforms.prevProjectionMatrix.value = this.#prevProjectionMatrix
-
-				if (c.userData.prevModelViewMatrix) {
-					velocityMaterial.uniforms.prevModelViewMatrix.value.copy(c.userData.prevModelViewMatrix)
+					this.#cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 				}
 
 				const needsUpdatedReflections =
@@ -79,19 +71,48 @@ export class VelocityPass extends Pass {
 					velocityMaterial.needsUpdate = true
 				}
 
+				if (c.skeleton) {
+					velocityMaterial.defines.USE_SKINNING = ""
+					velocityMaterial.defines.BONE_TEXTURE = ""
+
+					this.#updateBoneTexture(velocityMaterial, c.skeleton, "boneTexture", "boneMatrices")
+				}
+
 				c.material = velocityMaterial
 			}
 		})
 	}
 
+	#updateBoneTexture(material, skeleton, uniformName, boneMatricesName) {
+		let boneMatrices = material[boneMatricesName]
+
+		if (material[boneMatricesName]?.length !== skeleton.boneMatrices.length) {
+			delete material[boneMatricesName]
+			boneMatrices = new Float32Array(skeleton.boneMatrices.length)
+			material[boneMatricesName] = boneMatrices
+		}
+
+		material[boneMatricesName].set(skeleton.boneMatrices)
+
+		const size = Math.sqrt(skeleton.boneMatrices.length / 4)
+		const boneTexture = new Data3DTexture(boneMatrices, size, size, RGBAFormat, FloatType)
+		boneTexture.needsUpdate = true
+
+		if (material.uniforms[uniformName].value) material.uniforms[uniformName].value.dispose()
+		material.uniforms[uniformName].value = boneTexture
+	}
+
 	#unsetVelocityMaterialInScene() {
 		this._scene.traverse(c => {
-			if (c.material) {
-				if (c.userData.prevModelViewMatrix === undefined) c.userData.prevModelViewMatrix = new Matrix4()
+			if (c.material?.type === "VelocityMaterial") {
+				c.material.uniforms.prevModelViewMatrix.value.copy(c.modelViewMatrix)
 
-				c.userData.prevModelViewMatrix.multiplyMatrices(this._camera.matrixWorldInverse, c.matrixWorld)
+				if (c.skeleton) this.#updateBoneTexture(c.material, c.skeleton, "prevBoneTexture", "prevBoneMatrices")
 
-				c.material = this.#defaultMaterials[c.material._originalUuid]
+				// set material back to the original one
+				const [originalMaterial] = this.#cachedMaterials.get(c)
+
+				c.material = originalMaterial
 			}
 		})
 	}
