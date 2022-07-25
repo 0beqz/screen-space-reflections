@@ -2,22 +2,16 @@ import * as POSTPROCESSING from "postprocessing"
 import { defaultSSROptions, SSREffect } from "screen-space-reflections"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Color } from "three"
+import { Color, Euler, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
-import { Pane } from "tweakpane"
-import { enhanceShaderLighting } from "./EnhanceShaderLighting"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
+import { Pane } from "tweakpane"
+import { setMovementCamera, setSpawn } from "./addons/Movement"
 import "./style.css"
-import { useBoxProjectedEnvMap } from "./BoxProjectedEnvMapHelper"
-import { Vector3 } from "three"
-import { TextureLoader } from "three"
-import { FrontSide } from "three"
-import { MeshStandardMaterial } from "three"
-import { updateFirstPersonMovement, setMovementCamera, setSpawn, spawnPlayer, worldOctree } from "./Movement"
-import { Euler } from "three"
 
-let ssrEffect, ssrPass
+let ssrEffect
+let ssrPass
 
 window.addEventListener("resize", () => {
 	camera.aspect = window.innerWidth / window.innerHeight
@@ -95,7 +89,7 @@ const params = {
 	resolutionScale: 1,
 	temporalResolve: true,
 	temporalResolveMix: 0.95,
-	temporalResolveCorrectionMix: 0.2,
+	temporalResolveCorrectionMix: 0.3875,
 	maxSamples: 0,
 	ENABLE_BLUR: true,
 	blurMix: 0.29,
@@ -106,7 +100,7 @@ const params = {
 	maxRoughness: 0.99,
 	ENABLE_JITTERING: true,
 	jitter: 0,
-	jitterRough: 1.24,
+	jitterRough: 0.85,
 	jitterSpread: 4,
 	roughnessFadeOut: 1,
 	rayFadeOut: 1.03,
@@ -194,74 +188,74 @@ let emitterMesh
 
 const url = "scene.glb"
 
-const settings = {
-	"color lut": false,
-	compressionPass: false,
-	fogColor: 7373462,
-	fogDensity: 0.0049,
-	toneMapping: "4",
-	toneMappingExposure: 0.5875,
-	gamma: 0.9500000000000001,
-	hue: 0,
-	saturation: 0,
-	envMapIntensity: 16.31,
-	lightMapIntensity: 1,
-	aoMapIntensity: 1,
-	roughness: 0.25,
-	metalness: 0.13,
-	envMapPosX: 0,
-	envMapPosY: 1,
-	envMapPosZ: 0,
-	envMapSizeX: 12,
-	envMapSizeY: 3.90714,
-	envMapSizeZ: 9,
-	aoPower: 2,
-	aoSmoothing: 0.43,
-	aoMapGamma: 0.74,
-	lightMapGamma: 1.21,
-	lightMapSaturation: 1.09,
-	envPower: 3.6,
-	smoothingPower: 0.41000000000000003,
-	roughnessPower: 1,
-	sunIntensity: 0,
-	aoColor: 13744018,
-	aoColorSaturation: 0.4064516129032258,
-	hemisphereColor: 2301734,
-	irradianceColor: 9011574,
-	radianceColor: 12222327,
-	sunColor: 16777215,
-	mapContrast: 0.77,
-	lightMapContrast: 1.1500000000000001,
-	irradianceIntensity: 0.44,
-	radianceIntensity: 6.34,
-	fov: 56,
-	baseIor: 0.9520000000000001,
-	bandOffset: 0.0013000000000000002,
-	jitterIntensity: 4,
-	bloom1_intensity: 1.78,
-	bloom1_luminanceThreshold: 0.64,
-	bloom1_luminanceSmoothing: 1.55,
-	bloom1_kernelSize: 3,
-	bloom2_intensity: 0.23,
-	bloom2_luminanceThreshold: 0.32,
-	bloom2_luminanceSmoothing: 0.5,
-	bloom2_kernelSize: 5
-}
+// const settings = {
+// 	"color lut": false,
+// 	compressionPass: false,
+// 	fogColor: 7373462,
+// 	fogDensity: 0.0049,
+// 	toneMapping: "4",
+// 	toneMappingExposure: 0.5875,
+// 	gamma: 0.9500000000000001,
+// 	hue: 0,
+// 	saturation: 0,
+// 	envMapIntensity: 16.31,
+// 	lightMapIntensity: 1,
+// 	aoMapIntensity: 1,
+// 	roughness: 0.25,
+// 	metalness: 0.13,
+// 	envMapPosX: 0,
+// 	envMapPosY: 1,
+// 	envMapPosZ: 0,
+// 	envMapSizeX: 12,
+// 	envMapSizeY: 3.90714,
+// 	envMapSizeZ: 9,
+// 	aoPower: 2,
+// 	aoSmoothing: 0.43,
+// 	aoMapGamma: 0.74,
+// 	lightMapGamma: 1.21,
+// 	lightMapSaturation: 1.09,
+// 	envPower: 3.6,
+// 	smoothingPower: 0.41000000000000003,
+// 	roughnessPower: 1,
+// 	sunIntensity: 0,
+// 	aoColor: 13744018,
+// 	aoColorSaturation: 0.4064516129032258,
+// 	hemisphereColor: 2301734,
+// 	irradianceColor: 9011574,
+// 	radianceColor: 12222327,
+// 	sunColor: 16777215,
+// 	mapContrast: 0.77,
+// 	lightMapContrast: 1.1500000000000001,
+// 	irradianceIntensity: 0.44,
+// 	radianceIntensity: 6.34,
+// 	fov: 56,
+// 	baseIor: 0.9520000000000001,
+// 	bandOffset: 0.0013000000000000002,
+// 	jitterIntensity: 4,
+// 	bloom1_intensity: 1.78,
+// 	bloom1_luminanceThreshold: 0.64,
+// 	bloom1_luminanceSmoothing: 1.55,
+// 	bloom1_kernelSize: 3,
+// 	bloom2_intensity: 0.23,
+// 	bloom2_luminanceThreshold: 0.32,
+// 	bloom2_luminanceSmoothing: 0.5,
+// 	bloom2_kernelSize: 5
+// }
 
-const envMapPos = new Vector3(settings.envMapPosX, settings.envMapPosY, settings.envMapPosZ)
-const envMapSize = new Vector3(settings.envMapSizeX, settings.envMapSizeY, settings.envMapSizeZ)
+// const envMapPos = new Vector3(settings.envMapPosX, settings.envMapPosY, settings.envMapPosZ)
+// const envMapSize = new Vector3(settings.envMapSizeX, settings.envMapSizeY, settings.envMapSizeZ)
 
-const enhanceShaderLightingOptions = {
-	...settings,
-	...{
-		aoColor: new Color(settings.aoColor),
-		hemisphereColor: new Color(settings.hemisphereColor),
-		irradianceColor: new Color(settings.irradianceColor),
-		radianceColor: new Color(settings.radianceColor)
-	}
-}
+// const enhanceShaderLightingOptions = {
+// 	...settings,
+// 	...{
+// 		aoColor: new Color(settings.aoColor),
+// 		hemisphereColor: new Color(settings.hemisphereColor),
+// 		irradianceColor: new Color(settings.irradianceColor),
+// 		radianceColor: new Color(settings.radianceColor)
+// 	}
+// }
 
-const placeholderTexture = new RGBELoader().load("lightmap/placeholder.hdr")
+// const placeholderTexture = new RGBELoader().load("lightmap/placeholder.hdr")
 
 // gltflLoader.load(
 // 	url,
