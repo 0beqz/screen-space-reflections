@@ -12,6 +12,7 @@ import "./style.css"
 let ssrEffect
 let ssrPass
 let gui
+let stats
 
 const scene = new THREE.Scene()
 window.scene = scene
@@ -243,6 +244,10 @@ gltflLoader.load(url, asset => {
 
 		gui = new SSRDebugGUI(ssrEffect, params)
 
+		stats = new Stats()
+		stats.showPanel(0)
+		document.body.appendChild(stats.dom)
+
 		const sceneFolder = gui.pane.addFolder({ title: "Scene", expanded: false })
 
 		sceneFolder.addInput(params, "enabled").on("change", () => {
@@ -355,20 +360,16 @@ const useVideoBackground = () => {
 
 const clock = new THREE.Clock()
 
-const stats = new Stats()
-stats.showPanel(0)
-document.body.appendChild(stats.dom)
-
 const loop = () => {
 	const dt = clock.getDelta()
-	stats.begin()
+	if (stats) stats.begin()
 
 	// controls.update()
 	updateFirstPersonMovement(dt)
 
 	composer.render()
 
-	stats.end()
+	if (stats) stats.end()
 	window.requestAnimationFrame(loop)
 }
 

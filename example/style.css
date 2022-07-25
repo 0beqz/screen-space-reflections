@@ -29,13 +29,13 @@ html {
 	font-size: 4rem;
 	letter-spacing: 4px;
 	z-index: 99999;
-	background: black;
+	background-color: #222222;
 	width: 100vw;
 	height: 100vh;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	font-family: "Poppins", sans-serif;
-	background: url("preview.webp");
+	/* background: url("preview.webp"); */
 	text-shadow: 0px 0px 32px rgba(0, 0, 0, 0.5);
 }
