@@ -228,8 +228,8 @@ function getSideVector() {
 	return playerDirection
 }
 
-export function controls(deltaTime) {
-	let speed = (playerOnFloor ? 3.75 : 1) * GRAVITY * speedMultiplier
+export function updateFirstPersonMovement(deltaTime) {
+	const speed = (playerOnFloor ? 3.75 : 1) * GRAVITY * speedMultiplier
 
 	// gives a bit of air control
 	let speedDelta = deltaTime * speed

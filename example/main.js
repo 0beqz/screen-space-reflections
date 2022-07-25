@@ -14,7 +14,7 @@ import { Vector3 } from "three"
 import { TextureLoader } from "three"
 import { FrontSide } from "three"
 import { MeshStandardMaterial } from "three"
-import { controls, setMovementCamera, setSpawn, spawnPlayer, worldOctree } from "./Movement"
+import { updateFirstPersonMovement, setMovementCamera, setSpawn, spawnPlayer, worldOctree } from "./Movement"
 import { Euler } from "three"
 
 let ssrEffect, ssrPass
@@ -27,9 +27,9 @@ window.addEventListener("resize", () => {
 	if (ssrEffect) ssrEffect.setSize(window.innerWidth, window.innerHeight)
 })
 
-document.querySelector("#orbitControlsDomElem").addEventListener("mousedown", () => {
-	document.body.requestPointerLock()
-})
+// document.querySelector("#orbitControlsDomElem").addEventListener("mousedown", () => {
+// 	document.body.requestPointerLock()
+// })
 
 const scene = new THREE.Scene()
 window.scene = scene
@@ -75,8 +75,8 @@ renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight)
 
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
-// const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
-// window.controls = controls
+const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
+window.controls = controls
 
 setMovementCamera(camera, scene, 1.3)
 setSpawn([
@@ -91,33 +91,33 @@ composer.addPass(renderPass)
 
 const params = {
 	enabled: true,
-	antialias: true,
+	antialias: false,
 	resolutionScale: 1,
 	temporalResolve: true,
-	temporalResolveMix: 0.975,
-	temporalResolveCorrectionMix: 0.15,
+	temporalResolveMix: 0.95,
+	temporalResolveCorrectionMix: 0.2,
 	maxSamples: 0,
 	ENABLE_BLUR: true,
 	blurMix: 0.29,
 	blurKernelSize: 5,
 	blurSharpness: 7.07,
-	rayStep: 0.347,
+	rayStep: 0.534,
 	intensity: 1,
 	maxRoughness: 0.99,
 	ENABLE_JITTERING: true,
 	jitter: 0,
-	jitterRough: 1.53,
-	jitterSpread: 3.3,
+	jitterRough: 1.24,
+	jitterSpread: 4,
 	roughnessFadeOut: 1,
 	rayFadeOut: 1.03,
 	maxDepth: 1,
 	thickness: 3.5,
-	ior: 1.75,
+	ior: 2,
 	rayFadeOut: 0,
 	MAX_STEPS: 25,
 	NUM_BINARY_SEARCH_STEPS: 7,
 	maxDepthDifference: 3,
-	STRETCH_MISSED_RAYS: true,
+	STRETCH_MISSED_RAYS: false,
 	floorRoughness: 2.6,
 	floorNormalScale: 1,
 	USE_MRT: true,
@@ -125,8 +125,44 @@ const params = {
 	USE_ROUGHNESSMAP: true
 }
 
+// const params = {
+// 	enabled: true,
+// 	antialias: true,
+// 	resolutionScale: 1,
+// 	temporalResolve: true,
+// 	temporalResolveMix: 0.975,
+// 	temporalResolveCorrectionMix: 0.15,
+// 	maxSamples: 0,
+// 	ENABLE_BLUR: true,
+// 	blurMix: 0.29,
+// 	blurKernelSize: 5,
+// 	blurSharpness: 7.07,
+// 	rayStep: 0.347,
+// 	intensity: 1,
+// 	maxRoughness: 0.99,
+// 	ENABLE_JITTERING: true,
+// 	jitter: 0,
+// 	jitterRough: 1.53,
+// 	jitterSpread: 3.3,
+// 	roughnessFadeOut: 1,
+// 	rayFadeOut: 1.03,
+// 	maxDepth: 1,
+// 	thickness: 3.5,
+// 	ior: 1.75,
+// 	rayFadeOut: 0,
+// 	MAX_STEPS: 25,
+// 	NUM_BINARY_SEARCH_STEPS: 7,
+// 	maxDepthDifference: 3,
+// 	STRETCH_MISSED_RAYS: true,
+// 	floorRoughness: 2.6,
+// 	floorNormalScale: 1,
+// 	USE_MRT: true,
+// 	USE_NORMALMAP: true,
+// 	USE_ROUGHNESSMAP: true
+// }
+
 camera.position.set(3.834002850041, 1.7334461523667284, -2.8164590671451015)
-// controls.target.set(0.03946622428351244, 1.1662644953346295, 0.5720257630544779)
+controls.target.set(0.03946622428351244, 1.1662644953346295, 0.5720257630544779)
 
 if (params.antialias) composer.multisampling = 8
 
@@ -156,7 +192,7 @@ const gltflLoader = new GLTFLoader()
 let floorMesh
 let emitterMesh
 
-const url = "scene2.glb"
+const url = "scene.glb"
 
 const settings = {
 	"color lut": false,
@@ -227,21 +263,138 @@ const enhanceShaderLightingOptions = {
 
 const placeholderTexture = new RGBELoader().load("lightmap/placeholder.hdr")
 
+// gltflLoader.load(
+// 	url,
+// 	asset => {
+// 		document.querySelector("#loading").remove()
+
+// 		scene.add(asset.scene)
+
+// 		const collider = asset.scene.getObjectByName("collider")
+// 		if (collider) {
+// 			worldOctree.fromGraphNode(collider)
+// 			collider.removeFromParent()
+// 			collider.geometry.dispose()
+// 			collider.material.dispose()
+// 		}
+
+// 		asset.scene.traverse(c => {
+// 			if (c.material) {
+// 				c.material.normalScale.setScalar(1)
+// 				if (c.name.includes("heli") || c.name.includes("plane")) {
+// 					c.material.roughness = 0.1
+// 					c.material.metalness = 1
+// 					c.material.color.multiplyScalar(0.075)
+// 				}
+
+// 				if (c.name !== "emissive") {
+// 					c.material.emissiveMap = c.material.emissiveMap || placeholderTexture
+// 					const lightMap = c.material.emissiveMap
+
+// 					// lightmap
+// 					if (lightMap) {
+// 						c.material.lightMap = lightMap
+// 						c.material.emissiveMap = null
+
+// 						lightMap.encoding = THREE.LinearEncoding
+// 					}
+
+// 					c.material.onBeforeCompile = shader => {
+// 						useBoxProjectedEnvMap(shader, envMapPos, envMapSize)
+// 						enhanceShaderLighting(shader, enhanceShaderLightingOptions)
+// 					}
+// 				}
+
+// 				if (c.material.name.includes("ceiling")) {
+// 					c.material.map.offset.setScalar(0)
+// 					const tex = new TextureLoader().load("OfficeCeiling002_1K_Emission.png")
+// 					const emissiveMap = c.material.map.clone()
+// 					emissiveMap.source = tex.source
+// 					c.material.emissiveMap = emissiveMap
+// 					c.material.emissive.setHex(0xffb580)
+// 				}
+
+// 				if (c.material.name.includes("floor")) {
+// 					c.material.normalScale.setScalar(0.55)
+// 				}
+
+// 				// c.material.roughness = 0.2
+// 				// c.material.metalness = 0.9
+// 				// c.material.color.setScalar(0.8)
+// 				// c.material.normalScale.setScalar(2.5)
+
+// 				c.material.color.setScalar(0.05)
+// 				c.material.roughness = 0.2
+
+// 				if (c.name.includes("props")) {
+// 					c.material.color.setScalar(0.35)
+
+// 					if (c.material.name.includes("Couch")) c.material.roughness = 1
+// 				}
+
+// 				if (c.material.emissiveMap && c.material.normalMap) {
+// 					window.e = c.material
+// 					c.material.emissiveIntensity = 10
+// 				}
+
+// 				if (c.material.name.toLowerCase().includes("shd")) {
+// 					c.material.roughness = 0.1
+// 					c.material.metalness = 0.6
+// 					c.material.color.multiplyScalar(0.08)
+// 				}
+// 			}
+
+// 			c.updateMatrixWorld()
+
+// 			if (c.name === "Plane") floorMesh = c
+
+// 			if (c.name === "emissive") {
+// 				c.material.envMapIntensity = 0
+// 				emitterMesh = c
+// 			}
+// 		})
+
+// 		new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
+// 			const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
+
+// 			// now init SSR effect
+// 			ssrEffect = new SSREffect(scene, camera, params)
+// 			ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
+// 			composer.addPass(ssrPass)
+
+// 			window.ssrEffect = ssrEffect
+// 			window.ssrPass = ssrPass
+
+// 			const bloomEffect = new POSTPROCESSING.BloomEffect({
+// 				intensity: 2,
+// 				luminanceThreshold: 0.4,
+// 				luminanceSmoothing: 0.7,
+// 				kernelSize: POSTPROCESSING.KernelSize.HUGE,
+// 				mipmapBlur: true
+// 			})
+
+// 			composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
+// 		})
+
+// 		spawnPlayer()
+
+// 		loop()
+
+// 		const urlParams = new URLSearchParams(window.location.search)
+// 		if (urlParams.get("dancer") === "true") useVideoBackground()
+// 	},
+// 	ev => {
+// 		const progress = Math.round((ev.loaded / 1127388) * 100)
+// 		document.querySelector("#loading").textContent = progress + "%"
+// 	}
+// )
+
 gltflLoader.load(
 	url,
 	asset => {
 		document.querySelector("#loading").remove()
 
 		scene.add(asset.scene)
-
-		const collider = asset.scene.getObjectByName("collider")
-		if (collider) {
-			worldOctree.fromGraphNode(collider)
-			collider.removeFromParent()
-			collider.geometry.dispose()
-			collider.material.dispose()
-		}
-
 		asset.scene.traverse(c => {
 			if (c.material) {
 				c.material.normalScale.setScalar(1)
@@ -251,55 +404,10 @@ gltflLoader.load(
 					c.material.color.multiplyScalar(0.075)
 				}
 
-				if (c.name !== "emissive") {
-					c.material.emissiveMap = c.material.emissiveMap || placeholderTexture
-					const lightMap = c.material.emissiveMap
-
-					// lightmap
-					if (lightMap) {
-						c.material.lightMap = lightMap
-						c.material.emissiveMap = null
-
-						lightMap.encoding = THREE.LinearEncoding
-					}
-
-					c.material.onBeforeCompile = shader => {
-						useBoxProjectedEnvMap(shader, envMapPos, envMapSize)
-						enhanceShaderLighting(shader, enhanceShaderLightingOptions)
-					}
-				}
-
-				if (c.material.name.includes("ceiling")) {
-					c.material.map.offset.setScalar(0)
-					const tex = new TextureLoader().load("OfficeCeiling002_1K_Emission.png")
-					const emissiveMap = c.material.map.clone()
-					emissiveMap.source = tex.source
-					c.material.emissiveMap = emissiveMap
-					c.material.emissive.setHex(0xffb580)
-				}
-
-				if (c.material.name.includes("floor")) {
-					c.material.normalScale.setScalar(0.55)
-				}
-
 				// c.material.roughness = 0.2
 				// c.material.metalness = 0.9
 				// c.material.color.setScalar(0.8)
 				// c.material.normalScale.setScalar(2.5)
-
-				c.material.color.setScalar(0.05)
-				c.material.roughness = 0.2
-
-				if (c.name.includes("props")) {
-					c.material.color.setScalar(0.35)
-
-					if (c.material.name.includes("Couch")) c.material.roughness = 1
-				}
-
-				if (c.material.emissiveMap && c.material.normalMap) {
-					window.e = c.material
-					c.material.emissiveIntensity = 10
-				}
 
 				if (c.material.name.toLowerCase().includes("shd")) {
 					c.material.roughness = 0.1
@@ -312,35 +420,50 @@ gltflLoader.load(
 
 			if (c.name === "Plane") floorMesh = c
 
-			if (c.name === "emissive") {
-				c.material.envMapIntensity = 0
+			if (c.name === "Cube") {
 				emitterMesh = c
+				c.material.emissiveMap = null
+				c.material.emissive.setScalar(0)
+				c.material.roughness = 3
+
+				c.material.side = THREE.FrontSide
 			}
 		})
 
-		new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
-			const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
-
-			// now init SSR effect
-			ssrEffect = new SSREffect(scene, camera, params)
-			ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
-			composer.addPass(ssrPass)
-
-			window.ssrEffect = ssrEffect
-			window.ssrPass = ssrPass
-
-			const bloomEffect = new POSTPROCESSING.BloomEffect({
-				intensity: 2,
-				luminanceThreshold: 0.4,
-				luminanceSmoothing: 0.7,
-				kernelSize: POSTPROCESSING.KernelSize.HUGE,
-				mipmapBlur: true
+		const box = new THREE.Mesh(
+			new THREE.BoxBufferGeometry(2, 2, 2),
+			new THREE.MeshStandardMaterial({
+				color: 0,
+				metalness: 1,
+				roughness: 0
 			})
+		)
+		box.position.set(4, 1, 4)
+		box.updateMatrixWorld()
 
-			composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
-		})
+		const box2 = new THREE.Mesh(
+			new THREE.CylinderBufferGeometry(0.5, 0.5, 3, 32, 32),
+			new THREE.MeshStandardMaterial({
+				color: 0,
+				metalness: 1,
+				roughness: 0
+			})
+		)
+		box2.position.set(4, 1, -3.5)
+		box2.updateMatrixWorld()
 
-		spawnPlayer()
+		box.name = "box"
+
+		scene.add(box)
+		scene.add(box2)
+
+		// now init SSR effect
+		ssrEffect = new SSREffect(scene, camera, params)
+		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
+		composer.addPass(ssrPass)
+
+		window.ssrEffect = ssrEffect
+		window.ssrPass = ssrPass
 
 		loop()
 
@@ -356,15 +479,12 @@ gltflLoader.load(
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("envRoom.hdr", tex => {
-	const envMap = pmremGenerator.fromEquirectangular(tex).texture
-	envMap.minFilter = THREE.LinearFilter
+// new RGBELoader().load("envRoom.hdr", tex => {
+// 	const envMap = pmremGenerator.fromEquirectangular(tex).texture
+// 	envMap.minFilter = THREE.LinearFilter
 
-	scene.environment = envMap
-})
-
-let mixer
-let skinMesh
+// 	scene.environment = envMap
+// })
 
 const useVideoBackground = () => {
 	if (emitterMesh.material._videoMap) {
@@ -383,47 +503,7 @@ const useVideoBackground = () => {
 
 		ssrEffect.samples = 0
 	}
-
-	// gltflLoader.load("skin.glb", asset => {
-	// 	skinMesh = asset.scene
-	// 	skinMesh.scale.multiplyScalar(2.1)
-	// 	skinMesh.position.set(2.5, 0, 0)
-	// 	skinMesh.rotation.y += Math.PI / 2
-	// 	skinMesh.updateMatrixWorld()
-	// 	skinMesh.traverse(c => {
-	// 		if (c.material) {
-	// 			c.material.roughness = 0
-	// 			c.material.metalness = 1
-	// 		}
-	// 	})
-	// 	scene.add(asset.scene)
-	// 	mixer = new THREE.AnimationMixer(skinMesh)
-	// 	const clips = asset.animations
-
-	// 	const action = mixer.clipAction(clips[0])
-	// 	action.play()
-	// })
 }
-
-// gltflLoader.load("skin.glb", asset => {
-// 	skinMesh = asset.scene
-// 	skinMesh.scale.multiplyScalar(2.1)
-// 	skinMesh.position.set(2.5, 0, 0)
-// 	skinMesh.rotation.y += Math.PI / 2
-// 	skinMesh.updateMatrixWorld()
-// 	skinMesh.traverse(c => {
-// 		if (c.material) {
-// 			c.material.roughness = 0
-// 			c.material.metalness = 1
-// 		}
-// 	})
-// 	scene.add(asset.scene)
-// 	mixer = new THREE.AnimationMixer(skinMesh)
-// 	const clips = asset.animations
-
-// 	const action = mixer.clipAction(clips[0])
-// 	action.play()
-// })
 
 const pane = new Pane()
 window.pane = pane
@@ -576,14 +656,8 @@ const loop = () => {
 
 	stats.begin()
 
-	// controls.update()
-	controls(dt)
-
-	if (skinMesh) {
-		mixer.update(dt)
-		skinMesh.updateMatrixWorld()
-		// skinMesh = null
-	}
+	controls.update()
+	// controls(dt)
 
 	composer.render()
 
