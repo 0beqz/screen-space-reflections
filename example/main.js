@@ -56,8 +56,8 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 
 setMovementCamera(camera, scene, 1.3)
 setSpawn([
-	new THREE.Vector3(2.628027999058114, 1.649999999999989, -2.0229278829404005),
-	new THREE.Euler(0.0020000000000002603, 2.3680000000000057, 0)
+	new THREE.Vector3(5.113053737140886, 1.8300000071525564, -2.013112958154061),
+	new THREE.Euler(-0.005999999999999719, 1.9200000000000146, 0)
 ])
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
