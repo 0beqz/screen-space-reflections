@@ -78,7 +78,7 @@ const params = {
 		blurKernelSize: 5,
 		blurSharpness: 7.07,
 		rayStep: 0.925,
-		intensity: 1,
+		intensity: 1.25,
 		maxRoughness: 0.99,
 		ENABLE_JITTERING: true,
 		jitter: 0,
