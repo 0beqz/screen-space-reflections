@@ -44,7 +44,22 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 
 void main() {
-    vec4 depthTexel = texture2D(depthTexture, vUv);
+#ifdef DITHERING
+    ivec2 size = textureSize(inputTexture, 0);
+    vec2 pxSize = vec2(float(size.x), float(size.y));
+
+    int x = int(vUv.x * pxSize.x);
+    int y = int(vUv.y * pxSize.y);
+
+    int rest = int(samples) % 2;
+
+    if (x % 2 == rest || y % 2 == rest) {
+        gl_FragColor = EARLY_OUT_COLOR;
+        return;
+    }
+#endif
+
+    vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
     // filter out sky
     if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) {
@@ -59,7 +74,7 @@ void main() {
         return;
     }
 
-    vec4 normalTexel = texture2D(normalTexture, vUv);
+    vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
 
     float roughness = normalTexel.a;
 
@@ -124,10 +139,10 @@ void main() {
     float screenEdgefactor = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
     screenEdgefactor = max(0., screenEdgefactor);
 
-    vec4 SSRTexel = texture2D(inputTexture, coords.xy);
-    vec4 SSRTexelReflected = texture2D(accumulatedReflectionsTexture, coords.xy);
+    vec4 SSRTexel = textureLod(inputTexture, coords.xy, 0.);
+    vec4 SSRTexelReflected = textureLod(accumulatedReflectionsTexture, coords.xy, 0.);
 
-    vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
+    vec3 SSR = SSRTexel.rgb;
 
     float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));
 
@@ -148,6 +163,10 @@ void main() {
     float fresnelFactor = fresnel_dielectric(normalize(viewPos), viewNormal, ior);
 
     finalSSR = finalSSR * fresnelFactor * intensity;
+
+#ifdef DITHERING
+    finalSSR *= 2.;
+#endif
     finalSSR = min(vec3(1.), finalSSR);
 
     float alpha = hitPos.z == 1. ? SSRTexel.a : SSRTexelReflected.a;
@@ -160,7 +179,6 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
     dir *= rayStep;
 
     float depth;
-    int steps;
     vec4 projectedCoord;
     vec4 lastProjectedCoord;
     float unpackedDepth;
@@ -202,7 +220,6 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
 #endif
         }
 
-        steps++;
         lastProjectedCoord = projectedCoord;
     }
 

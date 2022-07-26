@@ -29,6 +29,7 @@ export class ReflectionsPass extends Pass {
 		this._camera = ssrEffect._camera
 
 		this.fullscreenMaterial = new ReflectionsMaterial()
+		if (ssrEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		const width = options.width || typeof window !== "undefined" ? window.innerWidth : 2000
 		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000

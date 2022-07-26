@@ -16,7 +16,7 @@ export class SSRDebugGUI {
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "resolutionScale", { min: 0.125, max: 1, step: 0.125 })
-		generalFolder.addInput(params, "intensity", { min: 0.1, max: 3, step: 0.01 })
+		generalFolder.addInput(params, "intensity", { min: 0, max: 3, step: 0.01 })
 		generalFolder.addInput(params, "rayStep", { min: 0.001, max: 5, step: 0.001 })
 		generalFolder.addInput(params, "rayFadeOut", {
 			min: 0,
@@ -41,7 +41,7 @@ export class SSRDebugGUI {
 
 		const maximumValuesFolder = pane.addFolder({ title: "Maximum Values" })
 
-		maximumValuesFolder.addInput(params, "maxSamples", { min: 0, max: 16, step: 1 })
+		maximumValuesFolder.addInput(params, "maxSamples", { min: 0, max: 256, step: 1 })
 		maximumValuesFolder.addInput(params, "maxDepthDifference", {
 			min: 0,
 			max: 8,
@@ -72,10 +72,11 @@ export class SSRDebugGUI {
 		jitterFolder.addInput(params, "jitterRough", { min: 0, max: 3, step: 0.01 })
 		jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 5, step: 0.01 })
 
-		const definesFolder = pane.addFolder({ title: "Steps" })
+		const definesFolder = pane.addFolder({ title: "Tracing" })
 
 		definesFolder.addInput(params, "MAX_STEPS", { min: 1, max: 256, step: 1 })
 		definesFolder.addInput(params, "NUM_BINARY_SEARCH_STEPS", { min: 0, max: 16, step: 1 })
 		definesFolder.addInput(params, "STRETCH_MISSED_RAYS")
+		definesFolder.addInput(params, "DITHERING")
 	}
 }

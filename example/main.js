@@ -7,10 +7,11 @@ import { useBoxProjectedEnvMap } from "./addons/BoxProjectedEnvMapHelper"
 import { enhanceShaderLighting } from "./addons/EnhanceShaderLighting"
 import { setMovementCamera, setSpawn, spawnPlayer, updateFirstPersonMovement, worldOctree } from "./addons/Movement"
 import { SSRDebugGUI } from "./SSRDebugGUI"
+import { getGPUTier } from "detect-gpu"
+import { defaultSSROptions } from "screen-space-reflections"
 import "./style.css"
 
 let ssrEffect
-let ssrPass
 let gui
 let stats
 
@@ -65,40 +66,42 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const params = {
-	enabled: true,
-	antialias: true,
-	resolutionScale: 1,
-	temporalResolve: true,
-	temporalResolveMix: 0.975,
-	temporalResolveCorrectionMix: 0.15,
-	maxSamples: 0,
-	ENABLE_BLUR: true,
-	blurMix: 0.29,
-	blurKernelSize: 5,
-	blurSharpness: 7.07,
-	rayStep: 0.347,
-	intensity: 1,
-	maxRoughness: 0.99,
-	ENABLE_JITTERING: true,
-	jitter: 0,
-	jitterRough: 1.53,
-	jitterSpread: 3.6,
-	roughnessFadeOut: 1,
-	rayFadeOut: 1.03,
-	maxDepth: 1,
-	thickness: 3.5,
-	ior: 1.75,
-	rayFadeOut: 0,
-	MAX_STEPS: 25,
-	NUM_BINARY_SEARCH_STEPS: 7,
-	maxDepthDifference: 3,
-	STRETCH_MISSED_RAYS: true,
-	USE_MRT: true,
-	USE_NORMALMAP: true,
-	USE_ROUGHNESSMAP: true
+	...defaultSSROptions,
+	...{
+		enabled: true,
+		antialias: false,
+		resolutionScale: 1,
+		temporalResolve: true,
+		temporalResolveMix: 0.975,
+		temporalResolveCorrectionMix: 0.15,
+		ENABLE_BLUR: true,
+		blurMix: 0.29,
+		blurKernelSize: 5,
+		blurSharpness: 7.07,
+		rayStep: 0.925,
+		intensity: 1,
+		maxRoughness: 0.99,
+		ENABLE_JITTERING: true,
+		jitter: 0,
+		jitterRough: 1.53,
+		jitterSpread: 3.6,
+		roughnessFadeOut: 1,
+		rayFadeOut: 1.03,
+		maxDepth: 1,
+		thickness: 3.5,
+		ior: 1.75,
+		rayFadeOut: 0,
+		MAX_STEPS: 9,
+		NUM_BINARY_SEARCH_STEPS: 7,
+		maxDepthDifference: 8,
+		STRETCH_MISSED_RAYS: true,
+		USE_MRT: true,
+		USE_NORMALMAP: true,
+		USE_ROUGHNESSMAP: true
+	}
 }
 
-// if (params.antialias) composer.multisampling = 4
+if (params.antialias) composer.multisampling = 4
 
 const defaultParams = { ...params }
 
@@ -212,12 +215,6 @@ gltflLoader.load(url, asset => {
 				window.e = c.material
 				c.material.emissiveIntensity = 10
 			}
-
-			if (c.material.name.toLowerCase().includes("shd")) {
-				c.material.roughness = 0.1
-				c.material.metalness = 0.6
-				c.material.color.multiplyScalar(0.08)
-			}
 		}
 
 		c.updateMatrixWorld()
@@ -233,30 +230,17 @@ gltflLoader.load(url, asset => {
 
 		// now init SSR effect
 		ssrEffect = new SSREffect(scene, camera, params)
-		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
-		composer.addPass(ssrPass)
-
 		window.ssrEffect = ssrEffect
-		window.ssrPass = ssrPass
 
 		gui = new SSRDebugGUI(ssrEffect, params)
+
+		getGPUTier().then(res => {
+			if (res.tier < 3) ssrEffect.resolutionScale = 0.5
+		})
 
 		stats = new Stats()
 		stats.showPanel(0)
 		document.body.appendChild(stats.dom)
-
-		const sceneFolder = gui.pane.addFolder({ title: "Scene", expanded: false })
-
-		sceneFolder.addInput(params, "enabled").on("change", () => {
-			if (params.enabled) {
-				ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
-				composer.addPass(ssrPass)
-				window.ssrPass = ssrPass
-			} else {
-				composer.removePass(ssrPass)
-				window.ssrPass = null
-			}
-		})
 
 		const presetsFolder = gui.pane.addFolder({ title: "Presets", expanded: false })
 		presetsFolder
@@ -295,7 +279,7 @@ gltflLoader.load(url, asset => {
 			darkness: 0.3675
 		})
 
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, ssrEffect, bloomEffect, vignetteEffect, lutEffect))
 	})
 
 	spawnPlayer()

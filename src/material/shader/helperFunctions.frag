@@ -6,9 +6,13 @@ vec3 getViewPosition(const float depth) {
     return (_inverseProjectionMatrix * clipPosition).xyz;
 }
 
-// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
-float getViewZ(const float depth) {
+// source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
+float getViewZ(const in float depth) {
+#ifdef PERSPECTIVE_CAMERA
     return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
+#else
+    return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
+#endif
 }
 
 // credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2

@@ -56,7 +56,7 @@ const options = {
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
 	temporalResolveCorrectionMix: 1,
-	maxSamples: 0,
+	maxSamples: 256,
 	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
@@ -79,6 +79,7 @@ const options = {
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
+	DITHERING: false,
 	STRETCH_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,
@@ -137,6 +138,8 @@ const options = {
 
 - `ior`: Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter set how much the intensity varies
 
+- `DITHERING`: Improves performance but reduces quality by only alternately calculating reflections for every second pixel each frame; only works well if resolutionScale is 1
+
 - `STRETCH_MISSED_RAYS`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
 
 - `USE_MRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run; this setting can't be changed during run-time
@@ -148,14 +151,18 @@ const options = {
 </details>
 
 ### ❗ Highly recommended: Use a GUI to tweak the options
+
 Since the right options for an SSR effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSR effect for the first time in it without any configuration. This can have multiple causes such as `rayStep` being way too low for your scene for example. So to find out which SSR options are right for your scene, you should use a GUI to find the right values easily.
 The [example](https://github.com/0beqz/screen-space-reflections/tree/main/example) already comes with a simple one-file GUI [`SSRDebugGUI.js`](https://github.com/0beqz/screen-space-reflections/blob/main/example/SSRDebugGUI.js) that you can use in your project like so:
+
 - First install the npm package of the module used for the GUI:
+
 ```
 npm i tweakpane
 ```
 
 - then just copy the `SSRDebugGUI.js` to your project and initialize it like so in your scene:
+
 ```javascript
 import { SSRDebugGUI } from "./SSRDebugGUI"
 

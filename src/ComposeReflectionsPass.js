@@ -3,7 +3,6 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
-	NearestFilter,
 	RGBAFormat,
 	ShaderMaterial,
 	Uniform,
@@ -70,8 +69,8 @@ export class ComposeReflectionsPass extends Pass {
 
 	setupAccumulatedReflectionsTexture(width, height) {
 		this.accumulatedReflectionsTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.accumulatedReflectionsTexture.minFilter = NearestFilter
-		this.accumulatedReflectionsTexture.magFilter = NearestFilter
+		this.accumulatedReflectionsTexture.minFilter = LinearFilter
+		this.accumulatedReflectionsTexture.magFilter = LinearFilter
 		this.accumulatedReflectionsTexture.type = HalfFloatType
 	}
 

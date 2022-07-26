@@ -34,6 +34,22 @@ varying vec2 vUv;
 void main() {
     vec4 inputTexel = texture2D(inputTexture, vUv);
 
+    float samplesValue = samples;
+
+    bool wasDiscarded = false;
+#ifdef DITHERING
+    ivec2 size = textureSize(inputTexture, 0);
+    vec2 pxSize = vec2(float(size.x), float(size.y));
+
+    int x = int(vUv.x * pxSize.x);
+    int y = int(vUv.y * pxSize.y);
+
+    int rest = int(samplesValue) % 2;
+    wasDiscarded = x % 2 == rest || y % 2 == rest;
+
+    samplesValue *= 0.5;
+#endif
+
     vec4 lastFrameReflectionsTexel;
 
     vec3 newColor;
@@ -55,39 +71,35 @@ void main() {
         // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
         if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
             lastFrameReflectionsTexel = texture2D(accumulatedReflectionsTexture, reprojectedUv);
-            // neighborhood clamping (only for the first sample where the camera just moved)
-            ivec2 size = textureSize(inputTexture, 0);
-            vec2 pxSize = vec2(float(size.x), float(size.y));
 
-            vec2 px = 1. / pxSize;
+            if (!wasDiscarded) {
+                // neighborhood clamping (only for the first sample where the camera just moved)
+                ivec2 size = textureSize(inputTexture, 0);
+                vec2 pxSize = vec2(float(size.x), float(size.y));
 
-            // get neighbor pixels
-            vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
-            vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
-            vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
-            vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
-            vec3 c11 = inputTexel.rgb;
-            vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
-            vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
-            vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
-            vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
+                vec2 px = 1. / pxSize;
 
-            vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
-            vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+                // get neighbor pixels
+                vec3 c02 = texture2D(inputTexture, vUv + vec2(-px.x, px.y)).rgb;
+                vec3 c12 = texture2D(inputTexture, vUv + vec2(0., px.y)).rgb;
+                vec3 c22 = texture2D(inputTexture, vUv + vec2(px.x, px.y)).rgb;
+                vec3 c01 = texture2D(inputTexture, vUv + vec2(-px.x, 0.)).rgb;
+                vec3 c11 = inputTexel.rgb;
+                vec3 c21 = texture2D(inputTexture, vUv + vec2(px.x, 0.)).rgb;
+                vec3 c00 = texture2D(inputTexture, vUv + vec2(-px.x, -px.y)).rgb;
+                vec3 c10 = texture2D(inputTexture, vUv + vec2(0., -px.y)).rgb;
+                vec3 c20 = texture2D(inputTexture, vUv + vec2(px.x, -px.y)).rgb;
 
-            // reduces noise when moving camera and not using temporal resolving
-            // #ifndef TEMPORAL_RESOLVE
-            // vec3 neighborColor = c02 + c12 + c22 + c01 + c11 + c21 + c00 + c10 + c20;
-            // neighborColor /= 9.;
-            // inputTexel.rgb = mix(inputTexel.rgb, neighborColor, 0.5);
-            // #endif
+                vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
+                vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
 
-            vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
+                vec3 clampedColor = clamp(lastFrameReflectionsTexel.rgb, minNeighborColor, maxNeighborColor);
 
-            float mixFactor = temporalResolveCorrectionMix * (1. + movement);
-            mixFactor = min(mixFactor, 1.);
+                float mixFactor = temporalResolveCorrectionMix * (1. + movement);
+                mixFactor = min(mixFactor, 1.);
 
-            lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, mixFactor);
+                lastFrameReflectionsTexel.rgb = mix(lastFrameReflectionsTexel.rgb, clampedColor, mixFactor);
+            }
         } else {
             // reprojected UV coordinates are outside of screen, so just use the current frame for it
             lastFrameReflectionsTexel.rgb = inputTexel.rgb;
@@ -96,10 +108,16 @@ void main() {
         lastFrameReflectionsTexel = texture2D(accumulatedReflectionsTexture, vUv);
     }
 
-    float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
-    alpha = samples < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
+#ifdef DITHERING
+    if (wasDiscarded) {
+        inputTexel = lastFrameReflectionsTexel;
+    }
+#endif
 
-    if (maxSamples != 0. && samples > maxSamples && alpha > 1. - FLOAT_EPSILON) {
+    float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
+    alpha = samplesValue < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
+
+    if (maxSamples != 0. && samplesValue > maxSamples && alpha > 1. - FLOAT_EPSILON) {
         gl_FragColor = lastFrameReflectionsTexel;
         return;
     }
@@ -107,16 +125,16 @@ void main() {
     if (alpha < 1.) {
         // the reflections aren't correct anymore (e.g. due to occlusion from moving object) so we need to have inputTexel influence the reflections more
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, (1. - alpha) * temporalResolveCorrectionMix);
-    } else if (samples > 4. && movement < FLOAT_EPSILON && length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
+    } else if (samplesValue > 4. && movement < FLOAT_EPSILON && length(lastFrameReflectionsTexel.rgb) < FLOAT_EPSILON) {
         // this will prevent the appearing of distracting colorful dots around the edge of a reflection once the camera has stopped moving
         newColor = lastFrameReflectionsTexel.rgb;
-    } else if (1. / samples >= 1. - temporalResolveMix) {
+    } else if (1. / samplesValue >= 1. - temporalResolveMix) {
         // the default way to sample the reflections evenly for the first "1 / temporalResolveMix" frames
         newColor = lastFrameReflectionsTexel.rgb * (temporalResolveMix) + inputTexel.rgb * (1. - temporalResolveMix);
     } else {
-        // default method that samples quite subtly
-        float mixVal = (1. / samples) / EULER;
-        if (alpha < FLOAT_EPSILON && samples < 15.) mixVal += 0.3;
+        // default method that samplesValue quite subtly
+        float mixVal = (1. / samplesValue) / EULER;
+        if (alpha < FLOAT_EPSILON && samplesValue < 15.) mixVal += 0.3;
 
         newColor = mix(lastFrameReflectionsTexel.rgb, inputTexel.rgb, mixVal);
     }
@@ -126,15 +144,15 @@ void main() {
     float movement = length(velUv) * 100.;
 
     float alpha = min(inputTexel.a, lastFrameReflectionsTexel.a);
-    alpha = samples < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
+    alpha = samplesValue < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
 
-    if (maxSamples != 0. && samples > maxSamples && alpha > 1. - FLOAT_EPSILON) {
+    if (maxSamples != 0. && samplesValue > maxSamples && alpha > 1. - FLOAT_EPSILON) {
         newColor = lastFrameReflectionsTexel.rgb;
     } else {
-        // smoothing for higher samples to get rid of "bland reflections" after a high amount of samples
-        float samplesMultiplier = pow(samples / 32., 4.) + 1.;
-        if (samples > 1. && alpha > 1. - FLOAT_EPSILON) {
-            newColor = lastFrameReflectionsTexel.rgb * (1. - 1. / (samples * samplesMultiplier)) + inputTexel.rgb / (samples * samplesMultiplier);
+        // smoothing for higher samplesValue to get rid of "bland reflections" after a high amount of samplesValue
+        float samplesValueMultiplier = pow(samplesValue / 32., 4.) + 1.;
+        if (samplesValue > 1. && alpha > 1. - FLOAT_EPSILON) {
+            newColor = lastFrameReflectionsTexel.rgb * (1. - 1. / (samplesValue * samplesValueMultiplier)) + inputTexel.rgb / (samplesValue * samplesValueMultiplier);
         } else {
             newColor = inputTexel.rgb;
         }

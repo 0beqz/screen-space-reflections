@@ -14,7 +14,7 @@ export const defaultSSROptions = {
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
 	temporalResolveCorrectionMix: 1,
-	maxSamples: 0,
+	maxSamples: 256,
 	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
@@ -37,6 +37,7 @@ export const defaultSSROptions = {
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
+	DITHERING: false,
 	STRETCH_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,
@@ -186,6 +187,19 @@ export class SSREffect extends Effect {
 							}
 
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
+							break
+
+						case "DITHERING":
+							if (value) {
+								this.reflectionsPass.fullscreenMaterial.defines.DITHERING = ""
+								this.composeReflectionsPass.fullscreenMaterial.defines.DITHERING = ""
+							} else {
+								delete this.reflectionsPass.fullscreenMaterial.defines.DITHERING
+								delete this.composeReflectionsPass.fullscreenMaterial.defines.DITHERING
+							}
+
+							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
+							this.composeReflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "USE_NORMALMAP":

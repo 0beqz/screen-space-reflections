@@ -108,8 +108,7 @@ export class MRTMaterial extends ShaderMaterial {
                     #ifdef USE_MRT
                         float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
-                        gNormal = vec4( normalColor, 1.0 );
-                        gNormal.a = roughnessFactor;
+                        gNormal = vec4( normalColor, roughnessFactor );
                         gDepth = depthColor;
                     #else
                         gl_FragColor = vec4(normalColor, roughnessFactor);
