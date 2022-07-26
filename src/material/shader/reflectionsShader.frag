@@ -142,7 +142,7 @@ void main() {
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, 0.);
     vec4 SSRTexelReflected = textureLod(accumulatedReflectionsTexture, coords.xy, 0.);
 
-    vec3 SSR = SSRTexel.rgb;
+    vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
 
     float roughnessFactor = mix(specular, 1., max(0., 1. - roughnessFadeOut));
 
