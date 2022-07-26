@@ -145,13 +145,6 @@ void main() {
         finalSSR *= opacity;
     }
 
-    float blurMix = 0.;
-#ifdef ENABLE_BLUR
-    // increase the reflection blur the further away the reflecting object is
-    blurMix = sqrt(reflectionDistance) * maxRoughness;
-    if (blurMix > 1.) blurMix = 1.;
-#endif
-
     float fresnelFactor = fresnel_dielectric(normalize(viewPos), viewNormal, ior);
 
     finalSSR = finalSSR * fresnelFactor * intensity;

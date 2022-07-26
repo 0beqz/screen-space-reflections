@@ -21,7 +21,7 @@ scene.add(new THREE.AmbientLight())
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 20)
 
 scene.add(camera)
-// scene.autoUpdate = false
+scene.autoUpdate = false
 window.camera = camera
 
 const canvas = document.querySelector(".webgl")
@@ -98,13 +98,12 @@ const params = {
 	USE_ROUGHNESSMAP: true
 }
 
-if (params.antialias) composer.multisampling = 4
+// if (params.antialias) composer.multisampling = 4
 
 const defaultParams = { ...params }
 
 const gltflLoader = new GLTFLoader()
 
-let floorMesh
 let emitterMesh
 
 const url = "room/room.gltf"
@@ -222,8 +221,6 @@ gltflLoader.load(url, asset => {
 		}
 
 		c.updateMatrixWorld()
-
-		if (c.name === "Plane") floorMesh = c
 
 		if (c.name === "emissive") {
 			c.material.envMapIntensity = 0

@@ -1,5 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
+import { LinearFilter, NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import { MRTMaterial } from "./material/MRTMaterial.js"
 import { ReflectionsMaterial } from "./material/ReflectionsMaterial.js"
 import { VelocityPass } from "./passes/VelocityPass.js"
@@ -34,8 +34,8 @@ export class ReflectionsPass extends Pass {
 		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			depthBuffer: false
 		})
 
@@ -92,7 +92,7 @@ export class ReflectionsPass extends Pass {
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.#ssrEffect.resolutionScale, height * this.#ssrEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width * this.#ssrEffect.resolutionScale, height * this.#ssrEffect.resolutionScale)
-		if (!this.#USE_MRT) this.#webgl1DepthPass.setSize(width, height)
+
 		this.#velocityPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.accumulatedReflectionsTexture.value =

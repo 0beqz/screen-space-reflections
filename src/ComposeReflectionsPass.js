@@ -2,6 +2,7 @@
 import {
 	FramebufferTexture,
 	HalfFloatType,
+	LinearFilter,
 	NearestFilter,
 	RGBAFormat,
 	ShaderMaterial,
@@ -26,8 +27,8 @@ export class ComposeReflectionsPass extends Pass {
 		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
