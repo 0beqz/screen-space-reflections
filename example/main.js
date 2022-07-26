@@ -1,5 +1,6 @@
+import { getGPUTier } from "detect-gpu"
 import * as POSTPROCESSING from "postprocessing"
-import { SSREffect } from "screen-space-reflections"
+import { defaultSSROptions, SSREffect } from "screen-space-reflections"
 import Stats from "stats.js"
 import * as THREE from "three"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -7,8 +8,6 @@ import { useBoxProjectedEnvMap } from "./addons/BoxProjectedEnvMapHelper"
 import { enhanceShaderLighting } from "./addons/EnhanceShaderLighting"
 import { setMovementCamera, setSpawn, spawnPlayer, updateFirstPersonMovement, worldOctree } from "./addons/Movement"
 import { SSRDebugGUI } from "./SSRDebugGUI"
-import { getGPUTier } from "detect-gpu"
-import { defaultSSROptions } from "screen-space-reflections"
 import "./style.css"
 
 let ssrEffect

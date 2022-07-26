@@ -2,7 +2,7 @@
 import {
 	FrontSide,
 	HalfFloatType,
-	NearestFilter,
+	LinearFilter,
 	ShaderMaterial,
 	UniformsUtils,
 	VideoTexture,
@@ -23,8 +23,8 @@ export class VelocityPass extends Pass {
 			typeof window !== "undefined" ? window.innerWidth : 2000,
 			typeof window !== "undefined" ? window.innerHeight : 1000,
 			{
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
+				minFilter: LinearFilter,
+				magFilter: LinearFilter,
 				type: HalfFloatType
 			}
 		)

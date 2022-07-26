@@ -1,5 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { LinearFilter, NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
+import { LinearFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import { MRTMaterial } from "./material/MRTMaterial.js"
 import { ReflectionsMaterial } from "./material/ReflectionsMaterial.js"
 import { VelocityPass } from "./passes/VelocityPass.js"
@@ -47,8 +47,8 @@ export class ReflectionsPass extends Pass {
 		if (this.#USE_MRT) {
 			// buffers: normal, depth, velocity (3), roughness will be written to the alpha channel of the normal buffer
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 2, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter
+				minFilter: LinearFilter,
+				magFilter: LinearFilter
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[0]
@@ -56,11 +56,11 @@ export class ReflectionsPass extends Pass {
 		} else {
 			// depth pass
 			this.#webgl1DepthPass = new DepthPass(this._scene, this._camera)
-			this.#webgl1DepthPass.renderTarget.minFilter = NearestFilter
-			this.#webgl1DepthPass.renderTarget.magFilter = NearestFilter
+			this.#webgl1DepthPass.renderTarget.minFilter = LinearFilter
+			this.#webgl1DepthPass.renderTarget.magFilter = LinearFilter
 
-			this.#webgl1DepthPass.renderTarget.texture.minFilter = NearestFilter
-			this.#webgl1DepthPass.renderTarget.texture.magFilter = NearestFilter
+			this.#webgl1DepthPass.renderTarget.texture.minFilter = LinearFilter
+			this.#webgl1DepthPass.renderTarget.texture.magFilter = LinearFilter
 
 			this.#webgl1DepthPass.setSize(
 				typeof window !== "undefined" ? window.innerWidth : 2000,
@@ -69,8 +69,8 @@ export class ReflectionsPass extends Pass {
 
 			// render normals (in the rgb channel) and roughness (in the alpha channel) in gBuffersRenderTarget
 			this.gBuffersRenderTarget = new WebGLRenderTarget(width, height, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter
+				minFilter: LinearFilter,
+				magFilter: LinearFilter
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture
