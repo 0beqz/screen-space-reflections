@@ -69,7 +69,7 @@ const params = {
 	...defaultSSROptions,
 	...{
 		enabled: true,
-		antialias: false,
+		antialias: true,
 		resolutionScale: 1,
 		temporalResolve: true,
 		temporalResolveMix: 0.975,
