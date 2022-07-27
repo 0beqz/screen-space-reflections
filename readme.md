@@ -206,9 +206,11 @@ npm run dev
 
 <details>
   <summary>Expand to view tips</summary>
+  
 ### Getting rid of artifacts
 
 If you are getting artifacts, for example:
+
 <br>
 <img src="https://raw.githubusercontent.com/0beqz/screen-space-reflections/screenshots//artifacts.jpg" width="50%">
 
