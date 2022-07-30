@@ -44,8 +44,8 @@ export class SSRDebugGUI {
 		maximumValuesFolder.addInput(params, "maxSamples", { min: 0, max: 256, step: 1 })
 		maximumValuesFolder.addInput(params, "maxDepthDifference", {
 			min: 0,
-			max: 8,
-			step: 0.01
+			max: 100,
+			step: 0.1
 		})
 		maximumValuesFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
 		maximumValuesFolder.addInput(params, "maxDepth", {

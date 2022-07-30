@@ -36,7 +36,7 @@ export const defaultSSROptions = {
 	rayFadeOut: 0,
 	MAX_STEPS: 20,
 	NUM_BINARY_SEARCH_STEPS: 5,
-	maxDepthDifference: 3,
+	maxDepthDifference: 10,
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,

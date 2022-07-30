@@ -34,6 +34,9 @@ uniform float jitterSpread;
 
 const vec2 INVALID_RAY_COORDS = vec2(-1.);
 float _maxDepthDifference;  // maxDepthDifference * 0.01
+float nearMinusFar;
+float nearMulFar;
+float farMinusNear;
 
 #include <packing>
 
@@ -42,6 +45,7 @@ float _maxDepthDifference;  // maxDepthDifference * 0.01
 
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
+float fastGetViewZ(const in float depth);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
@@ -68,13 +72,18 @@ void main() {
         return;
     }
 
+    _maxDepthDifference = maxDepthDifference * 0.01;
+    nearMinusFar = cameraNear - cameraFar;
+    nearMulFar = cameraNear * cameraFar;
+    farMinusNear = cameraFar - cameraNear;
+
     float specular = 1. - roughness;
     specular *= specular;
 
     normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);
 
     // view-space depth
-    float depth = getViewZ(unpackedDepth);
+    float depth = fastGetViewZ(unpackedDepth);
 
     // view-space normal of the current texel
     vec3 viewNormal = normalTexel.xyz;
@@ -101,8 +110,6 @@ void main() {
 
     // view-space reflected ray
     vec3 reflected = normalize(reflect(normalize(viewPos), normalize(viewNormal)));
-
-    _maxDepthDifference = maxDepthDifference * 0.01;
 
     vec3 rayDir = reflected * -viewPos.z;
 
@@ -133,13 +140,13 @@ void main() {
 
     vec3 finalSSR = SSR * screenEdgefactor * roughnessFactor;
 
-    vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
-
-    // distance from the reflection point to what it's reflecting
-    float reflectionDistance = distance(hitWorldPos, worldPos);
-    reflectionDistance += 1.;
-
     if (rayFadeOut != 0.) {
+        vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
+
+        // distance from the reflection point to what it's reflecting
+        float reflectionDistance = distance(hitWorldPos, worldPos);
+        reflectionDistance += 1.;
+
         float opacity = 1. / (reflectionDistance * rayFadeOut * 0.1);
         if (opacity > 1.) opacity = 1.;
         finalSSR *= opacity;
@@ -188,7 +195,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
 
         // if (unpackedDepth > maxDepth) return INVALID_RAY_COORDS;
 
-        depth = getViewZ(unpackedDepth);
+        depth = fastGetViewZ(unpackedDepth);
 
         rayHitDepthDifference = depth - hitPos.z;
 
@@ -233,7 +240,7 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
         depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.);
 
         unpackedDepth = unpackRGBAToDepth(depthTexel);
-        depth = getViewZ(unpackedDepth);
+        depth = fastGetViewZ(unpackedDepth);
 
         rayHitDepthDifference = depth - hitPos.z;
 
@@ -259,4 +266,13 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
     rayHitDepthDifference = unpackedDepth;
 
     return projectedCoord.xy;
+}
+
+// source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
+float fastGetViewZ(const in float depth) {
+#ifdef PERSPECTIVE_CAMERA
+    return nearMulFar / (farMinusNear * depth - cameraFar);
+#else
+    return depth * nearMinusFar - cameraNear;
+#endif
 }

@@ -51,7 +51,7 @@ export class TemporalResolvePass extends Pass {
 			fragmentShader
 		})
 
-		this.fullscreenMaterial.defines.DILATION = ""
+		// this.fullscreenMaterial.defines.DILATION = ""
 
 		this.setupAccumulatedTexture(width, height)
 	}
