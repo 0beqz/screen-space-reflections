@@ -1,7 +1,7 @@
 ﻿varying vec2 vUv;
 
 uniform sampler2D inputTexture;
-uniform sampler2D accumulatedReflectionsTexture;
+uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
 
@@ -44,21 +44,6 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiff
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 
 void main() {
-#ifdef DITHERING
-    ivec2 size = textureSize(inputTexture, 0);
-    vec2 pxSize = vec2(float(size.x), float(size.y));
-
-    int x = int(vUv.x * pxSize.x);
-    int y = int(vUv.y * pxSize.y);
-
-    int rest = int(samples) % 2;
-
-    if (x % 2 == rest || y % 2 == rest) {
-        gl_FragColor = EARLY_OUT_COLOR;
-        return;
-    }
-#endif
-
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
     // filter out sky
@@ -140,7 +125,7 @@ void main() {
     screenEdgefactor = max(0., screenEdgefactor);
 
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, 0.);
-    vec4 SSRTexelReflected = textureLod(accumulatedReflectionsTexture, coords.xy, 0.);
+    vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, 0.);
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
 
@@ -163,10 +148,6 @@ void main() {
     float fresnelFactor = fresnel_dielectric(normalize(viewPos), viewNormal, ior);
 
     finalSSR = finalSSR * fresnelFactor * intensity;
-
-#ifdef DITHERING
-    finalSSR *= 2.;
-#endif
     finalSSR = min(vec3(1.), finalSSR);
 
     float alpha = hitPos.z == 1. ? SSRTexel.a : SSRTexelReflected.a;

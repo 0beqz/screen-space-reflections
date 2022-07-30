@@ -21,8 +21,6 @@ let speedMultiplier = 1
 let playerOnFloor = false
 let cinematicMode = false
 
-let lastSpacePressTime = 0
-
 let camera
 let playerObject
 
@@ -84,6 +82,8 @@ document.body.addEventListener("mousemove", event => {
 
 		playerObject.rotation.x -= event.movementY / camera.zoom / 500
 		playerObject.rotation.y -= event.movementX / camera.zoom / 500
+
+		playerObject.rotation.x = THREE.MathUtils.clamp(playerObject.rotation.x, -Math.PI / 2 + 0.001, Math.PI / 2 - 0.001)
 
 		playerObject.rotation.order = "YXZ"
 

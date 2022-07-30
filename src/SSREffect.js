@@ -1,12 +1,15 @@
 ﻿import { Effect, Selection } from "postprocessing"
 import { Quaternion, Uniform, Vector2, Vector3 } from "three"
-import { ComposeReflectionsPass } from "./ComposeReflectionsPass.js"
+import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
 import bilateralBlur from "./material/shader/bilateralBlur.frag"
-import fragmentShader from "./material/shader/finalSSRShader.frag"
+import finalSSRShader from "./material/shader/finalSSRShader.frag"
+import customTRComposeShader from "./material/shader/customTRComposeShader.frag"
+import customBasicComposeShader from "./material/shader/customBasicComposeShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
-import { ReflectionsPass } from "./ReflectionsPass.js"
+import temporalResolve from "./temporal-resolve/shader/temporalResolve.frag"
+import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 
-const finalFragmentShader = fragmentShader
+const finalFragmentShader = finalSSRShader
 	.replace("#include <helperFunctions>", helperFunctions)
 	.replace("#include <bilateralBlur>", bilateralBlur)
 
@@ -37,7 +40,6 @@ export const defaultSSROptions = {
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
-	DITHERING: false,
 	STRETCH_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,
@@ -79,16 +81,19 @@ export class SSREffect extends Effect {
 
 		// set up passes
 
-		this.composeReflectionsPass = new ComposeReflectionsPass(this, options)
+		// temporal resolve pass
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, "", options)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.samples = new Uniform(0)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.maxSamples = new Uniform(0)
+		this.temporalResolvePass.fullscreenMaterial.defines.EULER = 2.718281828459045
+		this.temporalResolvePass.fullscreenMaterial.defines.FLOAT_EPSILON = 0.00001
+
+		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
+
+		// reflections pass
 		this.reflectionsPass = new ReflectionsPass(this, options)
-
-		const { uniforms } = this.composeReflectionsPass.fullscreenMaterial
-
-		uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
-		uniforms.accumulatedReflectionsTexture.value = this.reflectionsPass.accumulatedReflectionsTexture
-		uniforms.velocityTexture.value = this.reflectionsPass.velocityTexture
-
-		this.uniforms.get("reflectionsTexture").value = this.composeReflectionsPass.renderTarget.texture
+		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
+		this.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.reflectionsPass.depthTexture
 
 		this.#lastSize = { width: options.width, height: options.height, resolutionScale: options.resolutionScale }
 		this.#lastCameraTransform.position.copy(camera.position)
@@ -143,7 +148,7 @@ export class SSREffect extends Effect {
 							break
 
 						case "maxSamples":
-							this.composeReflectionsPass.fullscreenMaterial.uniforms.maxSamples.value = this.maxSamples
+							this.temporalResolvePass.fullscreenMaterial.uniforms.maxSamples.value = this.maxSamples
 							break
 
 						case "blurMix":
@@ -189,39 +194,42 @@ export class SSREffect extends Effect {
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "DITHERING":
-							if (value) {
-								this.reflectionsPass.fullscreenMaterial.defines.DITHERING = ""
-								this.composeReflectionsPass.fullscreenMaterial.defines.DITHERING = ""
-							} else {
-								delete this.reflectionsPass.fullscreenMaterial.defines.DITHERING
-								delete this.composeReflectionsPass.fullscreenMaterial.defines.DITHERING
-							}
-
-							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
-							this.composeReflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
-							break
-
 						case "USE_NORMALMAP":
 						case "USE_ROUGHNESSMAP":
 							break
 
 						case "temporalResolve":
-							if (value) {
-								this.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE = ""
-							} else {
-								delete this.composeReflectionsPass.fullscreenMaterial.defines.TEMPORAL_RESOLVE
+							const composeShader = value ? customTRComposeShader : customBasicComposeShader
+							let fragmentShader = temporalResolve
+
+							// if we are not using temporal reprojection, then cut out the part that's doing the reprojection
+							if (!value) {
+								const removePart = fragmentShader.slice(
+									fragmentShader.indexOf("// REPROJECT_START"),
+									fragmentShader.indexOf("// REPROJECT_END") + "// REPROJECT_END".length
+								)
+								fragmentShader = temporalResolve.replace(removePart, "")
 							}
 
-							this.composeReflectionsPass.fullscreenMaterial.needsUpdate = true
+							fragmentShader = fragmentShader.replace("#include <custom_compose_shader>", composeShader)
+
+							fragmentShader =
+								/* glsl */ `
+							uniform float samples;
+							uniform float maxSamples;
+							uniform float temporalResolveMix;
+							` + fragmentShader
+
+							this.temporalResolvePass.fullscreenMaterial.fragmentShader = fragmentShader
+							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
 							break
 
 						case "temporalResolveMix":
-							this.composeReflectionsPass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
+							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
 							break
 
 						case "temporalResolveCorrectionMix":
-							this.composeReflectionsPass.fullscreenMaterial.uniforms.temporalResolveCorrectionMix.value = value
+							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveCorrectionMix.value = value
 							break
 
 						// must be a uniform
@@ -248,7 +256,7 @@ export class SSREffect extends Effect {
 		)
 			return
 
-		this.composeReflectionsPass.setSize(width, height)
+		this.temporalResolvePass.setSize(width, height)
 		this.reflectionsPass.setSize(width, height)
 
 		this.#lastSize = { width, height, resolutionScale: this.resolutionScale }
@@ -270,7 +278,7 @@ export class SSREffect extends Effect {
 		super.dispose()
 
 		this.reflectionsPass.dispose()
-		this.composeReflectionsPass.dispose()
+		this.temporalResolvePass.dispose()
 	}
 
 	update(renderer, inputBuffer) {
@@ -284,6 +292,7 @@ export class SSREffect extends Effect {
 		this.reflectionsPass.render(renderer, inputBuffer)
 
 		// compose reflection of last and current frame into one reflection
-		this.composeReflectionsPass.render(renderer)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.samples.value = this.samples
+		this.temporalResolvePass.render(renderer)
 	}
 }

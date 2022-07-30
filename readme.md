@@ -79,7 +79,6 @@ const options = {
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
-	DITHERING: false,
 	STRETCH_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,
@@ -137,8 +136,6 @@ const options = {
 - `thickness`: the maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; lower values will result in better performance
 
 - `ior`: Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter set how much the intensity varies
-
-- `DITHERING`: Improves performance but reduces quality by only alternately calculating reflections for every second pixel each frame; only works well if resolutionScale is 1
 
 - `STRETCH_MISSED_RAYS`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
 
@@ -308,3 +305,5 @@ ssrEffect.setSize(window.innerWidth, window.innerHeight)
 - [Visibility TAA and Upsampling with Subsample History](http://filmicworlds.com/blog/visibility-taa-and-upsampling-with-subsample-history/)
 
 - [Temporal Anti Aliasing – Step by Step](https://ziyadbarakat.wordpress.com/2020/07/28/temporal-anti-aliasing-step-by-step/)
+
+- [Filmic SMAA: Sharp Morphological and Temporal Antialiasing](https://research.activision.com/publications/archives/filmic-smaasharp-morphological-and-temporal-antialiasing)

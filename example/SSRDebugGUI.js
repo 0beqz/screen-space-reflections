@@ -77,6 +77,5 @@ export class SSRDebugGUI {
 		definesFolder.addInput(params, "MAX_STEPS", { min: 1, max: 256, step: 1 })
 		definesFolder.addInput(params, "NUM_BINARY_SEARCH_STEPS", { min: 0, max: 16, step: 1 })
 		definesFolder.addInput(params, "STRETCH_MISSED_RAYS")
-		definesFolder.addInput(params, "DITHERING")
 	}
 }

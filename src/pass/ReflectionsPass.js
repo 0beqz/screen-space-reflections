@@ -1,8 +1,7 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
 import { LinearFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
-import { MRTMaterial } from "./material/MRTMaterial.js"
-import { ReflectionsMaterial } from "./material/ReflectionsMaterial.js"
-import { VelocityPass } from "./passes/VelocityPass.js"
+import { MRTMaterial } from "../material/MRTMaterial.js"
+import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
 
 // from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
 const isWebGL2Available = () => {
@@ -19,7 +18,6 @@ export class ReflectionsPass extends Pass {
 	#cachedMaterials = new WeakMap()
 	#USE_MRT = false
 	#webgl1DepthPass = null
-	#velocityPass = null
 
 	constructor(ssrEffect, options = {}) {
 		super("ReflectionsPass")
@@ -77,14 +75,10 @@ export class ReflectionsPass extends Pass {
 			this.depthTexture = this.#webgl1DepthPass.texture
 		}
 
-		this.#velocityPass = new VelocityPass(this._scene, this._camera)
-		this.velocityTexture = this.#velocityPass.renderTarget.texture
-
 		// set up uniforms
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.fullscreenMaterial.uniforms.accumulatedReflectionsTexture.value =
-			this.#ssrEffect.composeReflectionsPass.accumulatedReflectionsTexture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.#ssrEffect.temporalResolvePass.accumulatedTexture
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
@@ -94,10 +88,7 @@ export class ReflectionsPass extends Pass {
 		this.renderTarget.setSize(width * this.#ssrEffect.resolutionScale, height * this.#ssrEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width * this.#ssrEffect.resolutionScale, height * this.#ssrEffect.resolutionScale)
 
-		this.#velocityPass.setSize(width, height)
-
-		this.fullscreenMaterial.uniforms.accumulatedReflectionsTexture.value =
-			this.#ssrEffect.composeReflectionsPass.accumulatedReflectionsTexture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.#ssrEffect.temporalResolvePass.accumulatedTexture
 		this.fullscreenMaterial.needsUpdate = true
 	}
 
@@ -105,7 +96,6 @@ export class ReflectionsPass extends Pass {
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
 		this.renderPass.dispose()
-		this.#velocityPass.dispose()
 		if (!this.#USE_MRT) this.#webgl1DepthPass.dispose()
 
 		this.fullscreenMaterial.dispose()
@@ -201,8 +191,6 @@ export class ReflectionsPass extends Pass {
 
 		// render depth and velocity in seperate passes
 		if (!this.#USE_MRT) this.#webgl1DepthPass.renderPass.render(renderer, this.#webgl1DepthPass.renderTarget)
-
-		if (this.#ssrEffect.temporalResolve) this.#velocityPass.render(renderer)
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.#ssrEffect.samples

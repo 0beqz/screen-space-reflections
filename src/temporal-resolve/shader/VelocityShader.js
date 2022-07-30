@@ -1,3 +1,6 @@
+// this shader is from: https://github.com/gkjohnson/threejs-sandbox
+
+/* eslint-disable camelcase */
 import { ShaderChunk, Matrix4 } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
@@ -94,7 +97,7 @@ export const VelocityShader = {
 			varying vec4 newPosition;
 
 			void main() {
-				#ifdef NEEDS_UPDATED_REFLECTIONS
+				#ifdef NEEDS_FULL_MOVEMENT
 					gl_FragColor = vec4(1., 1., 1., 1. );
 					return;
 				#endif

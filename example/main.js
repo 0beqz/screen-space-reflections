@@ -69,7 +69,7 @@ const params = {
 	...{
 		enabled: true,
 		antialias: true,
-		resolutionScale: 1,
+		resolutionScale: 0.75,
 		temporalResolve: true,
 		temporalResolveMix: 0.975,
 		temporalResolveCorrectionMix: 0.15,
@@ -92,7 +92,7 @@ const params = {
 		rayFadeOut: 0,
 		MAX_STEPS: 9,
 		NUM_BINARY_SEARCH_STEPS: 7,
-		maxDepthDifference: 8,
+		maxDepthDifference: 6,
 		STRETCH_MISSED_RAYS: true,
 		USE_MRT: true,
 		USE_NORMALMAP: true,
@@ -340,9 +340,26 @@ const useVideoBackground = () => {
 
 const clock = new THREE.Clock()
 
+// const box = new THREE.Mesh(
+// 	new THREE.BoxBufferGeometry(1, 1, 1),
+// 	new THREE.MeshStandardMaterial({ color: 0, roughness: 0.05 })
+// )
+// scene.add(box)
+// box.position.y = 1.5
+
+// let goRight = true
+
 const loop = () => {
 	const dt = clock.getDelta()
 	if (stats) stats.begin()
+
+	// const val = goRight ? 2 : -2
+	// box.position.z += val * dt * 0.875
+	// if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
+	// 	box.position.z = val
+	// 	goRight = !goRight
+	// }
+	// box.updateMatrixWorld()
 
 	// controls.update()
 	updateFirstPersonMovement(dt)

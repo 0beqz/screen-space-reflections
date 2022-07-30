@@ -2,13 +2,13 @@
 import {
 	FrontSide,
 	HalfFloatType,
-	LinearFilter,
+	NearestFilter,
 	ShaderMaterial,
 	UniformsUtils,
 	VideoTexture,
 	WebGLRenderTarget
 } from "three"
-import { VelocityShader } from "../material/VelocityShader.js"
+import { VelocityShader } from "../shader/VelocityShader.js"
 
 export class VelocityPass extends Pass {
 	#cachedMaterials = new WeakMap()
@@ -23,8 +23,8 @@ export class VelocityPass extends Pass {
 			typeof window !== "undefined" ? window.innerWidth : 2000,
 			typeof window !== "undefined" ? window.innerHeight : 1000,
 			{
-				minFilter: LinearFilter,
-				magFilter: LinearFilter,
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
 				type: HalfFloatType
 			}
 		)
@@ -52,14 +52,11 @@ export class VelocityPass extends Pass {
 					c.material.userData.needsUpdatedReflections || c.material.map instanceof VideoTexture
 
 				// mark the material as "ANIMATED" so that, when using temporal resolve, we get updated reflections
-				if (needsUpdatedReflections && !Object.keys(velocityMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")) {
-					velocityMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
+				if (needsUpdatedReflections && !Object.keys(velocityMaterial.defines).includes("NEEDS_FULL_MOVEMENT")) {
+					velocityMaterial.defines.NEEDS_FULL_MOVEMENT = ""
 					velocityMaterial.needsUpdate = true
-				} else if (
-					!needsUpdatedReflections &&
-					Object.keys(velocityMaterial.defines).includes("NEEDS_UPDATED_REFLECTIONS")
-				) {
-					delete velocityMaterial.defines.NEEDS_UPDATED_REFLECTIONS
+				} else if (!needsUpdatedReflections && Object.keys(velocityMaterial.defines).includes("NEEDS_FULL_MOVEMENT")) {
+					delete velocityMaterial.defines.NEEDS_FULL_MOVEMENT
 					velocityMaterial.needsUpdate = true
 				}
 
