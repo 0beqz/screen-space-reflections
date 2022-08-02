@@ -1,14 +1,14 @@
 ﻿// the compose shader when Temporal Resolve is enabled
 
 float alpha = min(inputTexel.a, accumulatedTexel.a);
-alpha = didReproject && (samples < 4. || velocityDisocclusion < FLOAT_EPSILON) ? (0.05 + alpha) : 0.;
+alpha = canReproject && (samples < 4. || velocityDisocclusion < FLOAT_EPSILON) ? (0.05 + alpha) : 0.;
 
 if (maxSamples != 0. && samples > maxSamples && alpha > 1. - FLOAT_EPSILON) {
     gl_FragColor = accumulatedTexel;
     return;
 }
 
-if (!didReproject) {
+if (!canReproject) {
     gl_FragColor = vec4(averageNeighborColor, alpha);
     return;
 }

@@ -62,8 +62,8 @@ const options = {
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
 	ENABLE_BLUR: false,
 	blurMix: 0.5,
-	blurKernelSize: 8,
-	blurSharpness: 0.5,
+	blurExponent: 10,
+	blurKernelSize: 1,
 	rayStep: 0.1,
 	intensity: 1,
 	maxRoughness: 0.1,
@@ -75,7 +75,7 @@ const options = {
 	rayFadeOut: 0,
 	MAX_STEPS: 20,
 	NUM_BINARY_SEARCH_STEPS: 5,
-	maxDepthDifference: 3,
+	maxDepthDifference: 10,
 	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
@@ -103,13 +103,13 @@ const options = {
 
 - `maxSamples`: the maximum number of samples for reflections; settings it to 0 means unlimited samples; setting it to a value like 6 can help make camera movements less disruptive when calculating reflections
 
-- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections with the raw ones depending on the blurMix value
+- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections with the raw ones depending on the blurMix value; this setting can't be changed during run-time
 
 - `blurMix`: how much the blurred reflections should be mixed with the raw reflections
 
-- `blurSharpness`: the sharpness of the Bilateral Filter used to blur reflections
+- `BLUR_EXPONENT`: the exponent of the Box Blur filter; higher values will result in more sharpness; this setting can't be changed during run-time
 
-- `blurKernelSize`: the kernel size of the Bilateral Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts
+- `blurKernelSize`: the kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts
 
 - `rayStep`: how much the reflection ray should travel in each of its iteration; higher values will give deeper reflections but with more artifacts
 
@@ -187,7 +187,7 @@ npm run dev
 - Jittering and blurring reflections to approximate rough reflections
 - Using three.js' WebGLMultipleRenderTarget (WebGL2 only) to improve performance when rendering scene normals, depth and roughness
 - Early out cases to compute only possible reflections and boost performance
-- Using an edge-preserving bilateral blur filter to keep details while blurring noise
+- Box Blur to reduce noise
 
 ## What's new in v2
 
@@ -195,7 +195,6 @@ npm run dev
 - Implemented accumulative sampling by saving and re-using the last frame's reflections to accumulate especially jittered reflections over frames
 - Made all SSR-related options (e.g. `thickness`, `ior`, `rayStep`,...) reactive so that you now just need to set `ssrEffect.rayStep = value` for example to update values
 - Fixed jittering so that it's actually correct from all angles (it used to be less intense the higher you were looking down at a reflection)
-- Removed Kawase Blur in favor of Bilateral Blur to preserve edges and keep details as the blur method of the SSR effect
 - Changed the SSR implementation from a pass to an effect to improve performance
 - Optimizations regarding computation of required buffers and reflections
 
@@ -257,7 +256,6 @@ ssrEffect.setSize(window.innerWidth, window.innerHeight)
 
 ## Todos
 
-- [ ] Reprojection: support skinned meshes
 - [ ] Proper upsampling to still get quality reflections when using half-res buffers
 
 ## Credits
@@ -268,7 +266,7 @@ ssrEffect.setSize(window.innerWidth, window.innerHeight)
 
 - Velocity Shader: [three.js sandbox](https://github.com/gkjohnson/threejs-sandbox)
 
-- Bilateral Blur Filter: [gl_ssao](https://github.com/nvpro-samples/gl_ssao/blob/master/bilateralblur.frag.glsl)
+- Box Blur filter: [glfx.js](https://github.com/evanw/glfx.js)
 
 - Video texture: [Uzunov Rostislav](https://www.pexels.com/@rostislav/)
 

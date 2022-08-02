@@ -43,7 +43,7 @@ export class ReflectionsPass extends Pass {
 		this.#USE_MRT = options.USE_MRT && isWebGL2Available()
 
 		if (this.#USE_MRT) {
-			// buffers: normal, depth, velocity (3), roughness will be written to the alpha channel of the normal buffer
+			// buffers: normal, roughness (2), roughness will be written to the alpha channel of the normal buffer
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(width, height, 2, {
 				minFilter: LinearFilter,
 				magFilter: LinearFilter

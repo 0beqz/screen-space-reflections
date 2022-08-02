@@ -11,15 +11,12 @@
 uniform sampler2D inputTexture;
 uniform sampler2D reflectionsTexture;
 
-#ifdef ENABLE_BLUR
-uniform sampler2D depthTexture;
-#endif
-
 uniform float samples;
-uniform float blurMix;
 
 // --
-#include <bilateralBlur>
+#ifdef ENABLE_BLUR
+#include <boxBlur>
+#endif
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);
@@ -27,9 +24,11 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     vec3 reflectionClr = reflectionsTexel.xyz;
 
 #ifdef ENABLE_BLUR
-    vec4 blurredReflectionsTexel = blur(reflectionsTexture, depthTexture);
+    ivec2 size = textureSize(reflectionsTexture, 0);
+    vec2 pxSize = vec2(float(size.x), float(size.y));
+    vec3 blurredReflectionsColor = denoise(reflectionsTexel.rgb, reflectionsTexture, vUv, pxSize);
 
-    reflectionClr = mix(reflectionClr, blurredReflectionsTexel.xyz, blurMix);
+    reflectionClr = mix(reflectionClr, blurredReflectionsColor.rgb, blurMix);
 #endif
 
 #if RENDER_MODE == MODE_DEFAULT

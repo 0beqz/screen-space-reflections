@@ -58,6 +58,9 @@ void main() {
 
     float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
+    gl_FragColor = vec4(unpackedDepth);
+    return;
+
     if (unpackedDepth > maxDepth) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;

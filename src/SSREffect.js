@@ -1,7 +1,7 @@
 ﻿import { Effect, Selection } from "postprocessing"
 import { Quaternion, Uniform, Vector2, Vector3 } from "three"
 import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
-import bilateralBlur from "./material/shader/bilateralBlur.frag"
+import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
 import customTRComposeShader from "./material/shader/customTRComposeShader.frag"
 import customBasicComposeShader from "./material/shader/customBasicComposeShader.frag"
@@ -11,7 +11,7 @@ import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 
 const finalFragmentShader = finalSSRShader
 	.replace("#include <helperFunctions>", helperFunctions)
-	.replace("#include <bilateralBlur>", bilateralBlur)
+	.replace("#include <boxBlur>", boxBlur)
 
 export const defaultSSROptions = {
 	temporalResolve: true,
@@ -23,8 +23,8 @@ export const defaultSSROptions = {
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
 	ENABLE_BLUR: false,
 	blurMix: 0.5,
-	blurKernelSize: 8,
-	blurSharpness: 0.5,
+	blurExponent: 10,
+	blurKernelSize: 1,
 	rayStep: 0.1,
 	intensity: 1,
 	maxRoughness: 0.1,
@@ -47,7 +47,7 @@ export const defaultSSROptions = {
 }
 
 // all the properties for which we don't have to resample
-const noResetSamplesProperties = ["ENABLE_BLUR", "blurSharpness", "blurKernelSize", "blurMix"]
+const noResetSamplesProperties = ["ENABLE_BLUR", "blurMix", "blurExponent", "blurKernelSize"]
 
 export class SSREffect extends Effect {
 	samples = 0
@@ -64,14 +64,17 @@ export class SSREffect extends Effect {
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
-				["depthTexture", new Uniform(null)],
 				["samples", new Uniform(0)],
 				["blurMix", new Uniform(0)],
 				["g_Sharpness", new Uniform(0)],
 				["g_InvResolutionDirection", new Uniform(new Vector2())],
-				["kernelRadius", new Uniform(0)]
+				["blurExponent", new Uniform(0)],
+				["blurKernelSize", new Uniform(0)]
 			]),
-			defines: new Map([["RENDER_MODE", "0"]])
+			defines: new Map([
+				["RENDER_MODE", "0"],
+				["BLUR_EXPONENT", "10.0"]
+			])
 		})
 
 		this._scene = scene
@@ -87,6 +90,7 @@ export class SSREffect extends Effect {
 		this.temporalResolvePass.fullscreenMaterial.uniforms.maxSamples = new Uniform(0)
 		this.temporalResolvePass.fullscreenMaterial.defines.EULER = 2.718281828459045
 		this.temporalResolvePass.fullscreenMaterial.defines.FLOAT_EPSILON = 0.00001
+		this.temporalResolvePass.fullscreenMaterial.defines.BLUR_EXPONENT = 10.0
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
@@ -107,9 +111,15 @@ export class SSREffect extends Effect {
 	#makeOptionsReactive(options) {
 		// this can't be toggled during run-time
 		if (options.ENABLE_BLUR) {
-			this.uniforms.get("depthTexture").value = this.reflectionsPass.depthTexture
 			this.defines.set("ENABLE_BLUR", "")
 			this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""
+		}
+
+		if (options.BLUR_EXPONENT) {
+			const valStr = options.blurExponent.toFixed(5)
+
+			this.defines.set("BLUR_EXPONENT", valStr)
+			this.temporalResolvePass.fullscreenMaterial.defines.BLUR_EXPONENT = valStr
 		}
 
 		const dpr = window.devicePixelRatio
@@ -155,12 +165,9 @@ export class SSREffect extends Effect {
 							this.uniforms.get("blurMix").value = value
 							break
 
-						case "blurSharpness":
-							this.uniforms.get("g_Sharpness").value = value
-							break
-
 						case "blurKernelSize":
-							this.uniforms.get("kernelRadius").value = value
+							this.uniforms.get("blurKernelSize").value = value
+							break
 							break
 
 						// defines
