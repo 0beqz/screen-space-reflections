@@ -24,6 +24,7 @@
  * @property {Number} [maxDepthDifference] maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; higher values will result in better performance
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
  * @property {Number} [ior] Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies
+ * @property {boolean} [CLAMP_RADIUS] how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance
  * @property {boolean} [ALLOW_MISSED_RAYS] if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
  * @property {boolean} [USE_MRT] WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run; this setting can't be changed during run-time
  * @property {boolean} [USE_NORMALMAP] if roughness maps should be taken account of when calculating reflections
@@ -59,6 +60,7 @@ export const defaultSSROptions = {
 	maxDepthDifference: 10,
 	thickness: 10,
 	ior: 1.45,
+	CLAMP_RADIUS: 1,
 	ALLOW_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,

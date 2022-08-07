@@ -51,6 +51,9 @@ export class TemporalResolvePass extends Pass {
 				colorExponent: new Uniform(1),
 				invTexSize: new Uniform(new Vector2())
 			},
+			defines: {
+				CLAMP_RADIUS: 1
+			},
 			vertexShader,
 			fragmentShader
 		})

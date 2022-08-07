@@ -54,6 +54,7 @@ export class SSRDebugGUI {
 		temporalResolveFolder.addInput(params, "temporalResolve")
 		temporalResolveFolder.addInput(params, "temporalResolveMix", { min: 0, max: 0.975, step: 0.001 })
 		temporalResolveFolder.addInput(params, "temporalResolveCorrection", { min: 0, max: 1, step: 0.0001 })
+		temporalResolveFolder.addInput(params, "CLAMP_RADIUS", { min: 1, max: 4, step: 1 })
 
 		const blurFolder = pane.addFolder({ title: "Blur" })
 		blurFolder.addInput(params, "blurMix", { min: 0, max: 1, step: 0.01 })

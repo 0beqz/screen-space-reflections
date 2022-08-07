@@ -98,11 +98,10 @@ void main() {
         vec2 neighborUv;
         vec3 col;
 
-        const int radius = 1;
         vec3 boxBlurredColor;
 
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
+        for (int x = -CLAMP_RADIUS; x <= CLAMP_RADIUS; x++) {
+            for (int y = -CLAMP_RADIUS; y <= CLAMP_RADIUS; y++) {
                 if (x != 0 || y != 0) {
                     neighborUv = vUv + vec2(x, y) * invTexSize;
 
@@ -133,7 +132,7 @@ void main() {
             accumulatedColor = mix(accumulatedColor, clampedColor, mixFactor);
         } else {
             // reprojected UV coordinates are outside of screen
-            float pxRadius = pow(float(radius * 2 + 1), 2.);
+            float pxRadius = pow(float(CLAMP_RADIUS * 2 + 1), 2.);
             accumulatedColor = boxBlurredColor / pxRadius;
         }
     } else {

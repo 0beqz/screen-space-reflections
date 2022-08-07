@@ -156,6 +156,12 @@ export class SSREffect extends Effect {
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
+						case "CLAMP_RADIUS":
+							this.temporalResolvePass.fullscreenMaterial.defines.CLAMP_RADIUS = Math.round(value)
+
+							this.temporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
+							break
+
 						case "temporalResolve":
 							const composeShader = value ? trCompose : accumulatedCompose
 							let fragmentShader = temporalResolve

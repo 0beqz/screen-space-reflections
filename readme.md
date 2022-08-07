@@ -77,6 +77,7 @@ const options = {
 	maxDepthDifference: 10,
 	thickness: 10,
 	ior: 1.45,
+	CLAMP_RADIUS: 1,
 	ALLOW_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,
@@ -88,52 +89,36 @@ const options = {
 
 <details>
   <summary>Description of the properties</summary>
-
-- `width`: width of the SSREffect
-
-- `height`: height of the SSREffect
-
-- `temporalResolve`: whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing"
-
-- `temporalResolveMix`: a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look
-
-- `temporalResolveCorrection`: a value between 0 and 1 to set how much the reprojected reflection should be corrected; higher values will reduce smearing but will result in less flickering at reflection edges
-
-- `blurMix`: how much the blurred reflections should be mixed with the raw reflections
-
-- `blurSharpness`: the exponent of the Box Blur filter; higher values will result in more sharpness
-
-- `blurKernelSize`: the kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts
-
-- `rayDistance`: the maximum distance a reflection ray can travel to find what it reflects
-
-- `intensity`: the intensity of the reflections
-
-- `maxRoughness`: the maximum roughness a texel can have to have reflections calculated for it
--
-- `jitter`: how intense jittering should be
-
-- `jitterSpread`: how much the jittered rays should be spread; higher values will give a rougher look regarding the reflections but are more expensive to compute with
-
-- `jitterRough`: how intense jittering should be in relation to a material's roughness
-
-- `MAX_STEPS`: the number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects)
-
-- `NUM_BINARY_SEARCH_STEPS`: once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
-
-- `maxDepthDifference`: the maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; lower values will result in better performance
-
-- `thickness`: the maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; lower values will result in better performance
-
-- `ior`: Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter set how much the intensity varies
-
-- `ALLOW_MISSED_RAYS`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
-
-- `USE_MRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run; this setting can't be changed during run-time
-
-- `USE_ROUGHNESSMAP`: if roughness maps should be taken account of when calculating reflections
-
-- `USE_NORMALMAP`: if normal maps should be taken account of when calculating reflections
+  
+| Name | Type |  | Description |
+| --- | --- | --- | --- |
+| temporalResolve | <code>boolean</code> |  | whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing" || temporalResolveMix | <code>Number</code> |  | a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look |
+| resolutionScale | <code>Number</code> |  | resolution of the SSR effect, a resolution of 0.5 means the effect will be rendered at half resolution |
+| velocityResolutionScale | <code>Number</code> |  | resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution |
+| width | <code>Number</code> |  | width of the SSREffect |
+| height | <code>Number</code> |  | height of the SSREffect |
+| blurMix | <code>Number</code> |  | how much the blurred reflections should be mixed with the raw reflections |
+| blurSharpness | <code>Number</code> |  | exponent of the Box Blur filter; higher values will result in more sharpness |
+| blurKernelSize | <code>Number</code> |  | kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts |
+| rayDistance | <code>Number</code> |  | maximum distance a reflection ray can travel to find what it reflects |
+| intensity | <code>Number</code> |  | intensity of the reflections |
+| colorExponent | <code>Number</code> |  | exponent by which reflections will be potentiated when composing the current frame's reflections and the accumulated reflections into a final reflection; higher values will make reflections clearer by highlighting darker spots less |
+| maxRoughness | <code>Number</code> |  | maximum roughness a texel can have to have reflections calculated for it |
+| jitter | <code>Number</code> |  | how intense jittering should be |
+| jitterSpread | <code>Number</code> |  | how much the jittered rays should be spread; higher values will give a rougher look regarding the reflections but are more expensive to compute with |
+| jitterRough | <code>Number</code> |  | how intense jittering should be in relation to a material's roughness |
+| roughnessFadeOut | <code>Number</code> |  | how intense reflections should be on rough spots; a higher value will make reflections fade out quicker on rough spots |
+| rayFadeOut | <code>Number</code> |  | how much reflections will fade out by distance |
+| MAX_STEPS | <code>Number</code> |  | number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects) |
+| NUM_BINARY_SEARCH_STEPS | <code>Number</code> |  | once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps |
+| maxDepthDifference | <code>Number</code> |  | maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; higher values will result in better performance |
+| thickness | <code>Number</code> |  | maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance |     
+| ior | <code>Number</code> |  | Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies |
+| CLAMP_RADIUS | <code>boolean</code> |  | how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance |
+| ALLOW_MISSED_RAYS | <code>boolean</code> |  | if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle |
+| USE_MRT | <code>boolean</code> |  | WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run; this setting can't be changed during run-time |
+| USE_NORMALMAP | <code>boolean</code> |  | if roughness maps should be taken account of when calculating reflections |
+| USE_ROUGHNESSMAP | <code>boolean</code> |  | if normal maps should be taken account of when calculating reflections |
 
 </details>
 

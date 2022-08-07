@@ -7,7 +7,8 @@
 	"scripts": {
 		"build": "rollup -c",
 		"dev": "echo no tests yet",
-		"prepare": "husky install"
+		"prepare": "husky install",
+		"markdown": "npx jsdoc2md src/SSROptions.js"
 	},
 	"keywords": [
 		"three",
@@ -38,6 +39,7 @@
 		"eslint-plugin-jest": "^26.5.3",
 		"eslint-plugin-prettier": "^4.2.1",
 		"husky": ">=6",
+		"jsdoc-to-markdown": "^7.1.1",
 		"lint-staged": ">=10",
 		"prettier": "^2.7.1",
 		"rollup": "^2.75.7",
