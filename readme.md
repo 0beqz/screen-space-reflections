@@ -76,7 +76,6 @@ const options = {
 	MAX_STEPS: 20,
 	NUM_BINARY_SEARCH_STEPS: 5,
 	maxDepthDifference: 10,
-	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
 	STRETCH_MISSED_RAYS: true,
@@ -130,8 +129,6 @@ const options = {
 - `NUM_BINARY_SEARCH_STEPS`: once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
 
 - `maxDepthDifference`: the maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; lower values will result in better performance
-
-- `maxDepth`: the maximum depth for which reflections will be calculated
 
 - `thickness`: the maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; lower values will result in better performance
 
@@ -214,7 +211,6 @@ Then try the following:
 
 - increase `thickness`
 - increase `maxDepthDifference`
-- increase `maxDepth` or set it directly to 1
 - decrease `rayStep` and increase `MAX_STEPS` if reflections are cutting off now
 - increase `NUM_BINARY_SEARCH_STEPS`
 

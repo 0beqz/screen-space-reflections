@@ -18,6 +18,7 @@ const zeroVec2 = new Vector2()
 
 export class TemporalResolvePass extends Pass {
 	#velocityPass = null
+	velocityResolutionScale = 1
 
 	constructor(scene, camera, customComposeShader, options = {}) {
 		super("TemporalResolvePass")
@@ -45,13 +46,14 @@ export class TemporalResolvePass extends Pass {
 				lastVelocityTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				temporalResolveMix: new Uniform(0),
-				temporalResolveCorrectionMix: new Uniform(0)
+				temporalResolveCorrectionMix: new Uniform(0),
+				invTexSize: new Uniform(new Vector2())
 			},
 			vertexShader,
 			fragmentShader
 		})
 
-		// this.fullscreenMaterial.defines.DILATION = ""
+		this.fullscreenMaterial.defines.DILATION = ""
 
 		this.setupAccumulatedTexture(width, height)
 	}
@@ -65,8 +67,9 @@ export class TemporalResolvePass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.#velocityPass.setSize(width, height)
+		this.#velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
 
+		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 		this.setupAccumulatedTexture(width, height)
 	}
 
@@ -79,8 +82,8 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.type = HalfFloatType
 
 		this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.lastVelocityTexture.minFilter = NearestFilter
-		this.lastVelocityTexture.magFilter = NearestFilter
+		this.lastVelocityTexture.minFilter = LinearFilter
+		this.lastVelocityTexture.magFilter = LinearFilter
 		this.lastVelocityTexture.type = HalfFloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture

@@ -69,9 +69,9 @@ const params = {
 	...{
 		enabled: true,
 		antialias: true,
-		resolutionScale: 0.75,
+		resolutionScale: 1,
 		temporalResolve: true,
-		temporalResolveMix: 0.975,
+		temporalResolveMix: 0.95,
 		temporalResolveCorrectionMix: 0.15,
 		ENABLE_BLUR: true,
 		blurMix: 0.33,
@@ -82,11 +82,10 @@ const params = {
 		maxRoughness: 0.99,
 		ENABLE_JITTERING: true,
 		jitter: 0,
-		jitterRough: 1.53,
+		jitterRough: 0.63,
 		jitterSpread: 3.6,
 		roughnessFadeOut: 1,
 		rayFadeOut: 1.03,
-		maxDepth: 1,
 		thickness: 3.5,
 		ior: 1.75,
 		rayFadeOut: 0,
@@ -232,10 +231,6 @@ gltflLoader.load(url, asset => {
 		window.ssrEffect = ssrEffect
 
 		gui = new SSRDebugGUI(ssrEffect, params)
-
-		getGPUTier().then(res => {
-			if (res.tier < 3) ssrEffect.resolutionScale = 0.5
-		})
 
 		stats = new Stats()
 		stats.showPanel(0)

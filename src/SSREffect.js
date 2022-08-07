@@ -1,13 +1,13 @@
 ﻿import { Effect, Selection } from "postprocessing"
 import { Quaternion, Uniform, Vector2, Vector3 } from "three"
-import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
+import accumulatedCompose from "./material/shader/accumulatedCompose.frag"
 import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
-import customTRComposeShader from "./material/shader/customTRComposeShader.frag"
-import customBasicComposeShader from "./material/shader/customBasicComposeShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
-import temporalResolve from "./temporal-resolve/shader/temporalResolve.frag"
+import trCompose from "./material/shader/trCompose.frag"
 import { ReflectionsPass } from "./pass/ReflectionsPass.js"
+import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
+import temporalResolve from "./temporal-resolve/shader/temporalResolve.frag"
 
 const finalFragmentShader = finalSSRShader
 	.replace("#include <helperFunctions>", helperFunctions)
@@ -37,7 +37,6 @@ export const defaultSSROptions = {
 	MAX_STEPS: 20,
 	NUM_BINARY_SEARCH_STEPS: 5,
 	maxDepthDifference: 10,
-	maxDepth: 1,
 	thickness: 10,
 	ior: 1.45,
 	STRETCH_MISSED_RAYS: true,
@@ -206,7 +205,7 @@ export class SSREffect extends Effect {
 							break
 
 						case "temporalResolve":
-							const composeShader = value ? customTRComposeShader : customBasicComposeShader
+							const composeShader = value ? trCompose : accumulatedCompose
 							let fragmentShader = temporalResolve
 
 							// if we are not using temporal reprojection, then cut out the part that's doing the reprojection

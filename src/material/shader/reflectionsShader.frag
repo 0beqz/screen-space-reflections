@@ -16,7 +16,6 @@ uniform float intensity;
 uniform float maxDepthDifference;
 uniform float roughnessFadeOut;
 uniform float maxRoughness;
-uniform float maxDepth;
 uniform float rayFadeOut;
 uniform float thickness;
 uniform float ior;
@@ -58,14 +57,6 @@ void main() {
 
     float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
-    gl_FragColor = vec4(unpackedDepth);
-    return;
-
-    if (unpackedDepth > maxDepth) {
-        gl_FragColor = EARLY_OUT_COLOR;
-        return;
-    }
-
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
 
     float roughness = normalTexel.a;
@@ -81,7 +72,6 @@ void main() {
     farMinusNear = cameraFar - cameraNear;
 
     float specular = 1. - roughness;
-    specular *= specular;
 
     normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);
 
@@ -108,11 +98,10 @@ void main() {
     jitt = mix(vec3(0.), randomJitter * spread, jitterMix);
 #endif
 
-    jitt = mix(jitt, vec3(0.), 0.5);
     viewNormal += jitt;
 
     // view-space reflected ray
-    vec3 reflected = normalize(reflect(normalize(viewPos), normalize(viewNormal)));
+    vec3 reflected = reflect(normalize(viewPos), normalize(viewNormal));
 
     vec3 rayDir = reflected * -viewPos.z;
 

@@ -20,7 +20,7 @@ export class SSRDebugGUI {
 		generalFolder.addInput(params, "rayStep", { min: 0.001, max: 5, step: 0.001 })
 		generalFolder.addInput(params, "rayFadeOut", {
 			min: 0,
-			max: 5,
+			max: 20,
 			step: 0.01
 		})
 		generalFolder.addInput(params, "roughnessFadeOut", {
@@ -48,11 +48,6 @@ export class SSRDebugGUI {
 			step: 0.1
 		})
 		maximumValuesFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
-		maximumValuesFolder.addInput(params, "maxDepth", {
-			min: 0,
-			max: 1,
-			step: 0.00001
-		})
 
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
@@ -68,7 +63,7 @@ export class SSRDebugGUI {
 
 		jitterFolder.addInput(params, "ENABLE_JITTERING")
 		jitterFolder.addInput(params, "jitter", { min: 0, max: 0.5, step: 0.01 })
-		jitterFolder.addInput(params, "jitterRough", { min: 0, max: 3, step: 0.01 })
+		jitterFolder.addInput(params, "jitterRough", { min: 0, max: 1.5, step: 0.01 })
 		jitterFolder.addInput(params, "jitterSpread", { min: 0, max: 5, step: 0.01 })
 
 		const definesFolder = pane.addFolder({ title: "Tracing" })
