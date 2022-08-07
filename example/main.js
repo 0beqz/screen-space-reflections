@@ -1,5 +1,5 @@
 import * as POSTPROCESSING from "postprocessing"
-import { defaultSSROptions, SSREffect } from "../src/SSREffect"
+import { defaultSSROptions, SSREffect } from "screen-space-reflections"
 import Stats from "stats.js"
 import * as THREE from "three"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
