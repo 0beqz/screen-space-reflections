@@ -68,7 +68,7 @@
 			}
 		]
 	},
-	"version": "2.1.1",
+	"version": "2.1.2",
 	"lint-staged": {
 		"*.{js,css,md}": "prettier --write"
 	}
