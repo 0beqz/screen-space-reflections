@@ -16,7 +16,7 @@ import { VelocityPass } from "./VelocityPass"
 const zeroVec2 = new Vector2()
 
 export class TemporalResolvePass extends Pass {
-	#velocityPass = null
+	velocityPass = null
 	velocityResolutionScale = 1
 
 	constructor(scene, camera, customComposeShader, options = {}) {
@@ -34,7 +34,7 @@ export class TemporalResolvePass extends Pass {
 			depthBuffer: false
 		})
 
-		this.#velocityPass = new VelocityPass(scene, camera)
+		this.velocityPass = new VelocityPass(scene, camera)
 
 		const fragmentShader = temporalResolve.replace("#include <custom_compose_shader>", customComposeShader)
 
@@ -43,7 +43,7 @@ export class TemporalResolvePass extends Pass {
 			uniforms: {
 				inputTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
-				velocityTexture: new Uniform(this.#velocityPass.renderTarget.texture),
+				velocityTexture: new Uniform(this.velocityPass.renderTarget.texture),
 				lastVelocityTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				temporalResolveMix: new Uniform(0),
@@ -61,26 +61,26 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.defines.DILATION = ""
 
 		if (!scene.userData.velocityTexture) {
-			scene.userData.velocityTexture = this.#velocityPass.renderTarget.texture
+			scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
 		}
 
 		this.setupAccumulatedTexture(width, height)
 	}
 
 	dispose() {
-		if (this._scene.userData.velocityTexture === this.#velocityPass.renderTarget.texture) {
+		if (this._scene.userData.velocityTexture === this.velocityPass.renderTarget.texture) {
 			delete this._scene.userData.velocityTexture
 		}
 
 		this.renderTarget.dispose()
 		this.accumulatedTexture.dispose()
 		this.fullscreenMaterial.dispose()
-		this.#velocityPass.dispose()
+		this.velocityPass.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.#velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
+		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 		this.setupAccumulatedTexture(width, height)
@@ -111,7 +111,7 @@ export class TemporalResolvePass extends Pass {
 	}
 
 	render(renderer) {
-		this.#velocityPass.render(renderer)
+		this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
@@ -119,7 +119,7 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		renderer.setRenderTarget(this.#velocityPass.renderTarget)
+		renderer.setRenderTarget(this.velocityPass.renderTarget)
 		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
 	}
 }

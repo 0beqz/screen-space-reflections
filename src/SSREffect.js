@@ -20,8 +20,8 @@ const noResetSamplesProperties = ["blurMix", "blurSharpness", "blurKernelSize"]
 export class SSREffect extends Effect {
 	samples = 0
 	selection = new Selection()
-	#lastSize
-	#lastCameraTransform = {
+	lastSize
+	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
 	}
@@ -66,22 +66,22 @@ export class SSREffect extends Effect {
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
 		this.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.reflectionsPass.depthTexture
 
-		this.#lastSize = {
+		this.lastSize = {
 			width: options.width,
 			height: options.height,
 			resolutionScale: options.resolutionScale,
 			velocityResolutionScale: options.velocityResolutionScale
 		}
 
-		this.#lastCameraTransform.position.copy(camera.position)
-		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
+		this.lastCameraTransform.position.copy(camera.position)
+		this.lastCameraTransform.quaternion.copy(camera.quaternion)
 
 		this.setSize(options.width, options.height)
 
-		this.#makeOptionsReactive(options)
+		this.makeOptionsReactive(options)
 	}
 
-	#makeOptionsReactive(options) {
+	makeOptionsReactive(options) {
 		const dpr = window.devicePixelRatio
 		let needsUpdate = false
 
@@ -218,17 +218,17 @@ export class SSREffect extends Effect {
 	setSize(width, height, force = false) {
 		if (
 			!force &&
-			width === this.#lastSize.width &&
-			height === this.#lastSize.height &&
-			this.resolutionScale === this.#lastSize.resolutionScale &&
-			this.velocityResolutionScale === this.#lastSize.velocityResolutionScale
+			width === this.lastSize.width &&
+			height === this.lastSize.height &&
+			this.resolutionScale === this.lastSize.resolutionScale &&
+			this.velocityResolutionScale === this.lastSize.velocityResolutionScale
 		)
 			return
 
 		this.temporalResolvePass.setSize(width, height)
 		this.reflectionsPass.setSize(width, height)
 
-		this.#lastSize = {
+		this.lastSize = {
 			width,
 			height,
 			resolutionScale: this.resolutionScale,
@@ -237,14 +237,14 @@ export class SSREffect extends Effect {
 	}
 
 	checkNeedsResample() {
-		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
+		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
+		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
 
 		if (moveDist > 0.000001 || rotateDist > 0.000001) {
 			this.samples = 1
 
-			this.#lastCameraTransform.position.copy(this._camera.position)
-			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
+			this.lastCameraTransform.position.copy(this._camera.position)
+			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
 		}
 	}
 

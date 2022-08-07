@@ -19,8 +19,8 @@ const backgroundColor = new Color(0)
 const updateProperties = ["visible", "wireframe", "side"]
 
 export class VelocityPass extends Pass {
-	#cachedMaterials = new WeakMap()
-	#lastCameraTransform = {
+	cachedMaterials = new WeakMap()
+	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
 	}
@@ -41,7 +41,7 @@ export class VelocityPass extends Pass {
 		})
 	}
 
-	#setVelocityMaterialInScene() {
+	setVelocityMaterialInScene() {
 		this.renderedMeshesThisFrame = 0
 
 		this.visibleMeshes = getVisibleChildren(this._scene)
@@ -49,15 +49,15 @@ export class VelocityPass extends Pass {
 		for (const c of this.visibleMeshes) {
 			const originalMaterial = c.material
 
-			let [cachedOriginalMaterial, velocityMaterial] = this.#cachedMaterials.get(c) || []
+			let [cachedOriginalMaterial, velocityMaterial] = this.cachedMaterials.get(c) || []
 
 			if (originalMaterial !== cachedOriginalMaterial) {
 				velocityMaterial = new MeshVelocityMaterial()
 				velocityMaterial.lastMatrixWorld = new Matrix4()
 
-				if (c.skeleton?.boneTexture) this.#saveBoneTexture(c)
+				if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
 
-				this.#cachedMaterials.set(c, [originalMaterial, velocityMaterial])
+				this.cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 			}
 
 			velocityMaterial.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
@@ -94,7 +94,7 @@ export class VelocityPass extends Pass {
 		}
 	}
 
-	#saveBoneTexture(object) {
+	saveBoneTexture(object) {
 		let boneTexture = object.material.uniforms.prevBoneTexture.value
 
 		if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
@@ -113,7 +113,7 @@ export class VelocityPass extends Pass {
 		}
 	}
 
-	#unsetVelocityMaterialInScene() {
+	unsetVelocityMaterialInScene() {
 		for (const c of this.visibleMeshes) {
 			if (c.material.isMeshVelocityMaterial) {
 				c.visible = true
@@ -121,9 +121,9 @@ export class VelocityPass extends Pass {
 				c.material.lastMatrixWorld.copy(c.matrixWorld)
 				c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 
-				if (c.skeleton?.boneTexture) this.#saveBoneTexture(c)
+				if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
 
-				c.material = this.#cachedMaterials.get(c)[0]
+				c.material = this.cachedMaterials.get(c)[0]
 			}
 		}
 	}
@@ -149,12 +149,12 @@ export class VelocityPass extends Pass {
 	}
 
 	checkCameraMoved() {
-		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
+		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
+		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
 
 		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.#lastCameraTransform.position.copy(this._camera.position)
-			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
+			this.lastCameraTransform.position.copy(this._camera.position)
+			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
 
 			return true
 		}
@@ -165,11 +165,11 @@ export class VelocityPass extends Pass {
 	render(renderer) {
 		this.cameraMovedThisFrame = this.checkCameraMoved()
 
-		this.#setVelocityMaterialInScene()
+		this.setVelocityMaterialInScene()
 
 		if (this.renderedMeshesThisFrame > 0 || this.renderedMeshesLastFrame > 0) this.renderVelocity(renderer)
 
-		this.#unsetVelocityMaterialInScene()
+		this.unsetVelocityMaterialInScene()
 
 		this.renderedMeshesLastFrame = this.renderedMeshesThisFrame
 	}
