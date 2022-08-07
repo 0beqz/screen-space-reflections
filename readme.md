@@ -55,19 +55,15 @@ composer.addPass(ssrPass)
 const options = {
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
-	temporalResolveCorrectionMix: 1,
-	maxSamples: 256,
+	temporalResolveCorrection: 1,
 	resolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
-	ENABLE_BLUR: false,
 	blurMix: 0.5,
-	blurExponent: 10,
 	blurKernelSize: 1,
-	rayStep: 0.1,
+	rayDistance: 0.1,
 	intensity: 1,
 	maxRoughness: 0.1,
-	ENABLE_JITTERING: false,
 	jitter: 0.1,
 	jitterSpread: 0.1,
 	jitterRough: 0,
@@ -78,7 +74,7 @@ const options = {
 	maxDepthDifference: 10,
 	thickness: 10,
 	ior: 1.45,
-	STRETCH_MISSED_RAYS: true,
+	ALLOW_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,
 	USE_ROUGHNESSMAP: true
@@ -98,26 +94,20 @@ const options = {
 
 - `temporalResolveMix`: a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look
 
-- `temporalResolveCorrectionMix`: a value between 0 and 1 to set how much the reprojected reflection should be corrected; higher values will reduce smearing but will result in less flickering at reflection edges
-
-- `maxSamples`: the maximum number of samples for reflections; settings it to 0 means unlimited samples; setting it to a value like 6 can help make camera movements less disruptive when calculating reflections
-
-- `ENABLE_BLUR`: whether to blur the reflections and blend these blurred reflections with the raw ones depending on the blurMix value; this setting can't be changed during run-time
+- `temporalResolveCorrection`: a value between 0 and 1 to set how much the reprojected reflection should be corrected; higher values will reduce smearing but will result in less flickering at reflection edges
 
 - `blurMix`: how much the blurred reflections should be mixed with the raw reflections
 
-- `BLUR_EXPONENT`: the exponent of the Box Blur filter; higher values will result in more sharpness; this setting can't be changed during run-time
+- `blurSharpness`: the exponent of the Box Blur filter; higher values will result in more sharpness
 
 - `blurKernelSize`: the kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts
 
-- `rayStep`: how much the reflection ray should travel in each of its iteration; higher values will give deeper reflections but with more artifacts
+- `rayDistance`: the maximum distance a reflection ray can travel to find what it reflects
 
 - `intensity`: the intensity of the reflections
 
 - `maxRoughness`: the maximum roughness a texel can have to have reflections calculated for it
-
-- `ENABLE_JITTERING`: whether jittering is enabled; jittering will randomly jitter the reflections resulting in a more noisy but overall more realistic look, enabling jittering can be expensive depending on the view angle
-
+-
 - `jitter`: how intense jittering should be
 
 - `jitterSpread`: how much the jittered rays should be spread; higher values will give a rougher look regarding the reflections but are more expensive to compute with
@@ -134,7 +124,7 @@ const options = {
 
 - `ior`: Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter set how much the intensity varies
 
-- `STRETCH_MISSED_RAYS`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
+- `ALLOW_MISSED_RAYS`: if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
 
 - `USE_MRT`: WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run; this setting can't be changed during run-time
 
@@ -146,7 +136,7 @@ const options = {
 
 ### ❗ Highly recommended: Use a GUI to tweak the options
 
-Since the right options for an SSR effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSR effect for the first time in it without any configuration. This can have multiple causes such as `rayStep` being way too low for your scene for example. So to find out which SSR options are right for your scene, you should use a GUI to find the right values easily.
+Since the right options for an SSR effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSR effect for the first time in it without any configuration. This can have multiple causes such as `rayDistance` being way too low for your scene for example. So to find out which SSR options are right for your scene, you should use a GUI to find the right values easily.
 The [example](https://github.com/0beqz/screen-space-reflections/tree/main/example) already comes with a simple one-file GUI [`SSRDebugGUI.js`](https://github.com/0beqz/screen-space-reflections/blob/main/example/SSRDebugGUI.js) that you can use in your project like so:
 
 - First install the npm package of the module used for the GUI:
@@ -190,7 +180,7 @@ npm run dev
 
 - Introduced Temporal Reprojection to reduce noise for the reflections when moving the camera by reprojecting the last frame's reflections into the current one
 - Implemented accumulative sampling by saving and re-using the last frame's reflections to accumulate especially jittered reflections over frames
-- Made all SSR-related options (e.g. `thickness`, `ior`, `rayStep`,...) reactive so that you now just need to set `ssrEffect.rayStep = value` for example to update values
+- Made all SSR-related options (e.g. `thickness`, `ior`, `rayDistance`,...) reactive so that you now just need to set `ssrEffect.rayDistance = value` for example to update values
 - Fixed jittering so that it's actually correct from all angles (it used to be less intense the higher you were looking down at a reflection)
 - Changed the SSR implementation from a pass to an effect to improve performance
 - Optimizations regarding computation of required buffers and reflections
@@ -211,7 +201,7 @@ Then try the following:
 
 - increase `thickness`
 - increase `maxDepthDifference`
-- decrease `rayStep` and increase `MAX_STEPS` if reflections are cutting off now
+- decrease `rayDistance` and increase `MAX_STEPS` if reflections are cutting off now
 - increase `NUM_BINARY_SEARCH_STEPS`
 
 Keep in mind that increasing these values will have an impact on performance.

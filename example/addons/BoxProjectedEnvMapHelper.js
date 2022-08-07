@@ -3,7 +3,7 @@
 // credits for the box-projecting shader code go to codercat (https://codercat.tk)
 
 const worldposReplace = /* glsl */ `
-#if defined( USE_ENVMAP ) || defined( DISTANCE ) || defined ( USE_SHADOWMAP )
+#if defined( USE_ENVMAP ) || defined( rayDistance ) || defined ( USE_SHADOWMAP )
     vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
 
     #ifdef BOX_PROJECTED_ENV_MAP

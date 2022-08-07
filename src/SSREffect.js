@@ -1,5 +1,5 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { Quaternion, Uniform, Vector2, Vector3 } from "three"
+import { Quaternion, Uniform, Vector3 } from "three"
 import accumulatedCompose from "./material/shader/accumulatedCompose.frag"
 import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
@@ -13,22 +13,47 @@ const finalFragmentShader = finalSSRShader
 	.replace("#include <helperFunctions>", helperFunctions)
 	.replace("#include <boxBlur>", boxBlur)
 
+/**
+ * The complete Triforce, or one or more components of the Triforce.
+ * @typedef {Object} SSROptions
+ * @property {boolean} temporalResolve - whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing"
+ * @property {Number} temporalResolveMix - a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look
+ * @property {Number} resolutionScale - Resolution of the SSR effect, a resolution of 0.5 means the effect will be rendered at half resolution
+ * @property {Number} velocityResolutionScale - Resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution
+ * @property {Number} width - width of the SSREffect
+ * @property {Number} height - height of the SSREffect
+ * @property {Number} blurMix - how much the blurred reflections should be mixed with the raw reflections
+ * @property {Number} blurSharpness - exponent of the Box Blur filter; higher values will result in more sharpness
+ * @property {Number} blurKernelSize - kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts
+ * @property {Number} rayDistance - maximum distance a reflection ray can travel to find what it reflects
+ * @property {Number} intensity - intensity of the reflections
+ * @property {Number} colorExponent - exponent by which reflections will be potentiated when composing the current frame's reflections and the accumulated reflections into a final reflection; higher values will make reflections clearer by highlighting darker spots less
+ * @property {Number} maxRoughness - maximum roughness a texel can have to have reflections calculated for it
+ * @property {Number} jitter - how intense jittering should be
+ * @property {Number} jitterSpread - how much the jittered rays should be spread; higher values will give a rougher look regarding the reflections but are more expensive to compute with
+ * @property {Number} jitterRough - how intense jittering should be in relation to a material's roughness
+ * @property {Number} roughnessFadeOut - how intense reflections should be on rough spots; a higher value will make reflections fade out quicker on rough spots
+ */
+
+/**
+ * The options of the SSR effect
+ * @type {SSROptions}
+ */
 export const defaultSSROptions = {
 	temporalResolve: true,
 	temporalResolveMix: 0.9,
-	temporalResolveCorrectionMix: 1,
-	maxSamples: 256,
+	temporalResolveCorrection: 1,
 	resolutionScale: 1,
+	velocityResolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 2000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
-	ENABLE_BLUR: false,
 	blurMix: 0.5,
-	blurExponent: 10,
+	blurSharpness: 10,
 	blurKernelSize: 1,
-	rayStep: 0.1,
+	rayDistance: 0.1,
 	intensity: 1,
+	colorExponent: 1,
 	maxRoughness: 0.1,
-	ENABLE_JITTERING: false,
 	jitter: 0.1,
 	jitterSpread: 0.1,
 	jitterRough: 0,
@@ -39,14 +64,14 @@ export const defaultSSROptions = {
 	maxDepthDifference: 10,
 	thickness: 10,
 	ior: 1.45,
-	STRETCH_MISSED_RAYS: true,
+	ALLOW_MISSED_RAYS: true,
 	USE_MRT: true,
 	USE_NORMALMAP: true,
 	USE_ROUGHNESSMAP: true
 }
 
 // all the properties for which we don't have to resample
-const noResetSamplesProperties = ["ENABLE_BLUR", "blurMix", "blurExponent", "blurKernelSize"]
+const noResetSamplesProperties = ["blurMix", "blurSharpness", "blurKernelSize"]
 
 export class SSREffect extends Effect {
 	samples = 0
@@ -57,6 +82,11 @@ export class SSREffect extends Effect {
 		quaternion: new Quaternion()
 	}
 
+	/**
+	 * @param {THREE.Scene} scene The scene of the SSR effect
+	 * @param {THREE.Camera} camera The camera with which SSR is being rendered
+	 * @param {SSROptions} options The optional options for the SSR effect
+	 */
 	constructor(scene, camera, options = defaultSSROptions) {
 		super("SSREffect", finalFragmentShader, {
 			type: "FinalSSRMaterial",
@@ -65,15 +95,10 @@ export class SSREffect extends Effect {
 				["reflectionsTexture", new Uniform(null)],
 				["samples", new Uniform(0)],
 				["blurMix", new Uniform(0)],
-				["g_Sharpness", new Uniform(0)],
-				["g_InvResolutionDirection", new Uniform(new Vector2())],
-				["blurExponent", new Uniform(0)],
+				["blurSharpness", new Uniform(0)],
 				["blurKernelSize", new Uniform(0)]
 			]),
-			defines: new Map([
-				["RENDER_MODE", "0"],
-				["BLUR_EXPONENT", "10.0"]
-			])
+			defines: new Map([["RENDER_MODE", "0"]])
 		})
 
 		this._scene = scene
@@ -86,10 +111,9 @@ export class SSREffect extends Effect {
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, "", options)
 		this.temporalResolvePass.fullscreenMaterial.uniforms.samples = new Uniform(0)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.maxSamples = new Uniform(0)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.colorExponent = new Uniform(1)
 		this.temporalResolvePass.fullscreenMaterial.defines.EULER = 2.718281828459045
 		this.temporalResolvePass.fullscreenMaterial.defines.FLOAT_EPSILON = 0.00001
-		this.temporalResolvePass.fullscreenMaterial.defines.BLUR_EXPONENT = 10.0
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
@@ -98,7 +122,13 @@ export class SSREffect extends Effect {
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
 		this.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.reflectionsPass.depthTexture
 
-		this.#lastSize = { width: options.width, height: options.height, resolutionScale: options.resolutionScale }
+		this.#lastSize = {
+			width: options.width,
+			height: options.height,
+			resolutionScale: options.resolutionScale,
+			velocityResolutionScale: options.velocityResolutionScale
+		}
+
 		this.#lastCameraTransform.position.copy(camera.position)
 		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
 
@@ -108,19 +138,6 @@ export class SSREffect extends Effect {
 	}
 
 	#makeOptionsReactive(options) {
-		// this can't be toggled during run-time
-		if (options.ENABLE_BLUR) {
-			this.defines.set("ENABLE_BLUR", "")
-			this.reflectionsPass.fullscreenMaterial.defines.ENABLE_BLUR = ""
-		}
-
-		if (options.BLUR_EXPONENT) {
-			const valStr = options.blurExponent.toFixed(5)
-
-			this.defines.set("BLUR_EXPONENT", valStr)
-			this.temporalResolvePass.fullscreenMaterial.defines.BLUR_EXPONENT = valStr
-		}
-
 		const dpr = window.devicePixelRatio
 		let needsUpdate = false
 
@@ -137,36 +154,41 @@ export class SSREffect extends Effect {
 
 					options[key] = value
 
-					if (!noResetSamplesProperties.includes(key)) this.samples = 1
+					if (!noResetSamplesProperties.includes(key)) {
+						this.samples = 0
+						this.setSize(options.width, options.height, true)
+					}
 
 					switch (key) {
 						case "resolutionScale":
 							this.setSize(options.width, options.height)
 							break
 
+						case "velocityResolutionScale":
+							this.temporalResolvePass.velocityResolutionScale = value
+							this.temporalResolvePass.setSize(options.width, options.height)
+							break
+
 						case "width":
 							if (value === undefined) return
 							this.setSize(value * dpr, options.height)
-							this.uniforms.get("g_InvResolutionDirection").value.set(1 / (value * dpr), 1 / options.height)
 							break
 
 						case "height":
 							if (value === undefined) return
 							this.setSize(options.width, value * dpr)
-							this.uniforms.get("g_InvResolutionDirection").value.set(1 / options.width, 1 / (value * dpr))
-							break
-
-						case "maxSamples":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.maxSamples.value = this.maxSamples
 							break
 
 						case "blurMix":
 							this.uniforms.get("blurMix").value = value
 							break
 
+						case "blurSharpness":
+							this.uniforms.get("blurSharpness").value = value
+							break
+
 						case "blurKernelSize":
 							this.uniforms.get("blurKernelSize").value = value
-							break
 							break
 
 						// defines
@@ -180,28 +202,14 @@ export class SSREffect extends Effect {
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "ENABLE_JITTERING":
+						case "ALLOW_MISSED_RAYS":
 							if (value) {
-								this.reflectionsPass.fullscreenMaterial.defines.ENABLE_JITTERING = ""
+								this.reflectionsPass.fullscreenMaterial.defines.ALLOW_MISSED_RAYS = ""
 							} else {
-								delete this.reflectionsPass.fullscreenMaterial.defines.ENABLE_JITTERING
+								delete this.reflectionsPass.fullscreenMaterial.defines.ALLOW_MISSED_RAYS
 							}
 
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
-							break
-
-						case "STRETCH_MISSED_RAYS":
-							if (value) {
-								this.reflectionsPass.fullscreenMaterial.defines.STRETCH_MISSED_RAYS = ""
-							} else {
-								delete this.reflectionsPass.fullscreenMaterial.defines.STRETCH_MISSED_RAYS
-							}
-
-							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
-							break
-
-						case "USE_NORMALMAP":
-						case "USE_ROUGHNESSMAP":
 							break
 
 						case "temporalResolve":
@@ -222,7 +230,6 @@ export class SSREffect extends Effect {
 							fragmentShader =
 								/* glsl */ `
 							uniform float samples;
-							uniform float maxSamples;
 							uniform float temporalResolveMix;
 							` + fragmentShader
 
@@ -234,8 +241,12 @@ export class SSREffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
 							break
 
-						case "temporalResolveCorrectionMix":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveCorrectionMix.value = value
+						case "temporalResolveCorrection":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveCorrection.value = value
+							break
+
+						case "colorExponent":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.colorExponent.value = value
 							break
 
 						// must be a uniform
@@ -254,18 +265,25 @@ export class SSREffect extends Effect {
 		needsUpdate = true
 	}
 
-	setSize(width, height) {
+	setSize(width, height, force = false) {
 		if (
+			!force &&
 			width === this.#lastSize.width &&
 			height === this.#lastSize.height &&
-			this.resolutionScale === this.#lastSize.resolutionScale
+			this.resolutionScale === this.#lastSize.resolutionScale &&
+			this.velocityResolutionScale === this.#lastSize.velocityResolutionScale
 		)
 			return
 
 		this.temporalResolvePass.setSize(width, height)
 		this.reflectionsPass.setSize(width, height)
 
-		this.#lastSize = { width, height, resolutionScale: this.resolutionScale }
+		this.#lastSize = {
+			width,
+			height,
+			resolutionScale: this.resolutionScale,
+			velocityResolutionScale: this.velocityResolutionScale
+		}
 	}
 
 	checkNeedsResample() {

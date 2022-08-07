@@ -6,19 +6,24 @@ import {
 	HalfFloatType,
 	LinearFilter,
 	Matrix4,
+	Quaternion,
 	RGBAFormat,
+	Vector3,
 	VideoTexture,
 	WebGLRenderTarget
 } from "three"
-import { getVisibleChildren } from "../utils/Utils.js"
+import { getVisibleChildren } from "../../utils/Utils.js"
 import { MeshVelocityMaterial } from "../material/MeshVelocityMaterial.js"
 
 const backgroundColor = new Color(0)
 const updateProperties = ["visible", "wireframe", "side"]
-const tmpMatrix4 = new Matrix4()
 
 export class VelocityPass extends Pass {
 	#cachedMaterials = new WeakMap()
+	#lastCameraTransform = {
+		position: new Vector3(),
+		quaternion: new Quaternion()
+	}
 	visibleMeshes = []
 	renderedMeshesThisFrame = 0
 	renderedMeshesLastFrame = 0
@@ -48,17 +53,26 @@ export class VelocityPass extends Pass {
 
 			if (originalMaterial !== cachedOriginalMaterial) {
 				velocityMaterial = new MeshVelocityMaterial()
+				velocityMaterial.lastMatrixWorld = new Matrix4()
 
 				if (c.skeleton?.boneTexture) this.#saveBoneTexture(c)
 
 				this.#cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 			}
 
-			tmpMatrix4.copy(velocityMaterial.uniforms.velocityMatrix.value)
-
 			velocityMaterial.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 
-			c.visible = c.skeleton || !tmpMatrix4.equals(velocityMaterial.uniforms.velocityMatrix.value)
+			if (c.userData.needsUpdatedReflections || originalMaterial.map instanceof VideoTexture) {
+				if (!("FULL_MOVEMENT" in velocityMaterial.defines)) velocityMaterial.needsUpdate = true
+				velocityMaterial.defines.FULL_MOVEMENT = ""
+			} else {
+				if ("FULL_MOVEMENT" in velocityMaterial.defines) velocityMaterial.needsUpdate = true
+			}
+
+			const childMovedThisFrame = !c.matrixWorld.equals(velocityMaterial.lastMatrixWorld)
+
+			c.visible =
+				this.cameraMovedThisFrame || childMovedThisFrame || c.skeleton || "FULL_MOVEMENT" in velocityMaterial.defines
 
 			c.material = velocityMaterial
 
@@ -67,13 +81,6 @@ export class VelocityPass extends Pass {
 			this.renderedMeshesThisFrame++
 
 			for (const prop of updateProperties) velocityMaterial[prop] = originalMaterial[prop]
-
-			if (c.userData.needsUpdatedReflections || c.material.map instanceof VideoTexture) {
-				if (!("NEEDS_UPDATED_REFLECTIONS" in velocityMaterial.defines)) velocityMaterial.needsUpdate = true
-				velocityMaterial.defines.NEEDS_UPDATED_REFLECTIONS = ""
-			} else {
-				if ("NEEDS_UPDATED_REFLECTIONS" in velocityMaterial.defines) velocityMaterial.needsUpdate = true
-			}
 
 			if (c.skeleton?.boneTexture) {
 				velocityMaterial.defines.USE_SKINNING = ""
@@ -108,6 +115,7 @@ export class VelocityPass extends Pass {
 			if (c.material.isMeshVelocityMaterial) {
 				c.visible = true
 
+				c.material.lastMatrixWorld.copy(c.matrixWorld)
 				c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 
 				if (c.skeleton?.boneTexture) this.#saveBoneTexture(c)
@@ -137,7 +145,23 @@ export class VelocityPass extends Pass {
 		}
 	}
 
+	checkCameraMoved() {
+		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
+		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
+
+		if (moveDist > 0.000001 || rotateDist > 0.000001) {
+			this.#lastCameraTransform.position.copy(this._camera.position)
+			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
+
+			return true
+		}
+
+		return false
+	}
+
 	render(renderer) {
+		this.cameraMovedThisFrame = this.checkCameraMoved()
+
 		this.#setVelocityMaterialInScene()
 
 		if (this.renderedMeshesThisFrame > 0 || this.renderedMeshesLastFrame > 0) this.renderVelocity(renderer)

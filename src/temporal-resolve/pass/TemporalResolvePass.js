@@ -3,7 +3,6 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
-	NearestFilter,
 	RGBAFormat,
 	ShaderMaterial,
 	Uniform,
@@ -22,6 +21,8 @@ export class TemporalResolvePass extends Pass {
 
 	constructor(scene, camera, customComposeShader, options = {}) {
 		super("TemporalResolvePass")
+
+		this._scene = scene
 
 		const width = options.width || typeof window !== "undefined" ? window.innerWidth : 2000
 		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
@@ -46,7 +47,8 @@ export class TemporalResolvePass extends Pass {
 				lastVelocityTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				temporalResolveMix: new Uniform(0),
-				temporalResolveCorrectionMix: new Uniform(0),
+				temporalResolveCorrection: new Uniform(0),
+				colorExponent: new Uniform(1),
 				invTexSize: new Uniform(new Vector2())
 			},
 			vertexShader,
@@ -55,10 +57,18 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.defines.DILATION = ""
 
+		if (!scene.userData.velocityTexture) {
+			scene.userData.velocityTexture = this.#velocityPass.renderTarget.texture
+		}
+
 		this.setupAccumulatedTexture(width, height)
 	}
 
 	dispose() {
+		if (this._scene.userData.velocityTexture === this.#velocityPass.renderTarget.texture) {
+			delete this._scene.userData.velocityTexture
+		}
+
 		this.renderTarget.dispose()
 		this.accumulatedTexture.dispose()
 		this.fullscreenMaterial.dispose()
@@ -75,6 +85,7 @@ export class TemporalResolvePass extends Pass {
 
 	setupAccumulatedTexture(width, height) {
 		if (this.accumulatedTexture) this.accumulatedTexture.dispose()
+		if (this.lastVelocityTexture) this.lastVelocityTexture.dispose()
 
 		this.accumulatedTexture = new FramebufferTexture(width, height, RGBAFormat)
 		this.accumulatedTexture.minFilter = LinearFilter

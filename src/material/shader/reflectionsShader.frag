@@ -11,7 +11,7 @@ uniform mat4 cameraMatrixWorld;
 uniform float cameraNear;
 uniform float cameraFar;
 
-uniform float rayStep;
+uniform float rayDistance;
 uniform float intensity;
 uniform float maxDepthDifference;
 uniform float roughnessFadeOut;
@@ -22,11 +22,9 @@ uniform float ior;
 
 uniform float samples;
 
-#ifdef ENABLE_JITTERING
 uniform float jitter;
 uniform float jitterRough;
 uniform float jitterSpread;
-#endif
 
 #define FLOAT_EPSILON 0.00001
 #define EARLY_OUT_COLOR vec4(0., 0., 0., 1.)
@@ -60,18 +58,21 @@ void main() {
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
 
     float roughness = normalTexel.a;
-
+    // gl_FragColor = EARLY_OUT_COLOR;
+    // return;
     if (roughness > maxRoughness || (roughness > 1. - FLOAT_EPSILON && roughnessFadeOut > 1. - FLOAT_EPSILON)) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }
 
+    float specular = 1. - roughness;
+
     _maxDepthDifference = maxDepthDifference * 0.01;
+
+    // pre-calculated variables for the "fastGetViewZ" function
     nearMinusFar = cameraNear - cameraFar;
     nearMulFar = cameraNear * cameraFar;
     farMinusNear = cameraFar - cameraNear;
-
-    float specular = 1. - roughness;
 
     normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);
 
@@ -90,13 +91,13 @@ void main() {
     // jitteriing
     vec3 jitt = vec3(0.);
 
-#ifdef ENABLE_JITTERING
-    vec3 randomJitter = hash(5. * (samples * worldPos)) - 0.5;
-    float spread = ((2. - specular) + roughness * jitterRough) * jitterSpread;
-    float jitterMix = jitter + jitterRough * roughness;
-    if (jitterMix > 1.) jitterMix = 1.;
-    jitt = mix(vec3(0.), randomJitter * spread, jitterMix);
-#endif
+    if (jitterSpread != 0. && (jitterRough != 0. || jitter == 0.)) {
+        vec3 randomJitter = hash(5. * (samples * worldPos)) - 0.5;
+        float spread = ((2. - specular) + roughness * jitterRough) * jitterSpread;
+        float jitterMix = jitter + jitterRough * roughness;
+        if (jitterMix > 1.) jitterMix = 1.;
+        jitt = mix(vec3(0.), randomJitter * spread, jitterMix);
+    }
 
     viewNormal += jitt;
 
@@ -156,7 +157,7 @@ void main() {
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
     dir = normalize(dir);
-    dir *= rayStep;
+    dir *= rayDistance / float(MAX_STEPS);
 
     float depth;
     vec4 projectedCoord;
@@ -178,32 +179,31 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
         if (projectedCoord.x > 1. || projectedCoord.y > 1.) {
             hitPos -= dir * stepMultiplier;
             stepMultiplier *= 0.5;
-            continue;
-        }
+        } else {
+            depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.);
 
-        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.);
+            unpackedDepth = unpackRGBAToDepth(depthTexel);
 
-        unpackedDepth = unpackRGBAToDepth(depthTexel);
+            // if (unpackedDepth > maxDepth) return INVALID_RAY_COORDS;
 
-        // if (unpackedDepth > maxDepth) return INVALID_RAY_COORDS;
+            depth = fastGetViewZ(unpackedDepth);
 
-        depth = fastGetViewZ(unpackedDepth);
+            rayHitDepthDifference = depth - hitPos.z;
 
-        rayHitDepthDifference = depth - hitPos.z;
-
-        if (rayHitDepthDifference >= 0. && rayHitDepthDifference < thickness) {
+            if (rayHitDepthDifference >= 0. && rayHitDepthDifference < thickness) {
 #if NUM_BINARY_SEARCH_STEPS == 0
-            // filter out sky
-            if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
+                // filter out sky
+                if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
 #else
-            return BinarySearch(dir, hitPos, rayHitDepthDifference);
+                return BinarySearch(dir, hitPos, rayHitDepthDifference);
 #endif
-        }
+            }
 
-        lastProjectedCoord = projectedCoord;
+            lastProjectedCoord = projectedCoord;
+        }
     }
 
-#ifndef STRETCH_MISSED_RAYS
+#ifndef ALLOW_MISSED_RAYS
     return INVALID_RAY_COORDS;
 #endif
 

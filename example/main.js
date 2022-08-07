@@ -1,6 +1,5 @@
-import { getGPUTier } from "detect-gpu"
 import * as POSTPROCESSING from "postprocessing"
-import { defaultSSROptions, SSREffect } from "screen-space-reflections"
+import { defaultSSROptions, SSREffect } from "../src/SSREffect"
 import Stats from "stats.js"
 import * as THREE from "three"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -72,15 +71,14 @@ const params = {
 		resolutionScale: 1,
 		temporalResolve: true,
 		temporalResolveMix: 0.95,
-		temporalResolveCorrectionMix: 0.15,
-		ENABLE_BLUR: true,
+		temporalResolveCorrection: 0.15,
 		blurMix: 0.33,
-		BLUR_EXPONENT: 10,
+		blurSharpness: 10,
 		blurKernelSize: 1,
-		rayStep: 1.577,
+		rayDistance: 8,
 		intensity: 1,
+		colorExponent: 1.75,
 		maxRoughness: 0.99,
-		ENABLE_JITTERING: true,
 		jitter: 0,
 		jitterRough: 0.63,
 		jitterSpread: 3.6,
@@ -92,7 +90,7 @@ const params = {
 		MAX_STEPS: 5,
 		NUM_BINARY_SEARCH_STEPS: 6,
 		maxDepthDifference: 50,
-		STRETCH_MISSED_RAYS: true,
+		ALLOW_MISSED_RAYS: true,
 		USE_MRT: true,
 		USE_NORMALMAP: true,
 		USE_ROUGHNESSMAP: true
@@ -312,7 +310,7 @@ new THREE.TextureLoader().load("envRoom.webp", tex => {
 
 const useVideoBackground = () => {
 	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
-	params.temporalResolveCorrectionMix = 0.1
+	params.temporalResolveCorrection = 0.1
 	if (gui) gui.pane.refresh()
 
 	if (emitterMesh.material._videoMap) {

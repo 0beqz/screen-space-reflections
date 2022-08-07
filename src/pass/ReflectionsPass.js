@@ -2,6 +2,7 @@
 import { LinearFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
+import { getVisibleChildren } from "../utils/Utils.js"
 
 // from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
 const isWebGL2Available = () => {
@@ -18,6 +19,7 @@ export class ReflectionsPass extends Pass {
 	#cachedMaterials = new WeakMap()
 	#USE_MRT = false
 	#webgl1DepthPass = null
+	visibleMeshes = []
 
 	constructor(ssrEffect, options = {}) {
 		super("ReflectionsPass")
@@ -128,13 +130,15 @@ export class ReflectionsPass extends Pass {
 	}
 
 	#setMRTMaterialInScene() {
-		this._scene.traverse(c => {
+		this.visibleMeshes = getVisibleChildren(this._scene)
+
+		for (const c of this.visibleMeshes) {
 			if (c.material) {
 				const originalMaterial = c.material
 
 				let [cachedOriginalMaterial, mrtMaterial] = this.#cachedMaterials.get(c) || []
 
-				if (!this.#cachedMaterials.has(c) || originalMaterial !== cachedOriginalMaterial) {
+				if (originalMaterial !== cachedOriginalMaterial) {
 					if (mrtMaterial) mrtMaterial.dispose()
 
 					mrtMaterial = new MRTMaterial()
@@ -167,18 +171,19 @@ export class ReflectionsPass extends Pass {
 
 				c.material = mrtMaterial
 			}
-		})
+		}
 	}
 
 	#unsetMRTMaterialInScene() {
-		this._scene.traverse(c => {
+		for (const c of this.visibleMeshes) {
 			if (c.material?.type === "MRTMaterial") {
+				c.visible = true
 				// set material back to the original one
 				const [originalMaterial] = this.#cachedMaterials.get(c)
 
 				c.material = originalMaterial
 			}
-		})
+		}
 	}
 
 	render(renderer, inputBuffer) {

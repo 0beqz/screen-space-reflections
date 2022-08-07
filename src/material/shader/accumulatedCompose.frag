@@ -1,7 +1,8 @@
 ﻿// the default compose shader when Temporal Resolve is disabled
 alpha = samples < 2. || movement < FLOAT_EPSILON ? (0.05 + alpha) : 0.;
+alpha = clamp(alpha, 0., 1.);
 
-if (maxSamples != 0. && samples > maxSamples && alpha > 1. - FLOAT_EPSILON) {
+if (samples > 512. && alpha == 1.) {
     outputColor = accumulatedColor;
 } else {
     // smoothing for higher samples to get rid of "bland reflections" after a high amount of samples

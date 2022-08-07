@@ -3,7 +3,7 @@ alpha = (velocityDisocclusion < FLOAT_EPSILON) ? (alpha + 0.05) : (alpha - 0.25)
 alpha = clamp(alpha, 0., 1.);
 
 if (!canReproject ||
-    (maxSamples != 0. && samples > maxSamples && alpha > 1. - FLOAT_EPSILON) ||
+    (samples > 512. && alpha == 1.) ||
     (length(accumulatedColor) > FLOAT_EPSILON && length(inputColor) == 0.)) {
     accumulatedColor = undoColorTransform(accumulatedColor);
 
@@ -14,7 +14,7 @@ if (!canReproject ||
 
 if (alpha < 1.) {
     // the reflections aren't correct anymore (e.g. due to occlusion from moving object) so we need to have inputTexel influence the reflections more
-    outputColor = mix(accumulatedColor, inputColor, (1. - alpha * alpha) * temporalResolveCorrectionMix);
+    outputColor = mix(accumulatedColor, inputColor, (1. - alpha * alpha) * temporalResolveCorrection);
 } else if (1. / samples >= 1. - temporalResolveMix) {
     // the default way to sample the reflections evenly for the first "1 / temporalResolveMix" frames
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);

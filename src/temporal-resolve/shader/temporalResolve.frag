@@ -5,8 +5,9 @@ uniform sampler2D accumulatedTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
 
-uniform float temporalResolveCorrectionMix;
+uniform float temporalResolveCorrection;
 uniform vec2 invTexSize;
+uniform float colorExponent;
 
 varying vec2 vUv;
 
@@ -39,8 +40,8 @@ vec4 getDilatedTexture(sampler2D tex, vec2 uv, vec2 invTexSize) {
 }
 #endif
 
-const vec3 transformColorExponent = vec3(1. / 2.);
-const vec3 undoColorTransformExponent = vec3(2.);
+vec3 transformColorExponent = vec3(1. / 2.);
+vec3 undoColorTransformExponent = vec3(2.);
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(vec3 color) {
@@ -52,7 +53,8 @@ vec3 undoColorTransform(vec3 color) {
 }
 
 void main() {
-    ivec2 size = textureSize(inputTexture, 0);
+    transformColorExponent = vec3(1. / colorExponent);
+    undoColorTransformExponent = vec3(colorExponent);
 
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
 
@@ -64,7 +66,6 @@ void main() {
     vec2 lastVelUv;
 
     // REPROJECT_START
-    vec2 pxSize = vec2(float(size.x), float(size.y));
 
 #ifdef USE_VELOCITY
 #ifdef DILATION
@@ -128,12 +129,12 @@ void main() {
         // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
         if (canReproject) {
             vec4 accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.);
-            alpha = min(alpha, accumulatedTexel.a);
+            // alpha = min(alpha, accumulatedTexel.a);
             accumulatedColor = transformColor(accumulatedTexel.rgb);
 
             vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
-            float mixFactor = temporalResolveCorrectionMix * (1. + movement);
+            float mixFactor = temporalResolveCorrection * (1. + movement);
             mixFactor = min(mixFactor, 1.);
 
             accumulatedColor = mix(accumulatedColor, clampedColor, mixFactor);
@@ -145,6 +146,12 @@ void main() {
     } else {
         // there was no movement so no checks and clamping need to be done
         accumulatedColor = transformColor(textureLod(accumulatedTexture, vUv, 0.).rgb);
+    }
+
+    if (velocity.r > 1. - FLOAT_EPSILON && velocity.g > 1. - FLOAT_EPSILON) {
+        alpha = 0.;
+        velocityDisocclusion = 10.0e10;
+        movement = 10.0e10;
     }
 
     // REPROJECT_END

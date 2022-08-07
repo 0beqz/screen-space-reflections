@@ -18,7 +18,7 @@ export class ReflectionsMaterial extends ShaderMaterial {
 				cameraMatrixWorld: new Uniform(new Matrix4()),
 				cameraNear: new Uniform(0),
 				cameraFar: new Uniform(0),
-				rayStep: new Uniform(0),
+				rayDistance: new Uniform(0),
 				intensity: new Uniform(0),
 				roughnessFadeOut: new Uniform(0),
 				rayFadeOut: new Uniform(0),

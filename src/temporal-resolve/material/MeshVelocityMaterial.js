@@ -98,6 +98,11 @@ export class MeshVelocityMaterial extends ShaderMaterial {
                     varying vec4 newPosition;
         
                     void main() {
+						#ifdef FULL_MOVEMENT
+						gl_FragColor = vec4( 1., 1., 1. - gl_FragCoord.z, 0. );
+						return;
+						#endif
+
                         vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
                         vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
         
