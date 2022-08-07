@@ -13,9 +13,6 @@ varying vec2 vUv;
 
 #include <packing>
 
-#define USE_VELOCITY true
-#define USE_LAST_VELOCITY true
-
 #ifdef DILATION
 // source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
 vec4 getDilatedTexture(sampler2D tex, vec2 uv, vec2 invTexSize) {
@@ -67,24 +64,20 @@ void main() {
 
     // REPROJECT_START
 
-#ifdef USE_VELOCITY
 #ifdef DILATION
     velocity = getDilatedTexture(velocityTexture, vUv, invTexSize);
 #else
     velocity = textureLod(velocityTexture, vUv, 0.);
-#endif
 #endif
 
     vec2 velUv = velocity.xy;
     vec2 reprojectedUv = vUv - velUv;
     float velocityLength = length(lastVelUv - velUv);
 
-#ifdef USE_LAST_VELOCITY
 #ifdef DILATION
     lastVelUv = getDilatedTexture(lastVelocityTexture, reprojectedUv, invTexSize).xy;
 #else
     lastVelUv = textureLod(lastVelocityTexture, reprojectedUv, 0.).xy;
-#endif
 #endif
 
     // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/

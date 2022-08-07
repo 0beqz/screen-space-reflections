@@ -1,3 +1,4 @@
-﻿import { SSREffect, defaultSSROptions } from "./SSREffect"
+﻿import { SSREffect } from "./SSREffect"
+import { defaultSSROptions } from "./SSROptions"
 
 export { SSREffect, defaultSSROptions }
