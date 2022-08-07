@@ -37,15 +37,19 @@ vec4 getDilatedTexture(sampler2D tex, vec2 uv, vec2 invTexSize) {
 }
 #endif
 
-vec3 transformColorExponent = vec3(1. / 2.);
-vec3 undoColorTransformExponent = vec3(2.);
+vec3 transformColorExponent;
+vec3 undoColorTransformExponent;
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(vec3 color) {
+    if (colorExponent == 1.) return color;
+
     return pow(color, transformColorExponent);
 }
 
 vec3 undoColorTransform(vec3 color) {
+    if (colorExponent == 1.) return color;
+
     return pow(color, undoColorTransformExponent);
 }
 

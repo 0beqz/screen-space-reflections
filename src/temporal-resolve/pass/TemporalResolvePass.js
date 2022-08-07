@@ -95,7 +95,11 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.magFilter = LinearFilter
 		this.accumulatedTexture.type = HalfFloatType
 
-		this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.lastVelocityTexture = new FramebufferTexture(
+			width * this.velocityResolutionScale,
+			height * this.velocityResolutionScale,
+			RGBAFormat
+		)
 		this.lastVelocityTexture.minFilter = LinearFilter
 		this.lastVelocityTexture.magFilter = LinearFilter
 		this.lastVelocityTexture.type = HalfFloatType

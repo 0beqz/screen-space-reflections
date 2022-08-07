@@ -66,7 +66,10 @@ export class VelocityPass extends Pass {
 				if (!("FULL_MOVEMENT" in velocityMaterial.defines)) velocityMaterial.needsUpdate = true
 				velocityMaterial.defines.FULL_MOVEMENT = ""
 			} else {
-				if ("FULL_MOVEMENT" in velocityMaterial.defines) velocityMaterial.needsUpdate = true
+				if ("FULL_MOVEMENT" in velocityMaterial.defines) {
+					delete velocityMaterial.defines.FULL_MOVEMENT
+					velocityMaterial.needsUpdate = true
+				}
 			}
 
 			const childMovedThisFrame = !c.matrixWorld.equals(velocityMaterial.lastMatrixWorld)

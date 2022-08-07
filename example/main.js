@@ -67,15 +67,16 @@ const params = {
 	...defaultSSROptions,
 	...{
 		enabled: true,
-		antialias: true,
-		resolutionScale: 1,
+		resolutionScale: 0.75,
+		velocityResolutionScale: 0.5,
+		CLAMP_RADIUS: 1,
 		temporalResolve: true,
 		temporalResolveMix: 0.95,
 		temporalResolveCorrection: 0.15,
 		blurMix: 0.33,
 		blurSharpness: 10,
 		blurKernelSize: 1,
-		rayDistance: 8,
+		rayDistance: 10,
 		intensity: 1,
 		colorExponent: 1.75,
 		maxRoughness: 0.99,
@@ -96,8 +97,6 @@ const params = {
 		USE_ROUGHNESSMAP: true
 	}
 }
-
-if (params.antialias) composer.multisampling = 4
 
 const defaultParams = { ...params }
 
@@ -271,7 +270,11 @@ gltflLoader.load(url, asset => {
 			darkness: 0.3675
 		})
 
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, ssrEffect, bloomEffect, vignetteEffect, lutEffect))
+		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
+
+		composer.addPass(
+			new POSTPROCESSING.EffectPass(camera, fxaaEffect, ssrEffect, bloomEffect, vignetteEffect, lutEffect)
+		)
 	})
 
 	spawnPlayer()

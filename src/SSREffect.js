@@ -110,7 +110,7 @@ export class SSREffect extends Effect {
 
 						case "velocityResolutionScale":
 							this.temporalResolvePass.velocityResolutionScale = value
-							this.temporalResolvePass.setSize(options.width, options.height)
+							this.setSize(options.width, options.height, true)
 							break
 
 						case "width":
