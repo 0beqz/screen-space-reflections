@@ -224,6 +224,7 @@ gltflLoader.load(url, asset => {
 		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
 		// now init SSR effect
+		// test: compile with "google-closure-compiler --language_in ECMASCRIPT_2020 --module_resolution NODE --generate_exports index.js"
 		ssrEffect = new SSREffect(scene, camera, params)
 		window.ssrEffect = ssrEffect
 

@@ -3,6 +3,7 @@ import babel from "@rollup/plugin-babel"
 import resolve from "@rollup/plugin-node-resolve"
 import glslify from "rollup-plugin-glslify"
 
+// eslint-disable-next-line no-undef
 const root = process.platform === "win32" ? path.resolve("/") : "/"
 const external = id => !id.startsWith(".") && !id.startsWith(root)
 const extensions = [".js", ".ts", ".ts", ".json"]
@@ -19,7 +20,8 @@ const getBabelOptions = ({ useESModules }) => ({
 				include: [
 					"@babel/plugin-proposal-private-methods",
 					"@babel/plugin-proposal-class-properties",
-					"@babel/plugin-proposal-object-rest-spread"
+					"@babel/plugin-proposal-object-rest-spread",
+					"@babel/plugin-proposal-optional-chaining"
 				],
 				bugfixes: true,
 				loose: true,
@@ -32,14 +34,14 @@ const getBabelOptions = ({ useESModules }) => ({
 
 export default [
 	{
-		input: `./src/index.js`,
-		output: { file: `dist/index.js`, format: "esm" },
+		input: "./src/index.js",
+		output: { file: "dist/index.js", format: "esm" },
 		external,
 		plugins: [glslify(), babel(getBabelOptions({ useESModules: true })), resolve({ extensions })]
 	},
 	{
-		input: `./src/index.js`,
-		output: { file: `dist/index.cjs`, format: "cjs" },
+		input: "./src/index.js",
+		output: { file: "dist/index.cjs", format: "cjs" },
 		external,
 		plugins: [glslify(), babel(getBabelOptions({ useESModules: false })), resolve({ extensions })]
 	}
