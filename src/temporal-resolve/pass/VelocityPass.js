@@ -95,21 +95,23 @@ export class VelocityPass extends Pass {
 	}
 
 	saveBoneTexture(object) {
-		let boneTexture = object.material.uniforms.prevBoneTexture.value
+		if (object.material.isMeshVelocityMaterial) {
+			let boneTexture = object.material.uniforms.prevBoneTexture.value
 
-		if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
-			boneTexture = object.material.uniforms.prevBoneTexture.value
-			boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
-		} else {
-			boneTexture?.dispose()
+			if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
+				boneTexture = object.material.uniforms.prevBoneTexture.value
+				boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
+			} else {
+				boneTexture?.dispose()
 
-			const boneMatrices = object.skeleton.boneTexture.image.data.slice()
-			const size = object.skeleton.boneTexture.image.width
+				const boneMatrices = object.skeleton.boneTexture.image.data.slice()
+				const size = object.skeleton.boneTexture.image.width
 
-			boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
-			object.material.uniforms.prevBoneTexture.value = boneTexture
+				boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
+				object.material.uniforms.prevBoneTexture.value = boneTexture
 
-			boneTexture.needsUpdate = true
+				boneTexture.needsUpdate = true
+			}
 		}
 	}
 
