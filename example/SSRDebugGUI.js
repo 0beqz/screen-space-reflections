@@ -52,7 +52,7 @@ export class SSRDebugGUI {
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
 		temporalResolveFolder.addInput(params, "temporalResolve")
-		temporalResolveFolder.addInput(params, "temporalResolveMix", { min: 0, max: 0.975, step: 0.001 })
+		temporalResolveFolder.addInput(params, "temporalResolveMix", { min: 0, max: 1, step: 0.001 })
 		temporalResolveFolder.addInput(params, "temporalResolveCorrection", { min: 0, max: 1, step: 0.0001 })
 		temporalResolveFolder.addInput(params, "CLAMP_RADIUS", { min: 1, max: 4, step: 1 })
 

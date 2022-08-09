@@ -86,16 +86,20 @@ export class MeshVelocityMaterial extends ShaderMaterial {
                     uniform float interpolateGeometry;
                     varying vec4 prevPosition;
                     varying vec4 newPosition;
+					varying vec2 vHighPrecisionZW;
         
                     void main() {
         
                         ${velocity_vertex}
+
+						vHighPrecisionZW = gl_Position.zw;
         
                     }`,
 			fragmentShader: /* glsl */ `
                     uniform float intensity;
                     varying vec4 prevPosition;
                     varying vec4 newPosition;
+					varying vec2 vHighPrecisionZW;
         
                     void main() {
 						#ifdef FULL_MOVEMENT
@@ -107,8 +111,10 @@ export class MeshVelocityMaterial extends ShaderMaterial {
                         vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
         
                         vec2 vel = pos1 - pos0;
+
+						float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
                         
-                        gl_FragColor = vec4( vel, 1. - gl_FragCoord.z, 0. );
+                        gl_FragColor = vec4( vel, 1. - fragCoordZ, 0. );
         
                     }`
 		})

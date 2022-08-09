@@ -14,13 +14,12 @@ let gui
 let stats
 
 const scene = new THREE.Scene()
+scene.autoUpdate = false
 window.scene = scene
 scene.add(new THREE.AmbientLight())
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 20)
-
 scene.add(camera)
-scene.autoUpdate = false
 window.camera = camera
 
 const canvas = document.querySelector(".webgl")
@@ -67,13 +66,13 @@ const params = {
 	...defaultSSROptions,
 	...{
 		enabled: true,
-		resolutionScale: 0.75,
-		velocityResolutionScale: 0.5,
+		resolutionScale: 1,
+		velocityResolutionScale: 1,
 		CLAMP_RADIUS: 1,
 		temporalResolve: true,
-		temporalResolveMix: 0.95,
-		temporalResolveCorrection: 0.15,
-		blurMix: 0.33,
+		temporalResolveMix: 0.99,
+		temporalResolveCorrection: 0.1,
+		blurMix: 0,
 		blurSharpness: 10,
 		blurKernelSize: 1,
 		rayDistance: 10,
@@ -91,7 +90,7 @@ const params = {
 		MAX_STEPS: 5,
 		NUM_BINARY_SEARCH_STEPS: 6,
 		maxDepthDifference: 50,
-		ALLOW_MISSED_RAYS: true,
+		ALLOW_MISSED_RAYS: false,
 		USE_MRT: true,
 		USE_NORMALMAP: true,
 		USE_ROUGHNESSMAP: true
@@ -112,7 +111,7 @@ const settings = {
 	envMapPosZ: 0,
 	envMapSizeX: 12,
 	envMapSizeY: 3.90714,
-	envMapSizeZ: 9,
+	envMapSizeZ: 8.5,
 	aoPower: 2,
 	aoSmoothing: 0.43,
 	aoMapGamma: 0.74,
@@ -146,6 +145,11 @@ const enhanceShaderLightingOptions = {
 		radianceColor: new THREE.Color(settings.radianceColor)
 	}
 }
+
+THREE.ShaderChunk.envmap_physical_pars_fragment = THREE.ShaderChunk.envmap_physical_pars_fragment.replace(
+	"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {",
+	"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) { return vec3(0.);"
+)
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
@@ -207,9 +211,10 @@ gltflLoader.load(url, asset => {
 			}
 
 			if (c.material.emissiveMap && c.material.normalMap) {
-				window.e = c.material
 				c.material.emissiveIntensity = 10
 			}
+
+			c.material.envMapIntensity = Math.PI
 		}
 
 		c.updateMatrixWorld()
@@ -276,6 +281,10 @@ gltflLoader.load(url, asset => {
 		composer.addPass(
 			new POSTPROCESSING.EffectPass(camera, fxaaEffect, ssrEffect, bloomEffect, vignetteEffect, lutEffect)
 		)
+
+		if (box) box.visible = false
+		scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(renderer, envMapPos, envMapSize, 1024)
+		if (box) box.visible = true
 	})
 
 	spawnPlayer()
@@ -289,7 +298,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = 29
+const loadFiles = 28
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
@@ -302,15 +311,6 @@ THREE.DefaultLoadingManager.onProgress = () => {
 	const progress = Math.round((loadedCount / loadFiles) * 100)
 	if (loadingEl) loadingEl.textContent = progress + "%"
 }
-
-const pmremGenerator = new THREE.PMREMGenerator(renderer)
-pmremGenerator.compileEquirectangularShader()
-
-new THREE.TextureLoader().load("envRoom.webp", tex => {
-	tex.mapping = THREE.EquirectangularReflectionMapping
-	tex.encoding = THREE.sRGBEncoding
-	scene.environment = tex
-})
 
 const useVideoBackground = () => {
 	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
@@ -337,26 +337,26 @@ const useVideoBackground = () => {
 
 const clock = new THREE.Clock()
 
-// const box = new THREE.Mesh(
-// 	new THREE.BoxBufferGeometry(1, 1, 1),
-// 	new THREE.MeshStandardMaterial({ color: 0, roughness: 0.05 })
-// )
+const box = new THREE.Mesh(
+	new THREE.BoxBufferGeometry(1, 1, 1),
+	new THREE.MeshStandardMaterial({ color: 0, roughness: 0.05 })
+)
 // scene.add(box)
-// box.position.y = 1.5
+box.position.y = 1.5
 
-// let goRight = true
+let goRight = true
 
 const loop = () => {
 	const dt = clock.getDelta()
 	if (stats) stats.begin()
 
-	// const val = goRight ? 2 : -2
-	// box.position.z += val * dt * 0.875
-	// if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
-	// 	box.position.z = val
-	// 	goRight = !goRight
-	// }
-	// box.updateMatrixWorld()
+	const val = goRight ? 2 : -2
+	box.position.z += val * dt * 0.875
+	if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
+		box.position.z = val
+		goRight = !goRight
+	}
+	box.updateMatrixWorld()
 
 	// controls.update()
 	updateFirstPersonMovement(dt)

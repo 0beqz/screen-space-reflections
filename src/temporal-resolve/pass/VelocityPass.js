@@ -4,7 +4,6 @@ import {
 	DataTexture,
 	FloatType,
 	HalfFloatType,
-	LinearFilter,
 	Matrix4,
 	Quaternion,
 	RGBAFormat,
@@ -35,8 +34,6 @@ export class VelocityPass extends Pass {
 		this._camera = camera
 
 		this.renderTarget = new WebGLRenderTarget(window?.innerWidth || 1000, window?.innerHeight || 1000, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
 			type: HalfFloatType
 		})
 	}

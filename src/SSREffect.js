@@ -1,5 +1,5 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { Quaternion, Uniform, Vector3 } from "three"
+import { CubeCamera, PMREMGenerator, Quaternion, Texture, Uniform, Vector3, WebGLCubeRenderTarget } from "three"
 import accumulatedCompose from "./material/shader/accumulatedCompose.frag"
 import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
@@ -9,6 +9,8 @@ import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 import { defaultSSROptions } from "./SSROptions"
 import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
 import temporalResolve from "./temporal-resolve/shader/temporalResolve.frag"
+import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
+import { setupEnvMap } from "./utils/Utils"
 
 const finalFragmentShader = finalSSRShader
 	.replace("#include <helperFunctions>", helperFunctions)
@@ -16,6 +18,9 @@ const finalFragmentShader = finalSSRShader
 
 // all the properties for which we don't have to resample
 const noResetSamplesProperties = ["blurMix", "blurSharpness", "blurKernelSize"]
+
+const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
+let pmremGenerator
 
 export class SSREffect extends Effect {
 	samples = 0
@@ -25,6 +30,7 @@ export class SSREffect extends Effect {
 		position: new Vector3(),
 		quaternion: new Quaternion()
 	}
+	cubeCamera = new CubeCamera(0.001, 1000, defaultCubeRenderTarget)
 
 	/**
 	 * @param {THREE.Scene} scene The scene of the SSR effect
@@ -47,6 +53,7 @@ export class SSREffect extends Effect {
 
 		this._scene = scene
 		this._camera = camera
+		this.usingBoxProjectedEnvMap = false
 
 		options = { ...defaultSSROptions, ...options }
 
@@ -236,6 +243,48 @@ export class SSREffect extends Effect {
 		}
 	}
 
+	generateBoxProjectedEnvMapFallback(renderer, position = new Vector3(), size = new Vector3(), envMapSize = 512) {
+		this.cubeCamera.renderTarget.dispose()
+		this.cubeCamera.renderTarget = new WebGLCubeRenderTarget(envMapSize)
+
+		this.cubeCamera.position.copy(position)
+		this.cubeCamera.updateMatrixWorld()
+		this.cubeCamera.update(renderer, this._scene)
+
+		if (!pmremGenerator) {
+			pmremGenerator = new PMREMGenerator(renderer)
+			pmremGenerator.compileCubemapShader()
+		}
+		const envMap = pmremGenerator.fromCubemap(this.cubeCamera.renderTarget.texture).texture
+
+		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
+
+		useBoxProjectedEnvMap(reflectionsMaterial, position, size)
+		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader
+			.replace("vec3 worldPos", "worldPos")
+			.replace("varying vec3 vWorldPosition;", "vec3 worldPos;")
+
+		reflectionsMaterial.uniforms.envMapPosition.value.copy(position)
+		reflectionsMaterial.uniforms.envMapSize.value.copy(size)
+
+		setupEnvMap(reflectionsMaterial, envMap, envMapSize)
+
+		this.usingBoxProjectedEnvMap = true
+
+		return envMap
+	}
+
+	deleteeBoxProjectedEnvMapFallback() {
+		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
+		reflectionsMaterial.uniforms.envMap.value = null
+		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader.replace("worldPos = ", "vec3 worldPos = ")
+		delete reflectionsMaterial.defines.BOX_PROJECTED_ENV_MAP
+
+		reflectionsMaterial.needsUpdate = true
+
+		this.usingBoxProjectedEnvMap = false
+	}
+
 	checkNeedsResample() {
 		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
 		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
@@ -258,6 +307,26 @@ export class SSREffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.samples++
 		this.checkNeedsResample()
+
+		if (!this.usingBoxProjectedEnvMap && this._scene.environment) {
+			const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
+
+			let envMap = null
+
+			// not sure if there is a cleaner way to find the internal Texture of a CubeTexture (when used as scene environment)
+			this._scene.traverse(c => {
+				if (!envMap && c.material && !c.material.envMap) {
+					const properties = renderer.properties.get(c.material)
+
+					if ("envMap" in properties && properties.envMap instanceof Texture) envMap = properties.envMap
+				}
+			})
+
+			if (envMap) {
+				const envMapCubeUVHeight = this._scene.environment.image.height
+				setupEnvMap(reflectionsMaterial, envMap, envMapCubeUVHeight)
+			}
+		}
 
 		// update uniforms
 		this.uniforms.get("samples").value = this.samples

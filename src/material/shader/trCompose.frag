@@ -1,5 +1,5 @@
 ﻿// the compose shader when Temporal Resolve is enabled
-alpha = (velocityDisocclusion < FLOAT_EPSILON) ? (alpha + 0.05) : (alpha - 0.25);
+alpha = (velocityDisocclusion < FLOAT_EPSILON) ? (alpha + 0.05) : (alpha - 0.05);
 alpha = clamp(alpha, 0., 1.);
 
 if (!canReproject ||
@@ -14,7 +14,7 @@ if (!canReproject ||
 
 if (alpha < 1.) {
     // the reflections aren't correct anymore (e.g. due to occlusion from moving object) so we need to have inputTexel influence the reflections more
-    outputColor = mix(accumulatedColor, inputColor, (1. - alpha * alpha) * temporalResolveCorrection);
+    outputColor = mix(accumulatedColor, inputColor, (1. - alpha) * 0.25);
 } else if (1. / samples >= 1. - temporalResolveMix) {
     // the default way to sample the reflections evenly for the first "1 / temporalResolveMix" frames
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);

@@ -9,9 +9,26 @@ uniform float temporalResolveCorrection;
 uniform vec2 invTexSize;
 uniform float colorExponent;
 
+uniform mat4 curInverseProjectionMatrix;
+uniform mat4 curCameraMatrixWorld;
+uniform mat4 prevInverseProjectionMatrix;
+uniform mat4 prevCameraMatrixWorld;
+
 varying vec2 vUv;
 
 #include <packing>
+
+// credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 inverseProjectionMatrix, mat4 cameraMatrixWorld) {
+    vec4 ndc = vec4(
+        (uv.x - 0.5) * 2.0,
+        (uv.y - 0.5) * 2.0,
+        (depth - 0.5) * 2.0,
+        1.0);
+    vec4 clip = inverseProjectionMatrix * ndc;
+    vec4 view = cameraMatrixWorld * (clip / clip.w);
+    return view.xyz;
+}
 
 #ifdef DILATION
 // source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
@@ -64,6 +81,7 @@ void main() {
     vec3 outputColor;
 
     vec4 velocity;
+    vec4 lastVelocity;
     vec2 lastVelUv;
 
     // REPROJECT_START
@@ -76,13 +94,24 @@ void main() {
 
     vec2 velUv = velocity.xy;
     vec2 reprojectedUv = vUv - velUv;
-    float velocityLength = length(lastVelUv - velUv);
 
 #ifdef DILATION
-    lastVelUv = getDilatedTexture(lastVelocityTexture, reprojectedUv, invTexSize).xy;
+    lastVelocity = getDilatedTexture(lastVelocityTexture, reprojectedUv, invTexSize);
 #else
-    lastVelUv = textureLod(lastVelocityTexture, reprojectedUv, 0.).xy;
+    lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.);
 #endif
+
+    lastVelUv = lastVelocity.xy;
+
+    float depth1 = textureLod(velocityTexture, vUv, 0.).b;
+    float depth2 = textureLod(lastVelocityTexture, reprojectedUv, 0.).b;
+
+    vec3 curWorldPos = screenSpaceToWorldSpace(vUv, depth1, curInverseProjectionMatrix, curCameraMatrixWorld);
+    vec3 lastWorldPos = screenSpaceToWorldSpace(vUv, depth2, prevInverseProjectionMatrix, prevCameraMatrixWorld);
+    float distToLastFrame = length(curWorldPos - lastWorldPos) * 100.;
+    distToLastFrame *= distToLastFrame;
+
+    float velocityLength = length(lastVelUv - velUv);
 
     // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
     float velocityDisocclusion = (velocityLength - 0.000005) * 10.;
@@ -95,14 +124,14 @@ void main() {
 
     float alpha = inputTexel.a;
 
+    vec3 boxBlurredColor = inputColor;
+
     if (isMoving) {
         vec3 minNeighborColor = inputColor;
         vec3 maxNeighborColor = inputColor;
 
         vec2 neighborUv;
         vec3 col;
-
-        vec3 boxBlurredColor;
 
         for (int x = -CLAMP_RADIUS; x <= CLAMP_RADIUS; x++) {
             for (int y = -CLAMP_RADIUS; y <= CLAMP_RADIUS; y++) {
@@ -115,12 +144,15 @@ void main() {
                     if (canReproject) {
                         minNeighborColor = min(col, minNeighborColor);
                         maxNeighborColor = max(col, maxNeighborColor);
-                    } else {
-                        boxBlurredColor += col;
                     }
+
+                    boxBlurredColor += col;
                 }
             }
         }
+
+        float pxRadius = pow(float(CLAMP_RADIUS * 2 + 1), 2.);
+        boxBlurredColor /= pxRadius;
 
         // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
         if (canReproject) {
@@ -136,8 +168,7 @@ void main() {
             accumulatedColor = mix(accumulatedColor, clampedColor, mixFactor);
         } else {
             // reprojected UV coordinates are outside of screen
-            float pxRadius = pow(float(CLAMP_RADIUS * 2 + 1), 2.);
-            accumulatedColor = boxBlurredColor / pxRadius;
+            accumulatedColor = boxBlurredColor;
         }
     } else {
         // there was no movement so no checks and clamping need to be done
@@ -155,5 +186,5 @@ void main() {
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #include <custom_compose_shader>
 
-    gl_FragColor = vec4(undoColorTransform(outputColor), 1.);
+    gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 }

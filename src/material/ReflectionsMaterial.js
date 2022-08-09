@@ -1,7 +1,7 @@
-﻿import { Matrix4, ShaderMaterial, Uniform } from "three"
+﻿import { Matrix4, ShaderMaterial, Uniform, Vector3 } from "three"
+import vertexShader from "./shader/basicVertexShader.vert"
 import helperFunctions from "./shader/helperFunctions.frag"
 import fragmentShader from "./shader/reflectionsShader.frag"
-import vertexShader from "./shader/basicVertexShader.vert"
 
 export class ReflectionsMaterial extends ShaderMaterial {
 	constructor() {
@@ -29,12 +29,20 @@ export class ReflectionsMaterial extends ShaderMaterial {
 				jitterRough: new Uniform(0),
 				jitterSpread: new Uniform(0),
 				maxRoughness: new Uniform(0),
-				samples: new Uniform(0)
+				samples: new Uniform(0),
+				envMap: new Uniform(null),
+				envMapPosition: new Uniform(new Vector3()),
+				envMapSize: new Uniform(new Vector3()),
+				viewMatrix: new Uniform(new Matrix4())
 			},
 
 			defines: {
 				MAX_STEPS: 20,
-				NUM_BINARY_SEARCH_STEPS: 5
+				NUM_BINARY_SEARCH_STEPS: 5,
+				CUBEUV_TEXEL_WIDTH: 0,
+				CUBEUV_TEXEL_HEIGHT: 0,
+				CUBEUV_MAX_MIP: 0,
+				vWorldPosition: "worldPos"
 			},
 
 			fragmentShader: fragmentShader.replace("#include <helperFunctions>", helperFunctions),

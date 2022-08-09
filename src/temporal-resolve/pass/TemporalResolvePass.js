@@ -3,6 +3,8 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
+	Matrix4,
+	NearestFilter,
 	RGBAFormat,
 	ShaderMaterial,
 	Uniform,
@@ -28,8 +30,8 @@ export class TemporalResolvePass extends Pass {
 		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -49,7 +51,11 @@ export class TemporalResolvePass extends Pass {
 				temporalResolveMix: new Uniform(0),
 				temporalResolveCorrection: new Uniform(0),
 				colorExponent: new Uniform(1),
-				invTexSize: new Uniform(new Vector2())
+				invTexSize: new Uniform(new Vector2()),
+				curInverseProjectionMatrix: { value: new Matrix4() },
+				curCameraMatrixWorld: { value: new Matrix4() },
+				prevInverseProjectionMatrix: { value: new Matrix4() },
+				prevCameraMatrixWorld: { value: new Matrix4() }
 			},
 			defines: {
 				CLAMP_RADIUS: 1
@@ -82,6 +88,10 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget.setSize(width, height)
 		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
 
+		this.velocityPass.renderTarget.texture.minFilter = LinearFilter
+		this.velocityPass.renderTarget.texture.magFilter = LinearFilter
+		this.velocityPass.renderTarget.texture.needsUpdate = true
+
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 		this.setupAccumulatedTexture(width, height)
 	}
@@ -113,8 +123,14 @@ export class TemporalResolvePass extends Pass {
 	render(renderer) {
 		this.velocityPass.render(renderer)
 
+		this.fullscreenMaterial.uniforms.curInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse)
+		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this.camera.matrixWorld)
+
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
+
+		this.fullscreenMaterial.uniforms.prevInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse)
+		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this.camera.matrixWorld)
 
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
