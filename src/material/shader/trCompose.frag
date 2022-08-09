@@ -2,9 +2,7 @@
 alpha = (velocityDisocclusion < FLOAT_EPSILON) ? (alpha + 0.05) : (alpha - 0.05);
 alpha = clamp(alpha, 0., 1.);
 
-if (!canReproject ||
-    (samples > 512. && alpha == 1.) ||
-    (length(accumulatedColor) > FLOAT_EPSILON && length(inputColor) == 0.)) {
+if ((length(accumulatedColor) > FLOAT_EPSILON && length(inputColor) == 0.)) {
     accumulatedColor = undoColorTransform(accumulatedColor);
 
     float alphaVal = canReproject ? alpha : 0.;

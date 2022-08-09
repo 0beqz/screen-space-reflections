@@ -101,7 +101,7 @@ void main() {
     vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, roughness) * fresnelFactor;
 
     if (roughness > maxRoughness || (roughness > 1. - FLOAT_EPSILON && roughnessFadeOut > 1. - FLOAT_EPSILON)) {
-        gl_FragColor = vec4(iblRadiance, 0.9);
+        gl_FragColor = vec4(iblRadiance, 1.);
         return;
     }
 

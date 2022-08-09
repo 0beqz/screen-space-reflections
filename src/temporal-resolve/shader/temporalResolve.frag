@@ -18,18 +18,6 @@ varying vec2 vUv;
 
 #include <packing>
 
-// credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 inverseProjectionMatrix, mat4 cameraMatrixWorld) {
-    vec4 ndc = vec4(
-        (uv.x - 0.5) * 2.0,
-        (uv.y - 0.5) * 2.0,
-        (depth - 0.5) * 2.0,
-        1.0);
-    vec4 clip = inverseProjectionMatrix * ndc;
-    vec4 view = cameraMatrixWorld * (clip / clip.w);
-    return view.xyz;
-}
-
 #ifdef DILATION
 // source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
 vec4 getDilatedTexture(sampler2D tex, vec2 uv, vec2 invTexSize) {
@@ -102,14 +90,6 @@ void main() {
 #endif
 
     lastVelUv = lastVelocity.xy;
-
-    float depth1 = textureLod(velocityTexture, vUv, 0.).b;
-    float depth2 = textureLod(lastVelocityTexture, reprojectedUv, 0.).b;
-
-    vec3 curWorldPos = screenSpaceToWorldSpace(vUv, depth1, curInverseProjectionMatrix, curCameraMatrixWorld);
-    vec3 lastWorldPos = screenSpaceToWorldSpace(vUv, depth2, prevInverseProjectionMatrix, prevCameraMatrixWorld);
-    float distToLastFrame = length(curWorldPos - lastWorldPos) * 100.;
-    distToLastFrame *= distToLastFrame;
 
     float velocityLength = length(lastVelUv - velUv);
 

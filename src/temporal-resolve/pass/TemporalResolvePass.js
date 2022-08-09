@@ -88,8 +88,8 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget.setSize(width, height)
 		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
 
-		this.velocityPass.renderTarget.texture.minFilter = LinearFilter
-		this.velocityPass.renderTarget.texture.magFilter = LinearFilter
+		this.velocityPass.renderTarget.texture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
+		this.velocityPass.renderTarget.texture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -110,8 +110,8 @@ export class TemporalResolvePass extends Pass {
 			height * this.velocityResolutionScale,
 			RGBAFormat
 		)
-		this.lastVelocityTexture.minFilter = LinearFilter
-		this.lastVelocityTexture.magFilter = LinearFilter
+		this.lastVelocityTexture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
+		this.lastVelocityTexture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
 		this.lastVelocityTexture.type = HalfFloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
