@@ -49,8 +49,8 @@ export class SSREffect extends Effect {
 		this._camera = camera
 
 		const trOptions = {
-			BOX_BLUR: true,
-			DILATION: true
+			boxBlur: true,
+			dilation: true
 		}
 
 		options = { ...defaultSSROptions, ...options, ...trOptions }

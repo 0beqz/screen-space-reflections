@@ -45,18 +45,18 @@ void main() {
     }
 
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
+    vec4 accumulatedTexel;
 
     vec3 inputColor = transformColor(inputTexel.rgb);
-    float alpha = inputTexel.a;
-
-    vec4 accumulatedTexel;
     vec3 accumulatedColor;
+
+    float alpha = inputTexel.a;
 
     // REPROJECT_START
 
     float velocityDisocclusion;
 
-#ifdef BOX_BLUR
+#ifdef boxBlur
     vec3 boxBlurredColor = inputTexel.rgb;
 #endif
 
@@ -86,7 +86,7 @@ void main() {
 
                     col = textureLod(inputTexture, neighborUv, 0.0).xyz;
 
-#ifdef DILATION
+#ifdef dilation
                     if ((x == -1 || x == 1) && (y == -1 || y == 1)) {
                         vec4 neigborVelocity = textureLod(velocityTexture, neighborUv, 0.0);
                         neighborDepth = neigborVelocity.b;
@@ -106,7 +106,7 @@ void main() {
                     }
 #endif
 
-#ifdef BOX_BLUR
+#ifdef boxBlur
                     // depth-aware box blurring to make new/disoccluded pixels less disrupting
                     if (abs(x) <= 5 && abs(y) <= 5 && abs(depth - neighborDepth) < MAX_NEIGHBOR_DEPTH_DIFFERENCE) {
                         boxBlurredColor += col;
@@ -132,7 +132,7 @@ void main() {
 
         // box blur
 
-#ifdef BOX_BLUR
+#ifdef boxBlur
         // box blur
         float pxRadius = correctionRadius > 5 ? 121.0 : pow(float(correctionRadius * 2 + 1), 2.0);
         boxBlurredColor /= pxRadius;
@@ -148,7 +148,7 @@ void main() {
             accumulatedColor = mix(accumulatedColor, clampedColor, correction);
         } else {
             // reprojected UV coordinates are outside of screen
-#ifdef BOX_BLUR
+#ifdef boxBlur
             accumulatedColor = boxBlurredColor;
 #else
             accumulatedColor = inputColor;

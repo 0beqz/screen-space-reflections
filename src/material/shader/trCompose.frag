@@ -1,11 +1,9 @@
-﻿// the compose shader when Temporal Resolve is enabled
-
-alpha = velocityDisocclusion < FLOAT_EPSILON ? (alpha + 0.0075) : 0.0;
+﻿alpha = velocityDisocclusion < FLOAT_EPSILON ? (alpha + 0.0075) : 0.0;
 alpha = clamp(alpha, 0.0, 1.0);
 
 float m = mix(alpha * alpha, 1.0, blend);
 
-#ifdef BOX_BLUR
+#ifdef boxBlur
 if (alpha == 0.0) {
     const vec3 W = vec3(0.2125, 0.7154, 0.0721);
 

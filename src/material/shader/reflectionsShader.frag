@@ -125,7 +125,6 @@ void main() {
     float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
-
     float screenEdgefactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
     vec3 finalSSR = mix(iblRadiance, SSR * screenEdgefactor, screenEdgefactor) * roughnessFactor;
@@ -134,8 +133,7 @@ void main() {
         vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
 
         // distance from the reflection point to what it's reflecting
-        float reflectionDistance = distance(hitWorldPos, worldPos);
-        reflectionDistance += 1.0;
+        float reflectionDistance = distance(hitWorldPos, worldPos) + 1.0;
 
         float opacity = 1.0 / (reflectionDistance * fade * 0.1);
         if (opacity > 1.0) opacity = 1.0;
@@ -169,10 +167,12 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
         // [-1, 1] --> [0, 1] (NDC to screen position)
         projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
-        // the ray is outside the camera's frustum
+// the ray is outside the camera's frustum
+#ifndef missedRays
         if (projectedCoord.x < 0.0 || projectedCoord.x > 1.0 || projectedCoord.y < 0.0 || projectedCoord.y > 1.0) {
             return INVALID_RAY_COORDS;
         }
+#endif
 
         depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.0);
 
@@ -191,10 +191,12 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
 #endif
         }
 
+#ifndef missedRays
         // the ray is behind the camera
         if (hitPos.z > 0.0) {
             return INVALID_RAY_COORDS;
         }
+#endif
 
         lastProjectedCoord = projectedCoord;
     }
@@ -262,21 +264,18 @@ float fastGetViewZ(const in float depth) {
 #endif
 }
 
-vec3 inverseTransformDirection(in vec3 dir, in mat4 matrix) {
-    // dir can be either a direction vector or a normal vector
-    // upper-left 3x3 of matrix is assumed to be orthogonal
-    return normalize((vec4(dir, 0.0) * matrix).xyz);
-}
-
+#include <common>
 #include <cube_uv_reflection_fragment>
 
 // from: https://github.com/mrdoob/three.js/blob/d5b82d2ca410e2e24ca2f7320212dfbee0fe8e89/src/renderers/shaders/ShaderChunk/envmap_physical_pars_fragment.glsl.js#L22
 vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float roughness) {
 #if defined(ENVMAP_TYPE_CUBE_UV)
     vec3 reflectVec = reflect(-viewDir, normal);
+
     // Mixing the reflection with the normal is more accurate and keeps rough objects from gathering light from behind their tangent plane.
     reflectVec = normalize(mix(reflectVec, normal, roughness * roughness));
     reflectVec = inverseTransformDirection(reflectVec, viewMatrix);
+
     vec4 envMapColor = textureCubeUV(envMap, reflectVec, roughness);
     return envMapColor.rgb * intensity;
 #else

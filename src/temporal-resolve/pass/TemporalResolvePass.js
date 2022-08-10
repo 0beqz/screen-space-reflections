@@ -15,6 +15,9 @@ import { VelocityPass } from "./VelocityPass"
 
 const zeroVec2 = new Vector2()
 
+// the following variables can be accessed by the custom compose shader:
+// inputTexel, accumulatedTexel, inputColor, accumulatedColor, alpha, velocityDisocclusion, boxBlurredColor (if using box blur)
+
 export class TemporalResolvePass extends Pass {
 	velocityPass = null
 	velocityResolutionScale = 1
@@ -42,8 +45,8 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
 
 		this.fullscreenMaterial.defines.correctionRadius = options.correctionRadius || 1
-		if (options.DILATION) this.fullscreenMaterial.defines.DILATION = ""
-		if (options.BOX_BLUR) this.fullscreenMaterial.defines.BOX_BLUR = ""
+		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
+		if (options.boxBlur) this.fullscreenMaterial.defines.boxBlur = ""
 
 		this.setupFramebuffers(1, 1)
 		this.checkCanUseSharedVelocityTexture()
@@ -122,6 +125,8 @@ export class TemporalResolvePass extends Pass {
 				}
 			}
 		}
+
+		return this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value
 	}
 
 	checkNeedsResample() {
@@ -141,8 +146,7 @@ export class TemporalResolvePass extends Pass {
 		this.checkNeedsResample()
 		this.fullscreenMaterial.uniforms.samples.value = this.samples
 
-		const isUsingSharedVelocityTexture =
-			this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value
+		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
 		if (!isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
