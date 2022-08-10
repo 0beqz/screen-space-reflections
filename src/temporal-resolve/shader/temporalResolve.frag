@@ -5,9 +5,11 @@ uniform sampler2D accumulatedTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
 
+uniform float temporalResolveMix;
 uniform float temporalResolveCorrection;
-uniform vec2 invTexSize;
 uniform float colorExponent;
+uniform float samples;
+uniform vec2 invTexSize;
 
 uniform mat4 curInverseProjectionMatrix;
 uniform mat4 curCameraMatrixWorld;
@@ -16,154 +18,152 @@ uniform mat4 prevCameraMatrixWorld;
 
 varying vec2 vUv;
 
-#include <packing>
-
-#ifdef DILATION
-// source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
-vec4 getDilatedTexture(sampler2D tex, vec2 uv, vec2 invTexSize) {
-    float closestDepth = 0.;
-    vec2 closestNeighborUv;
-    vec2 neighborUv;
-    float neighborDepth;
-
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            neighborUv = vUv + vec2(x, y) * invTexSize;
-            neighborDepth = textureLod(tex, neighborUv, 0.).b;
-
-            if (neighborDepth > closestDepth) {
-                closestNeighborUv = neighborUv;
-                closestDepth = neighborDepth;
-            }
-        }
-    }
-
-    return textureLod(tex, closestNeighborUv, 0.);
-}
-#endif
+#define FLOAT_EPSILON 0.00001
 
 vec3 transformColorExponent;
 vec3 undoColorTransformExponent;
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(vec3 color) {
-    if (colorExponent == 1.) return color;
+    if (colorExponent == 1.0) return color;
 
-    return pow(color, transformColorExponent);
+    return pow(abs(color), transformColorExponent);
 }
 
 vec3 undoColorTransform(vec3 color) {
-    if (colorExponent == 1.) return color;
+    if (colorExponent == 1.0) return color;
 
-    return pow(color, undoColorTransformExponent);
+    return max(pow(abs(color), undoColorTransformExponent), vec3(0.0));
 }
 
 void main() {
-    transformColorExponent = vec3(1. / colorExponent);
+    transformColorExponent = vec3(1.0 / colorExponent);
     undoColorTransformExponent = vec3(colorExponent);
 
-    vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
+    vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
     vec3 inputColor = transformColor(inputTexel.rgb);
-    vec3 accumulatedColor;
-    vec3 outputColor;
+    float alpha = inputTexel.a;
 
-    vec4 velocity;
-    vec4 lastVelocity;
-    vec2 lastVelUv;
+    vec4 accumulatedTexel;
+    vec3 accumulatedColor;
 
     // REPROJECT_START
 
-#ifdef DILATION
-    velocity = getDilatedTexture(velocityTexture, vUv, invTexSize);
-#else
-    velocity = textureLod(velocityTexture, vUv, 0.);
+    float velocityDisocclusion;
+
+#ifdef BOX_BLUR
+    vec3 boxBlurredColor = inputTexel.rgb;
 #endif
 
-    vec2 velUv = velocity.xy;
-    vec2 reprojectedUv = vUv - velUv;
-
-#ifdef DILATION
-    lastVelocity = getDilatedTexture(lastVelocityTexture, reprojectedUv, invTexSize);
-#else
-    lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.);
-#endif
-
-    lastVelUv = lastVelocity.xy;
-
-    float velocityLength = length(lastVelUv - velUv);
-
-    // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
-    float velocityDisocclusion = (velocityLength - 0.000005) * 10.;
-    velocityDisocclusion *= velocityDisocclusion;
-
-    bool canReproject = reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.;
-
-    float movement = length(velUv) * 100.;
-    bool isMoving = velocityDisocclusion > 0.001 || movement > 0.001;
-
-    float alpha = inputTexel.a;
-
-    vec3 boxBlurredColor = inputColor;
-
-    if (isMoving) {
+    if (samples < 3.0 || alpha < 1.0) {
         vec3 minNeighborColor = inputColor;
         vec3 maxNeighborColor = inputColor;
 
         vec2 neighborUv;
         vec3 col;
 
+        vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+        vec2 reprojectedUv = vUv - velocity.xy;
+        vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
+
+        float depth = velocity.b;
+
+        float closestDepth = depth;
+        float neighborDepth;
+
+        float lastClosestDepth = lastVelocity.b;
+        float lastNeighborDepth;
+
+        const float maxDepthDifference = 0.001;
+
         for (int x = -CLAMP_RADIUS; x <= CLAMP_RADIUS; x++) {
             for (int y = -CLAMP_RADIUS; y <= CLAMP_RADIUS; y++) {
                 if (x != 0 || y != 0) {
                     neighborUv = vUv + vec2(x, y) * invTexSize;
 
-                    col = textureLod(inputTexture, neighborUv, 0.).xyz;
+                    col = textureLod(inputTexture, neighborUv, 0.0).xyz;
+
+#ifdef DILATION
+                    if ((x == -1 || x == 1) && (y == -1 || y == 1)) {
+                        vec4 neigborVelocity = textureLod(velocityTexture, neighborUv, 0.0);
+                        neighborDepth = neigborVelocity.b;
+
+                        if (neighborDepth > closestDepth) {
+                            velocity = neigborVelocity;
+                            closestDepth = neighborDepth;
+                        }
+
+                        vec4 lastNeighborVelocity = textureLod(velocityTexture, vUv + vec2(x, y) * invTexSize, 0.0);
+                        lastNeighborDepth = lastNeighborVelocity.b;
+
+                        if (neighborDepth > closestDepth) {
+                            lastVelocity = lastNeighborVelocity;
+                            lastClosestDepth = lastNeighborDepth;
+                        }
+                    }
+#endif
+
+#ifdef BOX_BLUR
+                    // depth-aware box blurring to make new/disoccluded pixels less disrupting
+                    if (abs(depth - neighborDepth) < maxDepthDifference) boxBlurredColor += col;
+#endif
+
                     col = transformColor(col);
 
-                    if (canReproject) {
-                        minNeighborColor = min(col, minNeighborColor);
-                        maxNeighborColor = max(col, maxNeighborColor);
-                    }
-
-                    boxBlurredColor += col;
+                    minNeighborColor = min(col, minNeighborColor);
+                    maxNeighborColor = max(col, maxNeighborColor);
                 }
             }
         }
 
-        float pxRadius = pow(float(CLAMP_RADIUS * 2 + 1), 2.);
-        boxBlurredColor /= pxRadius;
+        // velocity
+        float velocityLength = length(lastVelocity.xy - velocity.xy);
 
-        // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
-        if (canReproject) {
-            vec4 accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.);
-            // alpha = min(alpha, accumulatedTexel.a);
+        velocityDisocclusion = (velocityLength - 0.000005) * 10.0;
+        velocityDisocclusion *= velocityDisocclusion;
+
+        reprojectedUv = vUv - velocity.xy;
+
+// box blur
+#ifdef BOX_BLUR
+        // box blur
+        float pxRadius = pow(float(CLAMP_RADIUS * 2 + 1), 2.0);
+        boxBlurredColor /= pxRadius;
+        boxBlurredColor = transformColor(boxBlurredColor);
+#endif
+        // the reprojected UV coordinates are inside the view
+        if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
+            accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
             accumulatedColor = transformColor(accumulatedTexel.rgb);
 
             vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
-            float mixFactor = temporalResolveCorrection * (1. + movement);
-            mixFactor = min(mixFactor, 1.);
-
-            accumulatedColor = mix(accumulatedColor, clampedColor, mixFactor);
+            accumulatedColor = mix(accumulatedColor, clampedColor, temporalResolveCorrection);
         } else {
             // reprojected UV coordinates are outside of screen
+#ifdef BOX_BLUR
             accumulatedColor = boxBlurredColor;
+#else
+            accumulatedColor = inputColor;
+#endif
+        }
+
+        // this texel is marked constantly moving (e.g. from a VideoTexture), so treat it accordingly
+        if (velocity.r > 1.0 - FLOAT_EPSILON && velocity.g > 1.0 - FLOAT_EPSILON) {
+            alpha = 0.0;
+            velocityDisocclusion = 10.0e10;
         }
     } else {
-        // there was no movement so no checks and clamping need to be done
-        accumulatedColor = transformColor(textureLod(accumulatedTexture, vUv, 0.).rgb);
-    }
-
-    if (velocity.r > 1. - FLOAT_EPSILON && velocity.g > 1. - FLOAT_EPSILON) {
-        alpha = 0.;
-        velocityDisocclusion = 10.0e10;
-        movement = 10.0e10;
+        // there was no need to do neighborhood clamping
+        accumulatedColor = transformColor(textureLod(accumulatedTexture, vUv, 0.0).rgb);
     }
 
     // REPROJECT_END
 
-// the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
+    vec3 outputColor = inputColor;
+
+    // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #include <custom_compose_shader>
 
     gl_FragColor = vec4(undoColorTransform(outputColor), alpha);

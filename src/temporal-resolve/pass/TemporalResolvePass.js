@@ -3,16 +3,14 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
-	Matrix4,
 	NearestFilter,
+	Quaternion,
 	RGBAFormat,
-	ShaderMaterial,
-	Uniform,
 	Vector2,
+	Vector3,
 	WebGLRenderTarget
 } from "three"
-import vertexShader from "../../material/shader/basicVertexShader.vert"
-import temporalResolve from "../shader/temporalResolve.frag"
+import { TemporalResolveMaterial } from "../material/TemporalResolveMaterial"
 import { VelocityPass } from "./VelocityPass"
 
 const zeroVec2 = new Vector2()
@@ -20,62 +18,41 @@ const zeroVec2 = new Vector2()
 export class TemporalResolvePass extends Pass {
 	velocityPass = null
 	velocityResolutionScale = 1
+	samples = 1
+	lastCameraTransform = {
+		position: new Vector3(),
+		quaternion: new Quaternion()
+	}
 
 	constructor(scene, camera, customComposeShader, options = {}) {
 		super("TemporalResolvePass")
 
 		this._scene = scene
+		this._camera = camera
 
-		const width = options.width || typeof window !== "undefined" ? window.innerWidth : 2000
-		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
-
-		this.renderTarget = new WebGLRenderTarget(width, height, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+		this.renderTarget = new WebGLRenderTarget(1, 1, {
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
 
 		this.velocityPass = new VelocityPass(scene, camera)
 
-		const fragmentShader = temporalResolve.replace("#include <custom_compose_shader>", customComposeShader)
+		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
 
-		this.fullscreenMaterial = new ShaderMaterial({
-			type: "TemporalResolveMaterial",
-			uniforms: {
-				inputTexture: new Uniform(null),
-				accumulatedTexture: new Uniform(null),
-				velocityTexture: new Uniform(this.velocityPass.renderTarget.texture),
-				lastVelocityTexture: new Uniform(null),
-				depthTexture: new Uniform(null),
-				temporalResolveMix: new Uniform(0),
-				temporalResolveCorrection: new Uniform(0),
-				colorExponent: new Uniform(1),
-				invTexSize: new Uniform(new Vector2()),
-				curInverseProjectionMatrix: { value: new Matrix4() },
-				curCameraMatrixWorld: { value: new Matrix4() },
-				prevInverseProjectionMatrix: { value: new Matrix4() },
-				prevCameraMatrixWorld: { value: new Matrix4() }
-			},
-			defines: {
-				CLAMP_RADIUS: 1
-			},
-			vertexShader,
-			fragmentShader
-		})
+		this.fullscreenMaterial.defines.CLAMP_RADIUS = options.CLAMP_RADIUS || 1
+		if (options.DILATION) this.fullscreenMaterial.defines.DILATION = ""
+		if (options.BOX_BLUR) this.fullscreenMaterial.defines.BOX_BLUR = ""
 
-		this.fullscreenMaterial.defines.DILATION = ""
-
-		if (!scene.userData.velocityTexture) {
-			scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
-		}
-
-		this.setupAccumulatedTexture(width, height)
+		this.setupFramebuffers(1, 1)
+		this.checkCanUseSharedVelocityTexture()
 	}
 
 	dispose() {
 		if (this._scene.userData.velocityTexture === this.velocityPass.renderTarget.texture) {
 			delete this._scene.userData.velocityTexture
+			delete this._scene.userData.lastVelocityTexture
 		}
 
 		this.renderTarget.dispose()
@@ -93,10 +70,10 @@ export class TemporalResolvePass extends Pass {
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
-		this.setupAccumulatedTexture(width, height)
+		this.setupFramebuffers(width, height)
 	}
 
-	setupAccumulatedTexture(width, height) {
+	setupFramebuffers(width, height) {
 		if (this.accumulatedTexture) this.accumulatedTexture.dispose()
 		if (this.lastVelocityTexture) this.lastVelocityTexture.dispose()
 
@@ -120,17 +97,56 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.needsUpdate = true
 	}
 
-	render(renderer) {
-		this.velocityPass.render(renderer)
+	checkCanUseSharedVelocityTexture() {
+		const canUseSharedVelocityTexture =
+			this._scene.userData.velocityTexture &&
+			this.velocityPass.renderTarget.texture !== this._scene.userData.velocityTexture
 
-		this.fullscreenMaterial.uniforms.curInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this.camera.matrixWorld)
+		if (canUseSharedVelocityTexture) {
+			// let's use the shared one instead
+			if (this.velocityPass.renderTarget.texture === this.fullscreenMaterial.uniforms.velocityTexture.value) {
+				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this._scene.userData.lastVelocityTexture
+				this.fullscreenMaterial.uniforms.velocityTexture.value = this._scene.userData.velocityTexture
+				this.fullscreenMaterial.needsUpdate = true
+			}
+		} else {
+			// let's stop using the shared one (if used) and mark ours as the shared one instead
+			if (this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value) {
+				this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.renderTarget.texture
+				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
+				this.fullscreenMaterial.needsUpdate = true
+
+				if (!this._scene.userData.velocityTexture) {
+					this._scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
+					this._scene.userData.lastVelocityTexture = this.lastVelocityTexture
+				}
+			}
+		}
+	}
+
+	checkNeedsResample() {
+		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
+		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
+
+		if (moveDist > 0.000001 || rotateDist > 0.000001) {
+			this.samples = 1
+
+			this.lastCameraTransform.position.copy(this._camera.position)
+			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
+		}
+	}
+
+	render(renderer) {
+		this.samples++
+		this.checkNeedsResample()
+		this.fullscreenMaterial.uniforms.samples.value = this.samples
+
+		const isUsingSharedVelocityTexture =
+			this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value
+		if (!isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
-
-		this.fullscreenMaterial.uniforms.prevInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this.camera.matrixWorld)
 
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)

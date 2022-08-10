@@ -69,8 +69,7 @@ const params = {
 		resolutionScale: 1,
 		velocityResolutionScale: 1,
 		CLAMP_RADIUS: 1,
-		temporalResolve: true,
-		temporalResolveMix: 0.99,
+		temporalResolveMix: 0.95,
 		temporalResolveCorrection: 0.1,
 		blurMix: 0,
 		blurSharpness: 10,
@@ -342,7 +341,7 @@ const box = new THREE.Mesh(
 	new THREE.MeshStandardMaterial({ color: 0, roughness: 0.05 })
 )
 // scene.add(box)
-box.position.y = 1.5
+box.position.y = 1
 
 let goRight = true
 
@@ -351,7 +350,7 @@ const loop = () => {
 	if (stats) stats.begin()
 
 	const val = goRight ? 2 : -2
-	box.position.z += val * dt * 0.875
+	box.position.z += val * dt * 1.875
 	if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
 		box.position.z = val
 		goRight = !goRight

@@ -1,3 +1,7 @@
+// RegExp to format all numbers like "0." to "0.0"
+// 	Find: [0-9]+\.(?![0-9])
+// 	Replace: $00
+
 {
 	"env": {
 		"browser": true,

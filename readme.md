@@ -53,7 +53,6 @@ composer.addPass(ssrPass)
 
 ```javascript
 const options = {
-	temporalResolve: true,
 	temporalResolveMix: 0.9,
 	temporalResolveCorrection: 1,
 	resolutionScale: 1,

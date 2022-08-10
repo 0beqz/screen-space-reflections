@@ -12,7 +12,7 @@ import {
 	WebGLRenderTarget
 } from "three"
 import { getVisibleChildren } from "../../utils/Utils.js"
-import { MeshVelocityMaterial } from "../material/MeshVelocityMaterial.js"
+import { VelocityMaterial } from "../material/VelocityMaterial.js"
 
 const backgroundColor = new Color(0)
 const updateProperties = ["visible", "wireframe", "side"]
@@ -49,7 +49,7 @@ export class VelocityPass extends Pass {
 			let [cachedOriginalMaterial, velocityMaterial] = this.cachedMaterials.get(c) || []
 
 			if (originalMaterial !== cachedOriginalMaterial) {
-				velocityMaterial = new MeshVelocityMaterial()
+				velocityMaterial = new VelocityMaterial()
 				velocityMaterial.lastMatrixWorld = new Matrix4()
 
 				if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
@@ -69,10 +69,11 @@ export class VelocityPass extends Pass {
 				}
 			}
 
-			const childMovedThisFrame = !c.matrixWorld.equals(velocityMaterial.lastMatrixWorld)
-
 			c.visible =
-				this.cameraMovedThisFrame || childMovedThisFrame || c.skeleton || "FULL_MOVEMENT" in velocityMaterial.defines
+				this.cameraMovedThisFrame ||
+				!c.matrixWorld.equals(velocityMaterial.lastMatrixWorld) ||
+				c.skeleton ||
+				"FULL_MOVEMENT" in velocityMaterial.defines
 
 			c.material = velocityMaterial
 
@@ -112,7 +113,7 @@ export class VelocityPass extends Pass {
 
 	unsetVelocityMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			if (c.material.isMeshVelocityMaterial) {
+			if (c.material.isVelocityMaterial) {
 				c.visible = true
 
 				c.material.lastMatrixWorld.copy(c.matrixWorld)

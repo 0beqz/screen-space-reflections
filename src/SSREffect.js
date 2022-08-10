@@ -1,6 +1,5 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { CubeCamera, PMREMGenerator, Quaternion, Texture, Uniform, Vector3, WebGLCubeRenderTarget } from "three"
-import accumulatedCompose from "./material/shader/accumulatedCompose.frag"
+import { CubeCamera, LinearFilter, PMREMGenerator, Texture, Uniform, Vector3, WebGLCubeRenderTarget } from "three"
 import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
@@ -8,7 +7,6 @@ import trCompose from "./material/shader/trCompose.frag"
 import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 import { defaultSSROptions } from "./SSROptions"
 import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
-import temporalResolve from "./temporal-resolve/shader/temporalResolve.frag"
 import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
 import { setupEnvMap } from "./utils/Utils"
 
@@ -23,14 +21,10 @@ const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
 let pmremGenerator
 
 export class SSREffect extends Effect {
-	samples = 0
 	selection = new Selection()
 	lastSize
-	lastCameraTransform = {
-		position: new Vector3(),
-		quaternion: new Quaternion()
-	}
 	cubeCamera = new CubeCamera(0.001, 1000, defaultCubeRenderTarget)
+	usingBoxProjectedEnvMap = false
 
 	/**
 	 * @param {THREE.Scene} scene The scene of the SSR effect
@@ -53,25 +47,24 @@ export class SSREffect extends Effect {
 
 		this._scene = scene
 		this._camera = camera
-		this.usingBoxProjectedEnvMap = false
 
-		options = { ...defaultSSROptions, ...options }
+		const trOptions = {
+			BOX_BLUR: true,
+			DILATION: true
+		}
+
+		options = { ...defaultSSROptions, ...options, ...trOptions }
 
 		// set up passes
 
 		// temporal resolve pass
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, "", options)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.samples = new Uniform(0)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.colorExponent = new Uniform(1)
-		this.temporalResolvePass.fullscreenMaterial.defines.EULER = 2.718281828459045
-		this.temporalResolvePass.fullscreenMaterial.defines.FLOAT_EPSILON = 0.00001
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
 		// reflections pass
 		this.reflectionsPass = new ReflectionsPass(this, options)
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
-		this.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.reflectionsPass.depthTexture
 
 		this.lastSize = {
 			width: options.width,
@@ -79,9 +72,6 @@ export class SSREffect extends Effect {
 			resolutionScale: options.resolutionScale,
 			velocityResolutionScale: options.velocityResolutionScale
 		}
-
-		this.lastCameraTransform.position.copy(camera.position)
-		this.lastCameraTransform.quaternion.copy(camera.quaternion)
 
 		this.setSize(options.width, options.height)
 
@@ -169,31 +159,6 @@ export class SSREffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "temporalResolve":
-							const composeShader = value ? trCompose : accumulatedCompose
-							let fragmentShader = temporalResolve
-
-							// if we are not using temporal reprojection, then cut out the part that's doing the reprojection
-							if (!value) {
-								const removePart = fragmentShader.slice(
-									fragmentShader.indexOf("// REPROJECT_START"),
-									fragmentShader.indexOf("// REPROJECT_END") + "// REPROJECT_END".length
-								)
-								fragmentShader = temporalResolve.replace(removePart, "")
-							}
-
-							fragmentShader = fragmentShader.replace("#include <custom_compose_shader>", composeShader)
-
-							fragmentShader =
-								/* glsl */ `
-							uniform float samples;
-							uniform float temporalResolveMix;
-							` + fragmentShader
-
-							this.temporalResolvePass.fullscreenMaterial.fragmentShader = fragmentShader
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-							break
-
 						case "temporalResolveMix":
 							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
 							break
@@ -256,6 +221,8 @@ export class SSREffect extends Effect {
 			pmremGenerator.compileCubemapShader()
 		}
 		const envMap = pmremGenerator.fromCubemap(this.cubeCamera.renderTarget.texture).texture
+		envMap.minFilter = LinearFilter
+		envMap.magFilter = LinearFilter
 
 		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
 
@@ -285,18 +252,6 @@ export class SSREffect extends Effect {
 		this.usingBoxProjectedEnvMap = false
 	}
 
-	checkNeedsResample() {
-		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
-
-		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.samples = 1
-
-			this.lastCameraTransform.position.copy(this._camera.position)
-			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
-		}
-	}
-
 	dispose() {
 		super.dispose()
 
@@ -305,9 +260,6 @@ export class SSREffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
-		this.samples++
-		this.checkNeedsResample()
-
 		if (!this.usingBoxProjectedEnvMap && this._scene.environment) {
 			const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
 
@@ -329,13 +281,12 @@ export class SSREffect extends Effect {
 		}
 
 		// update uniforms
-		this.uniforms.get("samples").value = this.samples
+		this.uniforms.get("samples").value = this.temporalResolvePass.samples
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
 
 		// compose reflection of last and current frame into one reflection
-		this.temporalResolvePass.fullscreenMaterial.uniforms.samples.value = this.samples
 		this.temporalResolvePass.render(renderer)
 	}
 }

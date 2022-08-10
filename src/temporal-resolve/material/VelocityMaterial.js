@@ -58,7 +58,7 @@ const velocity_vertex = /* glsl */ `
 		gl_Position = newPosition;
 `
 
-export class MeshVelocityMaterial extends ShaderMaterial {
+export class VelocityMaterial extends ShaderMaterial {
 	constructor() {
 		super({
 			uniforms: {
@@ -119,6 +119,6 @@ export class MeshVelocityMaterial extends ShaderMaterial {
                     }`
 		})
 
-		this.isMeshVelocityMaterial = true
+		this.isVelocityMaterial = true
 	}
 }

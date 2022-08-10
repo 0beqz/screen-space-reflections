@@ -1,25 +1,27 @@
 ﻿// the compose shader when Temporal Resolve is enabled
-alpha = (velocityDisocclusion < FLOAT_EPSILON) ? (alpha + 0.05) : (alpha - 0.05);
-alpha = clamp(alpha, 0., 1.);
 
-if ((length(accumulatedColor) > FLOAT_EPSILON && length(inputColor) == 0.)) {
-    accumulatedColor = undoColorTransform(accumulatedColor);
+alpha = velocityDisocclusion < FLOAT_EPSILON ? (alpha + 0.0075) : 0.0;
+alpha = clamp(alpha, 0.0, 1.0);
 
-    float alphaVal = canReproject ? alpha : 0.;
-    gl_FragColor = vec4(accumulatedColor, alpha);
-    return;
+float m = mix(alpha * alpha, 1.0, temporalResolveMix);
+
+#ifdef BOX_BLUR
+if (alpha == 0.0) {
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+
+    float lum = dot(inputTexel.rgb, W);
+    float lum2 = dot(accumulatedTexel.rgb, W);
+    float lumDiff = abs(lum - lum2);
+
+    lumDiff = min(1., lumDiff);
+
+    inputColor = mix(inputColor, boxBlurredColor, lumDiff);
 }
+#endif
 
-if (alpha < 1.) {
-    // the reflections aren't correct anymore (e.g. due to occlusion from moving object) so we need to have inputTexel influence the reflections more
-    outputColor = mix(accumulatedColor, inputColor, (1. - alpha) * 0.25);
-} else if (1. / samples >= 1. - temporalResolveMix) {
-    // the default way to sample the reflections evenly for the first "1 / temporalResolveMix" frames
-    outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
-} else {
-    // default method that samples quite subtly
-    float mixVal = (1. / samples) / EULER;
-    if (alpha < FLOAT_EPSILON && samples < 15.) mixVal += 0.3;
+if (alpha == 1.0) m = 1.0;
 
-    outputColor = mix(accumulatedColor, inputColor, mixVal);
-}
+// if there's been an abrupt change (e.g. teleporting) then we need to fully use the input color
+if (velocityDisocclusion > 0.5) m = 0.0;
+
+outputColor = accumulatedColor * m + inputColor * (1.0 - m);
