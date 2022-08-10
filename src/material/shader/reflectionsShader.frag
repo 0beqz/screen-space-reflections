@@ -15,17 +15,16 @@ uniform float cameraFar;
 uniform float rayDistance;
 uniform float intensity;
 uniform float maxDepthDifference;
-uniform float roughnessFadeOut;
+uniform float roughnessFade;
 uniform float maxRoughness;
-uniform float rayFadeOut;
+uniform float fade;
 uniform float thickness;
 uniform float ior;
 
 uniform float samples;
 
 uniform float jitter;
-uniform float jitterRough;
-uniform float jitterSpread;
+uniform float jitterRoughness;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
@@ -49,10 +48,10 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
     // filter out sky
-    // if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) {
-    //     gl_FragColor = EARLY_OUT_COLOR;
-    //     return;
-    // }
+    if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) {
+        gl_FragColor = EARLY_OUT_COLOR;
+        return;
+    }
 
     float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
@@ -82,10 +81,10 @@ void main() {
     // jitteriing
     vec3 jitt = vec3(0.0);
 
-    if (jitterSpread != 0.0 && (jitterRough != 0.0 || jitter != 0.0)) {
+    if (jitterRoughness != 0.0 || jitter != 0.0) {
         vec3 randomJitter = hash(50.0 * samples * worldPos) - 0.5;
-        float spread = ((2.0 - specular) + roughness * jitterRough) * jitterSpread;
-        float jitterMix = jitter + jitterRough * roughness;
+        float spread = ((2.0 - specular) + roughness * jitterRoughness);
+        float jitterMix = jitter * 0.25 + jitterRoughness * roughness;
         if (jitterMix > 1.0) jitterMix = 1.0;
         jitt = mix(vec3(0.0), randomJitter * spread, jitterMix);
     }
@@ -98,7 +97,7 @@ void main() {
 
     float lastFrameAlpha = textureLod(accumulatedTexture, vUv, 0.0).a;
 
-    if (roughness > maxRoughness || (roughness > 1.0 - FLOAT_EPSILON && roughnessFadeOut > 1.0 - FLOAT_EPSILON)) {
+    if (roughness > maxRoughness || (roughness > 1.0 - FLOAT_EPSILON && roughnessFade > 1.0 - FLOAT_EPSILON)) {
         gl_FragColor = vec4(iblRadiance, lastFrameAlpha);
         return;
     }
@@ -123,7 +122,7 @@ void main() {
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
 
-    float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFadeOut));
+    float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
 
@@ -131,14 +130,14 @@ void main() {
 
     vec3 finalSSR = mix(iblRadiance, SSR * screenEdgefactor, screenEdgefactor) * roughnessFactor;
 
-    if (rayFadeOut != 0.0) {
+    if (fade != 0.0) {
         vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
 
         // distance from the reflection point to what it's reflecting
         float reflectionDistance = distance(hitWorldPos, worldPos);
         reflectionDistance += 1.0;
 
-        float opacity = 1.0 / (reflectionDistance * rayFadeOut * 0.1);
+        float opacity = 1.0 / (reflectionDistance * fade * 0.1);
         if (opacity > 1.0) opacity = 1.0;
         finalSSR *= opacity;
     }
@@ -154,7 +153,7 @@ void main() {
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
     dir = normalize(dir);
-    dir *= rayDistance / float(MAX_STEPS);
+    dir *= rayDistance / float(steps);
 
     float depth;
     vec4 projectedCoord;
@@ -162,7 +161,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
     float unpackedDepth;
     vec4 depthTexel;
 
-    for (int i = 0; i < MAX_STEPS; i++) {
+    for (int i = 0; i < steps; i++) {
         hitPos += dir;
 
         projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
@@ -184,7 +183,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
         rayHitDepthDifference = depth - hitPos.z;
 
         if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {
-#if NUM_BINARY_SEARCH_STEPS == 0
+#if refineSteps == 0
             // filter out sky
             if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
 #else
@@ -203,7 +202,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
     // since hitPos isn't used anywhere we can use it to mark that this reflection would have been invalid
     hitPos.z = 1.0;
 
-#ifndef ALLOW_MISSED_RAYS
+#ifndef missedRays
     return INVALID_RAY_COORDS;
 #endif
 
@@ -219,7 +218,7 @@ vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiffere
     float unpackedDepth;
     vec4 depthTexel;
 
-    for (int i = 0; i < NUM_BINARY_SEARCH_STEPS; i++) {
+    for (int i = 0; i < refineSteps; i++) {
         projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
         projectedCoord.xy /= projectedCoord.w;
         projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;

@@ -16,13 +16,13 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				velocityTexture: new Uniform(null),
 				lastVelocityTexture: new Uniform(null),
 				samples: new Uniform(1),
-				temporalResolveMix: new Uniform(0.5),
-				temporalResolveCorrection: new Uniform(1),
-				colorExponent: new Uniform(1),
+				blend: new Uniform(0.5),
+				correction: new Uniform(1),
+				exponent: new Uniform(1),
 				invTexSize: new Uniform(new Vector2())
 			},
 			defines: {
-				CLAMP_RADIUS: 1
+				correctionRadius: 1
 			},
 			vertexShader,
 			fragmentShader

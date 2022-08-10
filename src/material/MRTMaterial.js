@@ -97,7 +97,7 @@ export class MRTMaterial extends ShaderMaterial {
                     if(roughness > 10.0e9){
                         roughnessFactor = 1.;
                     }else{
-                        #ifdef USE_ROUGHNESSMAP
+                        #ifdef useRoughnessMap
                             vec4 texelRoughness = texture2D( roughnessMap, vUv );
                             // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
                             roughnessFactor *= texelRoughness.g;

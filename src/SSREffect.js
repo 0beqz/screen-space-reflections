@@ -15,7 +15,7 @@ const finalFragmentShader = finalSSRShader
 	.replace("#include <boxBlur>", boxBlur)
 
 // all the properties for which we don't have to resample
-const noResetSamplesProperties = ["blurMix", "blurSharpness", "blurKernelSize"]
+const noResetSamplesProperties = ["blur", "blurSharpness", "blurKernel"]
 
 const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
 let pmremGenerator
@@ -38,9 +38,9 @@ export class SSREffect extends Effect {
 				["inputTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
 				["samples", new Uniform(0)],
-				["blurMix", new Uniform(0)],
+				["blur", new Uniform(0)],
 				["blurSharpness", new Uniform(0)],
-				["blurKernelSize", new Uniform(0)]
+				["blurKernel", new Uniform(0)]
 			]),
 			defines: new Map([["RENDER_MODE", "0"]])
 		})
@@ -120,56 +120,59 @@ export class SSREffect extends Effect {
 							this.setSize(options.width, value * dpr)
 							break
 
-						case "blurMix":
-							this.uniforms.get("blurMix").value = value
+						case "blur":
+							this.uniforms.get("blur").value = value
 							break
 
 						case "blurSharpness":
 							this.uniforms.get("blurSharpness").value = value
 							break
 
-						case "blurKernelSize":
-							this.uniforms.get("blurKernelSize").value = value
+						case "blurKernel":
+							this.uniforms.get("blurKernel").value = value
 							break
 
 						// defines
-						case "MAX_STEPS":
-							this.reflectionsPass.fullscreenMaterial.defines.MAX_STEPS = parseInt(value)
+						case "steps":
+							this.reflectionsPass.fullscreenMaterial.defines.steps = parseInt(value)
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "NUM_BINARY_SEARCH_STEPS":
-							this.reflectionsPass.fullscreenMaterial.defines.NUM_BINARY_SEARCH_STEPS = parseInt(value)
+						case "refineSteps":
+							this.reflectionsPass.fullscreenMaterial.defines.refineSteps = parseInt(value)
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "ALLOW_MISSED_RAYS":
+						case "missedRays":
 							if (value) {
-								this.reflectionsPass.fullscreenMaterial.defines.ALLOW_MISSED_RAYS = ""
+								this.reflectionsPass.fullscreenMaterial.defines.missedRays = ""
 							} else {
-								delete this.reflectionsPass.fullscreenMaterial.defines.ALLOW_MISSED_RAYS
+								delete this.reflectionsPass.fullscreenMaterial.defines.missedRays
 							}
 
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "CLAMP_RADIUS":
-							this.temporalResolvePass.fullscreenMaterial.defines.CLAMP_RADIUS = Math.round(value)
+						case "correctionRadius":
+							this.temporalResolvePass.fullscreenMaterial.defines.correctionRadius = Math.round(value)
 
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "temporalResolveMix":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
+						case "blend":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.blend.value = value
 							break
 
-						case "temporalResolveCorrection":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveCorrection.value = value
+						case "correction":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.correction.value = value
 							break
 
-						case "colorExponent":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.colorExponent.value = value
+						case "exponent":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.exponent.value = value
 							break
+
+						case "distance":
+							reflectionPassFullscreenMaterialUniforms.rayDistance.value = value
 
 						// must be a uniform
 						default:

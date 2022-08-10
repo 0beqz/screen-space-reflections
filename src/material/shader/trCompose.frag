@@ -3,7 +3,7 @@
 alpha = velocityDisocclusion < FLOAT_EPSILON ? (alpha + 0.0075) : 0.0;
 alpha = clamp(alpha, 0.0, 1.0);
 
-float m = mix(alpha * alpha, 1.0, temporalResolveMix);
+float m = mix(alpha * alpha, 1.0, blend);
 
 #ifdef BOX_BLUR
 if (alpha == 0.0) {
@@ -13,7 +13,7 @@ if (alpha == 0.0) {
     float lum2 = dot(accumulatedTexel.rgb, W);
     float lumDiff = abs(lum - lum2);
 
-    lumDiff = min(1., lumDiff);
+    lumDiff = min(1.0, lumDiff);
 
     inputColor = mix(inputColor, boxBlurredColor, lumDiff);
 }

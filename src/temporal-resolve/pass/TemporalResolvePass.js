@@ -41,7 +41,7 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
 
-		this.fullscreenMaterial.defines.CLAMP_RADIUS = options.CLAMP_RADIUS || 1
+		this.fullscreenMaterial.defines.correctionRadius = options.correctionRadius || 1
 		if (options.DILATION) this.fullscreenMaterial.defines.DILATION = ""
 		if (options.BOX_BLUR) this.fullscreenMaterial.defines.BOX_BLUR = ""
 

@@ -43,7 +43,7 @@ export class ReflectionsPass extends Pass {
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		this.USE_MRT = options.USE_MRT && isWebGL2Available()
+		this.USE_MRT = isWebGL2Available()
 
 		if (this.USE_MRT) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
@@ -162,8 +162,8 @@ export class ReflectionsPass extends Pass {
 
 				// update the child's MRT material
 
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP")
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP")
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "useNormalMap")
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "useRoughnessMap")
 
 				mrtMaterial.uniforms.roughness.value =
 					this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c)

@@ -19,12 +19,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     vec3 reflectionClr = reflectionsTexel.xyz;
 
-    if (blurMix > FLOAT_EPSILON) {
+    if (blur > FLOAT_EPSILON) {
         ivec2 size = textureSize(reflectionsTexture, 0);
         vec2 pxSize = vec2(float(size.x), float(size.y));
         vec3 blurredReflectionsColor = denoise(reflectionsTexel.rgb, reflectionsTexture, vUv, pxSize);
 
-        reflectionClr = mix(reflectionClr, blurredReflectionsColor.rgb, blurMix);
+        reflectionClr = mix(reflectionClr, blurredReflectionsColor.rgb, blur);
     }
 
 #if RENDER_MODE == MODE_DEFAULT
@@ -48,6 +48,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 #endif
 
 #if RENDER_MODE == MODE_BLUR_MIX
-    outputColor = vec4(vec3(blurMix), 1.0);
+    outputColor = vec4(vec3(blur), 1.0);
 #endif
 }

@@ -53,34 +53,32 @@ composer.addPass(ssrPass)
 
 ```javascript
 const options = {
-	temporalResolveMix: 0.9,
-	temporalResolveCorrection: 1,
+	blend: 0.9,
+	correction: 1,
 	resolutionScale: 1,
 	velocityResolutionScale: 1,
 	width: typeof window !== "undefined" ? window.innerWidth : 1000,
 	height: typeof window !== "undefined" ? window.innerHeight : 1000,
-	blurMix: 0.5,
+	blur: 0.5,
 	blurSharpness: 10,
-	blurKernelSize: 1,
-	rayDistance: 10,
+	blurKernel: 1,
+	distance: 10,
 	intensity: 1,
-	colorExponent: 1,
+	exponent: 1,
 	maxRoughness: 1,
 	jitter: 0,
-	jitterSpread: 0,
-	jitterRough: 0,
-	roughnessFadeOut: 1,
-	rayFadeOut: 0,
-	MAX_STEPS: 20,
-	NUM_BINARY_SEARCH_STEPS: 5,
+	jitterRoughness: 0,
+	roughnessFade: 1,
+	fade: 0,
+	steps: 20,
+	refineSteps: 5,
 	maxDepthDifference: 10,
 	thickness: 10,
 	ior: 1.45,
-	CLAMP_RADIUS: 1,
-	ALLOW_MISSED_RAYS: true,
-	USE_MRT: true,
-	USE_NORMALMAP: true,
-	USE_ROUGHNESSMAP: true
+	correctionRadius: 1,
+	missedRays: true,
+	useNormalMap: true,
+	useRoughnessMap: true
 }
 ```
 
@@ -91,40 +89,37 @@ const options = {
   
 | Name | Type |  | Description |
 | --- | --- | --- | --- |
-| temporalResolve | <code>boolean</code> |  | whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing" || temporalResolveMix | <code>Number</code> |  | a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look |
+| temporalResolve | <code>boolean</code> |  | whether you want to use Temporal Resolving to re-use reflections from the last frames; this will reduce noise tremendously but may result in "smearing" || blend | <code>Number</code> |  | a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look |
 | resolutionScale | <code>Number</code> |  | resolution of the SSR effect, a resolution of 0.5 means the effect will be rendered at half resolution |
 | velocityResolutionScale | <code>Number</code> |  | resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution |
 | width | <code>Number</code> |  | width of the SSREffect |
 | height | <code>Number</code> |  | height of the SSREffect |
-| blurMix | <code>Number</code> |  | how much the blurred reflections should be mixed with the raw reflections |
+| blur | <code>Number</code> |  | how much the blurred reflections should be mixed with the raw reflections |
 | blurSharpness | <code>Number</code> |  | exponent of the Box Blur filter; higher values will result in more sharpness |
-| blurKernelSize | <code>Number</code> |  | kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts |
-| rayDistance | <code>Number</code> |  | maximum distance a reflection ray can travel to find what it reflects |
+| blurKernel | <code>Number</code> |  | kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts |
+| distance | <code>Number</code> |  | maximum distance a reflection ray can travel to find what it reflects |
 | intensity | <code>Number</code> |  | intensity of the reflections |
-| colorExponent | <code>Number</code> |  | exponent by which reflections will be potentiated when composing the current frame's reflections and the accumulated reflections into a final reflection; higher values will make reflections clearer by highlighting darker spots less |
+| exponent | <code>Number</code> |  | exponent by which reflections will be potentiated when composing the current frame's reflections and the accumulated reflections into a final reflection; higher values will make reflections clearer by highlighting darker spots less |
 | maxRoughness | <code>Number</code> |  | maximum roughness a texel can have to have reflections calculated for it |
 | jitter | <code>Number</code> |  | how intense jittering should be |
-| jitterSpread | <code>Number</code> |  | how much the jittered rays should be spread; higher values will give a rougher look regarding the reflections but are more expensive to compute with |
-| jitterRough | <code>Number</code> |  | how intense jittering should be in relation to a material's roughness |
-| roughnessFadeOut | <code>Number</code> |  | how intense reflections should be on rough spots; a higher value will make reflections fade out quicker on rough spots |
-| rayFadeOut | <code>Number</code> |  | how much reflections will fade out by distance |
-| MAX_STEPS | <code>Number</code> |  | number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects) |
-| NUM_BINARY_SEARCH_STEPS | <code>Number</code> |  | once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps |
+| jitterRoughness | <code>Number</code> |  | how intense jittering should be in relation to a material's roughness |
+| roughnessFade | <code>Number</code> |  | how intense reflections should be on rough spots; a higher value will make reflections fade out quicker on rough spots |
+| fade | <code>Number</code> |  | how much reflections will fade out by distance |
+| steps | <code>Number</code> |  | number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects) |
+| refineSteps | <code>Number</code> |  | once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps |
 | maxDepthDifference | <code>Number</code> |  | maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; higher values will result in better performance |
 | thickness | <code>Number</code> |  | maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance |     
 | ior | <code>Number</code> |  | Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies |
-| CLAMP_RADIUS | <code>boolean</code> |  | how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance |
-| ALLOW_MISSED_RAYS | <code>boolean</code> |  | if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle |
-| USE_MRT | <code>boolean</code> |  | WebGL2 only - whether to use multiple render targets when rendering the G-buffers (normals, depth and roughness); using them can improve performance as they will render all information to multiple buffers for each fragment in one run; this setting can't be changed during run-time |
-| USE_NORMALMAP | <code>boolean</code> |  | if roughness maps should be taken account of when calculating reflections |
-| USE_ROUGHNESSMAP | <code>boolean</code> |  | if normal maps should be taken account of when calculating reflections |
+| correctionRadius | <code>boolean</code> |  | how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance |
+| missedRays | <code>boolean</code> |  | if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle |
+| useNormalMap | <code>boolean</code> |  | if roughness maps should be taken account of when calculating reflections |
+| useRoughnessMap | <code>boolean</code> |  | if normal maps should be taken account of when calculating reflections |
 
 </details>
 
 ### ❗ Highly recommended: Use a GUI to tweak the options
 
-Since the right options for an SSR effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSR effect for the first time in it without any configuration. This can have multiple causes such as `rayDistance` being way too low for your scene for example. So to find out which SSR options are right for your scene, you should use a GUI to find the right values easily.
-The [example](https://github.com/0beqz/screen-space-reflections/tree/main/example) already comes with a simple one-file GUI [`SSRDebugGUI.js`](https://github.com/0beqz/screen-space-reflections/blob/main/example/SSRDebugGUI.js) that you can use in your project like so:
+Since the right options for an SSR effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSR effect for the first time in it without any configuration. This can have multiple causes such as `` being way too low for your scene for example. So to find out which SSR options are right for your scene, you should use a GUI to find the right values easily. The [example](https://github.com/0beqz/screen-space-reflections/tree/main/example) already comes with a simple one-file GUI [`SSRDebugGUI.js`](https://github.com/0beqz/screen-space-reflections/blob/main/example/SSRDebugGUI.js) that you can use in your project like so:
 
 - First install the npm package of the module used for the GUI:
 
@@ -167,7 +162,7 @@ npm run dev
 
 - Introduced Temporal Reprojection to reduce noise for the reflections when moving the camera by reprojecting the last frame's reflections into the current one
 - Implemented accumulative sampling by saving and re-using the last frame's reflections to accumulate especially jittered reflections over frames
-- Made all SSR-related options (e.g. `thickness`, `ior`, `rayDistance`,...) reactive so that you now just need to set `ssrEffect.rayDistance = value` for example to update values
+- Made all SSR-related options (e.g. `thickness`, `ior`, ``,...) reactive so that you now just need to set `ssrEffect. = value` for example to update values
 - Fixed jittering so that it's actually correct from all angles (it used to be less intense the higher you were looking down at a reflection)
 - Changed the SSR implementation from a pass to an effect to improve performance
 - Optimizations regarding computation of required buffers and reflections
@@ -188,8 +183,8 @@ Then try the following:
 
 - increase `thickness`
 - increase `maxDepthDifference`
-- decrease `rayDistance` and increase `MAX_STEPS` if reflections are cutting off now
-- increase `NUM_BINARY_SEARCH_STEPS`
+- decrease ``and increase`steps` if reflections are cutting off now
+- increase `refineSteps`
 
 Keep in mind that increasing these values will have an impact on performance.
 <br>

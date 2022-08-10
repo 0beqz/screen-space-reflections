@@ -68,31 +68,27 @@ const params = {
 		enabled: true,
 		resolutionScale: 1,
 		velocityResolutionScale: 1,
-		CLAMP_RADIUS: 1,
-		temporalResolveMix: 0.95,
-		temporalResolveCorrection: 0.1,
-		blurMix: 0,
+		correctionRadius: 1,
+		blend: 0.95,
+		correction: 0.1,
+		blur: 0,
 		blurSharpness: 10,
-		blurKernelSize: 1,
-		rayDistance: 10,
+		blurKernel: 1,
+		distance: 10,
 		intensity: 1,
-		colorExponent: 1.75,
+		exponent: 1.75,
 		maxRoughness: 0.99,
 		jitter: 0,
-		jitterRough: 0.63,
-		jitterSpread: 3.6,
-		roughnessFadeOut: 1,
-		rayFadeOut: 1.03,
+		jitterRoughness: 2,
+		roughnessFade: 1,
+		fade: 1.03,
 		thickness: 3.5,
 		ior: 1.75,
-		rayFadeOut: 0,
-		MAX_STEPS: 5,
-		NUM_BINARY_SEARCH_STEPS: 6,
+		fade: 0,
+		steps: 5,
+		refineSteps: 6,
 		maxDepthDifference: 50,
-		ALLOW_MISSED_RAYS: false,
-		USE_MRT: true,
-		USE_NORMALMAP: true,
-		USE_ROUGHNESSMAP: true
+		missedRays: false
 	}
 }
 
@@ -313,7 +309,7 @@ THREE.DefaultLoadingManager.onProgress = () => {
 
 const useVideoBackground = () => {
 	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
-	params.temporalResolveCorrection = 0.1
+	params.correction = 0.1
 	if (gui) gui.pane.refresh()
 
 	if (emitterMesh.material._videoMap) {
