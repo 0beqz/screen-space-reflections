@@ -1,5 +1,14 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { CubeCamera, LinearFilter, PMREMGenerator, Texture, Uniform, Vector3, WebGLCubeRenderTarget } from "three"
+import {
+	CubeCamera,
+	LinearFilter,
+	PMREMGenerator,
+	ShaderChunk,
+	Texture,
+	Uniform,
+	Vector3,
+	WebGLCubeRenderTarget
+} from "three"
 import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
@@ -7,6 +16,7 @@ import trCompose from "./material/shader/trCompose.frag"
 import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 import { defaultSSROptions } from "./SSROptions"
 import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
+import { generateHalton23Points } from "./utils/generateHalton23Points"
 import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
 import { setupEnvMap } from "./utils/Utils"
 
@@ -21,6 +31,8 @@ const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
 let pmremGenerator
 
 export class SSREffect extends Effect {
+	haltonSequence = generateHalton23Points(1024)
+	haltonIndex = 0
 	selection = new Selection()
 	lastSize
 	cubeCamera = new CubeCamera(0.001, 1000, defaultCubeRenderTarget)
@@ -244,7 +256,19 @@ export class SSREffect extends Effect {
 		return envMap
 	}
 
-	deleteeBoxProjectedEnvMapFallback() {
+	setIBLRadiance(iblRadiance, renderer) {
+		this._scene.traverse(c => {
+			if (c.material) {
+				const uniforms = renderer.properties.get(c.material)?.uniforms
+
+				if (uniforms && "disableIBLRadiance" in uniforms) {
+					uniforms.disableIBLRadiance.value = iblRadiance
+				}
+			}
+		})
+	}
+
+	deleteBoxProjectedEnvMapFallback() {
 		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
 		reflectionsMaterial.uniforms.envMap.value = null
 		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader.replace("worldPos = ", "vec3 worldPos = ")
@@ -268,7 +292,7 @@ export class SSREffect extends Effect {
 
 			let envMap = null
 
-			// not sure if there is a cleaner way to find the internal Texture of a CubeTexture (when used as scene environment)
+			// not sure if there is a cleaner way to find the internal texture of a CubeTexture (when used as scene environment)
 			this._scene.traverse(c => {
 				if (!envMap && c.material && !c.material.envMap) {
 					const properties = renderer.properties.get(c.material)
@@ -286,10 +310,37 @@ export class SSREffect extends Effect {
 		// update uniforms
 		this.uniforms.get("samples").value = this.temporalResolvePass.samples
 
+		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
+
+		const [x, y] = this.haltonSequence[this.haltonIndex]
+
+		const { width, height } = this.lastSize
+
+		this.temporalResolvePass.velocityPass.render(renderer)
+
+		// jittering the view offset each frame reduces aliasing for the reflection
+		if (this._camera.setViewOffset) this._camera.setViewOffset(width, height, x, y, width, height)
+
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
+
+		this._camera.clearViewOffset()
+	}
+
+	static patchDirectEnvIntensity(envMapIntensity = 0) {
+		if (envMapIntensity === 0) {
+			ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+				"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {",
+				"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) { return vec3(0.0);"
+			)
+		} else {
+			ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+				"vec4 envMapColor = textureCubeUV( envMap, reflectVec, roughness );",
+				"vec4 envMapColor = textureCubeUV( envMap, reflectVec, roughness ) * " + envMapIntensity.toFixed(5) + ";"
+			)
+		}
 	}
 }

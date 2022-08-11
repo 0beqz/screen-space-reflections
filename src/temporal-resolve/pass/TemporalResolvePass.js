@@ -16,7 +16,8 @@ import { VelocityPass } from "./VelocityPass"
 const zeroVec2 = new Vector2()
 
 // the following variables can be accessed by the custom compose shader:
-// inputTexel, accumulatedTexel, inputColor, accumulatedColor, alpha, velocityDisocclusion, boxBlurredColor (if using box blur)
+// "inputTexel", "accumulatedTexel", "inputColor", "accumulatedColor", "alpha", "velocityDisocclusion", "didReproject", "boxBlurredColor" (if using box blur)
+// the custom compose shader will write the final color to the variable "outputColor"
 
 export class TemporalResolvePass extends Pass {
 	velocityPass = null
@@ -146,8 +147,8 @@ export class TemporalResolvePass extends Pass {
 		this.checkNeedsResample()
 		this.fullscreenMaterial.uniforms.samples.value = this.samples
 
-		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
-		if (!isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
+		// const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
+		// if (!isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

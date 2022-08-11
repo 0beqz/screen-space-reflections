@@ -16,13 +16,13 @@ uniform float samples;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);
+    ivec2 size = textureSize(reflectionsTexture, 0);
+    vec2 invTexSize = 1. / vec2(size.x, size.y);
 
     vec3 reflectionClr = reflectionsTexel.xyz;
 
     if (blur > FLOAT_EPSILON) {
-        ivec2 size = textureSize(reflectionsTexture, 0);
-        vec2 pxSize = vec2(float(size.x), float(size.y));
-        vec3 blurredReflectionsColor = denoise(reflectionsTexel.rgb, reflectionsTexture, vUv, pxSize);
+        vec3 blurredReflectionsColor = denoise(reflectionsTexel.rgb, reflectionsTexture, vUv, invTexSize, blur, blurSharpness, blurKernel);
 
         reflectionClr = mix(reflectionClr, blurredReflectionsColor.rgb, blur);
     }

@@ -26,9 +26,10 @@ uniform float samples;
 uniform float jitter;
 uniform float jitterRoughness;
 
-#define INVALID_RAY_COORDS vec2(-1.0);
-#define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
-#define FLOAT_EPSILON      0.00001
+#define INVALID_RAY_COORDS      vec2(-1.0);
+#define EARLY_OUT_COLOR         vec4(0.0, 0.0, 0.0, 1.0)
+#define FLOAT_EPSILON           0.00001
+#define FLOAT_ONE_MINUS_EPSILON 0.99999
 
 float nearMinusFar;
 float nearMulFar;
@@ -97,7 +98,7 @@ void main() {
 
     float lastFrameAlpha = textureLod(accumulatedTexture, vUv, 0.0).a;
 
-    if (roughness > maxRoughness || (roughness > 1.0 - FLOAT_EPSILON && roughnessFade > 1.0 - FLOAT_EPSILON)) {
+    if (roughness > maxRoughness || (roughness > FLOAT_ONE_MINUS_EPSILON && roughnessFade > FLOAT_ONE_MINUS_EPSILON)) {
         gl_FragColor = vec4(iblRadiance, lastFrameAlpha);
         return;
     }
@@ -124,10 +125,18 @@ void main() {
 
     float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
 
-    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
+    // from: https://github.com/kode80/kode80SSR
+    // source: https://github.com/kode80/kode80SSR/blob/master/Assets/Resources/Shaders/SSR.shader#L256
+    vec2 coordsNDC = (coords * 2.0 - 1.0);
+    float screenFade = 0.1;
+    float maxDimension = min(1.0, max(abs(coordsNDC.x), abs(coordsNDC.y)));
+    float reflectioIntensity = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
+    reflectioIntensity = max(0., reflectioIntensity);
+
+    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv.xy));
     float screenEdgefactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
-    vec3 finalSSR = mix(iblRadiance, SSR * screenEdgefactor, screenEdgefactor) * roughnessFactor;
+    vec3 finalSSR = mix(iblRadiance, SSR * reflectioIntensity, screenEdgefactor) * roughnessFactor;
 
     if (fade != 0.0) {
         vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
@@ -277,7 +286,7 @@ vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float 
     reflectVec = inverseTransformDirection(reflectVec, viewMatrix);
 
     vec4 envMapColor = textureCubeUV(envMap, reflectVec, roughness);
-    return envMapColor.rgb * intensity;
+    return envMapColor.rgb;
 #else
     return vec3(0.0);
 #endif

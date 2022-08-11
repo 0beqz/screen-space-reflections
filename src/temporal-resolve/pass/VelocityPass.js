@@ -52,6 +52,8 @@ export class VelocityPass extends Pass {
 				velocityMaterial = new VelocityMaterial()
 				velocityMaterial.lastMatrixWorld = new Matrix4()
 
+				c.material = velocityMaterial
+
 				if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
 
 				this.cachedMaterials.set(c, [originalMaterial, velocityMaterial])

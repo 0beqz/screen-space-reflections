@@ -9,6 +9,8 @@ import { setMovementCamera, setSpawn, spawnPlayer, updateFirstPersonMovement, wo
 import { SSRDebugGUI } from "./SSRDebugGUI"
 import "./style.css"
 
+SSREffect.patchDirectEnvIntensity(0.1)
+
 let ssrEffect
 let gui
 let stats
@@ -55,13 +57,12 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 setMovementCamera(camera, scene, 1.3)
 setSpawn([
 	new THREE.Vector3(5.113053737140886, 1.8300000071525564, -2.013112958154061),
-	new THREE.Euler(0, 1.9200000000000146, -0.005999999999999719)
+	new THREE.Euler(0, 1.9200000000000146, 0)
 ])
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
-
 const params = {
 	...defaultSSROptions,
 	...{
@@ -69,7 +70,7 @@ const params = {
 		resolutionScale: 1,
 		velocityResolutionScale: 1,
 		correctionRadius: 1,
-		blend: 0.95,
+		blend: 0.965,
 		correction: 0.1,
 		blur: 0,
 		blurSharpness: 10,
@@ -141,11 +142,6 @@ const enhanceShaderLightingOptions = {
 	}
 }
 
-THREE.ShaderChunk.envmap_physical_pars_fragment = THREE.ShaderChunk.envmap_physical_pars_fragment.replace(
-	"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {",
-	"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) { return vec3(0.);"
-)
-
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
 
@@ -157,14 +153,10 @@ gltflLoader.load(url, asset => {
 		collider.material.dispose()
 	}
 
+	let ceiling
+
 	asset.scene.traverse(c => {
 		if (c.material) {
-			if (c.name.includes("heli") || c.name.includes("plane")) {
-				c.material.roughness = 0.1
-				c.material.metalness = 1
-				c.material.color.multiplyScalar(0.075)
-			}
-
 			if (c.name !== "emissive") {
 				const lightMap = c.material.emissiveMap
 
@@ -187,12 +179,10 @@ gltflLoader.load(url, asset => {
 
 			if (c.material.name.includes("ceiling")) {
 				c.material.map.offset.setScalar(0)
-				const tex = new THREE.TextureLoader().load("OfficeCeiling002_1K_Emission.webp")
-				const emissiveMap = c.material.map.clone()
-				emissiveMap.source = tex.source
-				c.material.emissiveMap = emissiveMap
 				c.material.emissive.setHex(0xffb580)
 				c.material.roughness = 0.35
+
+				ceiling = c
 			}
 
 			if (c.material.name.includes("floor")) {
@@ -277,9 +267,16 @@ gltflLoader.load(url, asset => {
 			new POSTPROCESSING.EffectPass(camera, fxaaEffect, ssrEffect, bloomEffect, vignetteEffect, lutEffect)
 		)
 
-		if (box) box.visible = false
-		scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(renderer, envMapPos, envMapSize, 1024)
-		if (box) box.visible = true
+		new THREE.TextureLoader().load("OfficeCeiling002_1K_Emission.webp", tex => {
+			const emissiveMap = ceiling.material.map.clone()
+			emissiveMap.source = tex.source
+			ceiling.material.emissiveMap = emissiveMap
+			ceiling.material.emissiveIntensity = 10
+
+			if (box) box.visible = false
+			scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(renderer, envMapPos, envMapSize, 1024)
+			if (box) box.visible = true
+		})
 	})
 
 	spawnPlayer()
@@ -341,6 +338,29 @@ box.position.y = 1
 
 let goRight = true
 
+let mixer
+let skinMesh
+
+gltflLoader.load("skin.glb", asset => {
+	skinMesh = asset.scene
+	skinMesh.scale.multiplyScalar(1.3)
+	skinMesh.position.set(0, 0.2, 0)
+	skinMesh.rotation.y += Math.PI / 2 + Math.PI / 4
+	skinMesh.updateMatrixWorld()
+	skinMesh.traverse(c => {
+		if (c.material) {
+			c.material.roughness = 0.1
+			c.material.metalness = 1
+		}
+	})
+	scene.add(asset.scene)
+	mixer = new THREE.AnimationMixer(skinMesh)
+	const clips = asset.animations
+
+	const action = mixer.clipAction(clips[0])
+	action.play()
+})
+
 const loop = () => {
 	const dt = clock.getDelta()
 	if (stats) stats.begin()
@@ -353,7 +373,12 @@ const loop = () => {
 	}
 	box.updateMatrixWorld()
 
-	// controls.update()
+	if (skinMesh) {
+		mixer.update(dt)
+		skinMesh.updateMatrixWorld()
+		// skinMesh = null
+	}
+
 	updateFirstPersonMovement(dt)
 
 	composer.render()

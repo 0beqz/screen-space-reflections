@@ -20,7 +20,7 @@ varying vec2 vUv;
 
 #define MAX_NEIGHBOR_DEPTH_DIFFERENCE 0.001
 #define FLOAT_EPSILON                 0.00001
-#define FLOAT_NEAR_1                  0.99999
+#define FLOAT_ONE_MINUS_EPSILON       0.99999
 
 vec3 transformexponent;
 vec3 undoColorTransformExponent;
@@ -55,6 +55,7 @@ void main() {
     // REPROJECT_START
 
     float velocityDisocclusion;
+    bool didReproject = false;
 
 #ifdef boxBlur
     vec3 boxBlurredColor = inputTexel.rgb;
@@ -76,8 +77,6 @@ void main() {
         float lastClosestDepth = lastVelocity.b;
         float neighborDepth;
         float lastNeighborDepth;
-
-        const float maxDepthDifference = 0.001;
 
         for (int x = -correctionRadius; x <= correctionRadius; x++) {
             for (int y = -correctionRadius; y <= correctionRadius; y++) {
@@ -138,6 +137,7 @@ void main() {
         boxBlurredColor /= pxRadius;
         boxBlurredColor = transformColor(boxBlurredColor);
 #endif
+
         // the reprojected UV coordinates are inside the view
         if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
             accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
@@ -146,6 +146,8 @@ void main() {
             vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
             accumulatedColor = mix(accumulatedColor, clampedColor, correction);
+
+            didReproject = true;
         } else {
             // reprojected UV coordinates are outside of screen
 #ifdef boxBlur
@@ -156,7 +158,7 @@ void main() {
         }
 
         // this texel is marked as constantly moving (e.g. from a VideoTexture), so treat it accordingly
-        if (velocity.r > FLOAT_NEAR_1 && velocity.g > FLOAT_NEAR_1) {
+        if (velocity.r > FLOAT_ONE_MINUS_EPSILON && velocity.g > FLOAT_ONE_MINUS_EPSILON) {
             alpha = 0.0;
             velocityDisocclusion = 1.0;
         }
