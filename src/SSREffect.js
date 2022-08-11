@@ -47,9 +47,7 @@ export class SSREffect extends Effect {
 		super("SSREffect", finalFragmentShader, {
 			type: "FinalSSRMaterial",
 			uniforms: new Map([
-				["inputTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
-				["samples", new Uniform(0)],
 				["blur", new Uniform(0)],
 				["blurSharpness", new Uniform(0)],
 				["blurKernel", new Uniform(0)]
@@ -91,7 +89,6 @@ export class SSREffect extends Effect {
 	}
 
 	makeOptionsReactive(options) {
-		const dpr = window.devicePixelRatio
 		let needsUpdate = false
 
 		const reflectionPassFullscreenMaterialUniforms = this.reflectionsPass.fullscreenMaterial.uniforms
@@ -108,28 +105,17 @@ export class SSREffect extends Effect {
 					options[key] = value
 
 					if (!noResetSamplesProperties.includes(key)) {
-						this.samples = 0
-						this.setSize(options.width, options.height, true)
+						this.setSize(this.lastSize.width, this.lastSize.height, true)
 					}
 
 					switch (key) {
 						case "resolutionScale":
-							this.setSize(options.width, options.height)
+							this.setSize(this.lastSize.width, this.lastSize.height)
 							break
 
 						case "velocityResolutionScale":
 							this.temporalResolvePass.velocityResolutionScale = value
-							this.setSize(options.width, options.height, true)
-							break
-
-						case "width":
-							if (value === undefined) return
-							this.setSize(value * dpr, options.height)
-							break
-
-						case "height":
-							if (value === undefined) return
-							this.setSize(options.width, value * dpr)
+							this.setSize(this.lastSize.width, this.lastSize.height, true)
 							break
 
 						case "blur":
@@ -306,9 +292,6 @@ export class SSREffect extends Effect {
 				setupEnvMap(reflectionsMaterial, envMap, envMapCubeUVHeight)
 			}
 		}
-
-		// update uniforms
-		this.uniforms.get("samples").value = this.temporalResolvePass.samples
 
 		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
 

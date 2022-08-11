@@ -61,14 +61,16 @@ void main() {
     vec3 boxBlurredColor = inputTexel.rgb;
 #endif
 
-    if (samples < 3.0 || alpha < 1.0) {
+    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+    bool isMoving = alpha < 1.0 || dot(velocity.xy, velocity.xy) > 0.0;
+
+    if (isMoving) {
         vec3 minNeighborColor = inputColor;
         vec3 maxNeighborColor = inputColor;
 
         vec3 col;
         vec2 neighborUv;
 
-        vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
         vec2 reprojectedUv = vUv - velocity.xy;
         vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
 
@@ -82,14 +84,16 @@ void main() {
             for (int y = -correctionRadius; y <= correctionRadius; y++) {
                 if (x != 0 || y != 0) {
                     neighborUv = vUv + vec2(x, y) * invTexSize;
+                    vec4 neigborVelocity = textureLod(velocityTexture, neighborUv, 0.0);
+                    neighborDepth = neigborVelocity.b;
 
                     col = textureLod(inputTexture, neighborUv, 0.0).xyz;
 
-#ifdef dilation
-                    if ((x == -1 || x == 1) && (y == -1 || y == 1)) {
-                        vec4 neigborVelocity = textureLod(velocityTexture, neighborUv, 0.0);
-                        neighborDepth = neigborVelocity.b;
+                    int absX = abs(x);
+                    int absY = abs(y);
 
+#ifdef dilation
+                    if (absX == 1 && absY == 1) {
                         if (neighborDepth > closestDepth) {
                             velocity = neigborVelocity;
                             closestDepth = neighborDepth;
@@ -105,17 +109,17 @@ void main() {
                     }
 #endif
 
+                    // the neighbor pixel is invalid if it's too far away from this pixel
+                    if (abs(depth - neighborDepth) < MAX_NEIGHBOR_DEPTH_DIFFERENCE) {
 #ifdef boxBlur
-                    // depth-aware box blurring to make new/disoccluded pixels less disrupting
-                    if (abs(x) <= 5 && abs(y) <= 5 && abs(depth - neighborDepth) < MAX_NEIGHBOR_DEPTH_DIFFERENCE) {
-                        boxBlurredColor += col;
-                    }
+                        if (absX <= 2 && absY <= 2) boxBlurredColor += col;
 #endif
 
-                    col = transformColor(col);
+                        col = transformColor(col);
 
-                    minNeighborColor = min(col, minNeighborColor);
-                    maxNeighborColor = max(col, maxNeighborColor);
+                        minNeighborColor = min(col, minNeighborColor);
+                        maxNeighborColor = max(col, maxNeighborColor);
+                    }
                 }
             }
         }

@@ -14,6 +14,7 @@ SSREffect.patchDirectEnvIntensity(0.1)
 let ssrEffect
 let gui
 let stats
+let box
 
 const scene = new THREE.Scene()
 scene.autoUpdate = false
@@ -69,8 +70,8 @@ const params = {
 		enabled: true,
 		resolutionScale: 1,
 		velocityResolutionScale: 1,
-		correctionRadius: 1,
-		blend: 0.965,
+		correctionRadius: 2,
+		blend: 0.95,
 		correction: 0.1,
 		blur: 0,
 		blurSharpness: 10,
@@ -329,55 +330,55 @@ const useVideoBackground = () => {
 
 const clock = new THREE.Clock()
 
-const box = new THREE.Mesh(
-	new THREE.BoxBufferGeometry(1, 1, 1),
-	new THREE.MeshStandardMaterial({ color: 0, roughness: 0.05 })
-)
-// scene.add(box)
-box.position.y = 1
+// box = new THREE.Mesh(
+// 	new THREE.BoxBufferGeometry(1, 1, 1),
+// 	new THREE.MeshStandardMaterial({ color: 0, roughness: 0.05 })
+// )
+// // scene.add(box)
+// box.position.y = 1
 
-let goRight = true
+// let goRight = true
 
-let mixer
-let skinMesh
+// let mixer
+// let skinMesh
 
-gltflLoader.load("skin.glb", asset => {
-	skinMesh = asset.scene
-	skinMesh.scale.multiplyScalar(1.3)
-	skinMesh.position.set(0, 0.2, 0)
-	skinMesh.rotation.y += Math.PI / 2 + Math.PI / 4
-	skinMesh.updateMatrixWorld()
-	skinMesh.traverse(c => {
-		if (c.material) {
-			c.material.roughness = 0.1
-			c.material.metalness = 1
-		}
-	})
-	scene.add(asset.scene)
-	mixer = new THREE.AnimationMixer(skinMesh)
-	const clips = asset.animations
+// gltflLoader.load("skin.glb", asset => {
+// 	skinMesh = asset.scene
+// 	skinMesh.scale.multiplyScalar(1.3)
+// 	skinMesh.position.set(0, 0.2, 0)
+// 	skinMesh.rotation.y += Math.PI / 2 + Math.PI / 4
+// 	skinMesh.updateMatrixWorld()
+// 	skinMesh.traverse(c => {
+// 		if (c.material) {
+// 			c.material.roughness = 0.1
+// 			c.material.metalness = 1
+// 		}
+// 	})
+// 	scene.add(asset.scene)
+// 	mixer = new THREE.AnimationMixer(skinMesh)
+// 	const clips = asset.animations
 
-	const action = mixer.clipAction(clips[0])
-	action.play()
-})
+// 	const action = mixer.clipAction(clips[0])
+// 	action.play()
+// })
 
 const loop = () => {
 	const dt = clock.getDelta()
 	if (stats) stats.begin()
 
-	const val = goRight ? 2 : -2
-	box.position.z += val * dt * 1.875
-	if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
-		box.position.z = val
-		goRight = !goRight
-	}
-	box.updateMatrixWorld()
+	// const val = goRight ? 2 : -2
+	// box.position.z += val * dt * 1.875
+	// if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
+	// 	box.position.z = val
+	// 	goRight = !goRight
+	// }
+	// box.updateMatrixWorld()
 
-	if (skinMesh) {
-		mixer.update(dt)
-		skinMesh.updateMatrixWorld()
-		// skinMesh = null
-	}
+	// if (skinMesh) {
+	// 	mixer.update(dt)
+	// 	skinMesh.updateMatrixWorld()
+	// 	// skinMesh = null
+	// }
 
 	updateFirstPersonMovement(dt)
 
