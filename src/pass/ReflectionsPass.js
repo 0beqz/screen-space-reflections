@@ -1,5 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { LinearFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
 import { getVisibleChildren } from "../utils/Utils.js"
@@ -37,12 +37,13 @@ export class ReflectionsPass extends Pass {
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
+			type: HalfFloatType,
 			depthBuffer: false
 		})
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		this.USE_MRT = options.USE_MRT && isWebGL2Available()
+		this.USE_MRT = isWebGL2Available()
 
 		if (this.USE_MRT) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
@@ -161,8 +162,8 @@ export class ReflectionsPass extends Pass {
 
 				// update the child's MRT material
 
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP")
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP")
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "useNormalMap")
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "useRoughnessMap")
 
 				mrtMaterial.uniforms.roughness.value =
 					this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c)
@@ -198,9 +199,11 @@ export class ReflectionsPass extends Pass {
 		if (!this.USE_MRT) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
-		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.samples
+		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.temporalResolvePass.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
+
+		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

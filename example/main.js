@@ -9,18 +9,20 @@ import { setMovementCamera, setSpawn, spawnPlayer, updateFirstPersonMovement, wo
 import { SSRDebugGUI } from "./SSRDebugGUI"
 import "./style.css"
 
+SSREffect.patchDirectEnvIntensity(0.1)
+
 let ssrEffect
 let gui
 let stats
+let box
 
 const scene = new THREE.Scene()
+scene.autoUpdate = false
 window.scene = scene
 scene.add(new THREE.AmbientLight())
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 20)
-
 scene.add(camera)
-scene.autoUpdate = false
 window.camera = camera
 
 const canvas = document.querySelector(".webgl")
@@ -56,45 +58,39 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 setMovementCamera(camera, scene, 1.3)
 setSpawn([
 	new THREE.Vector3(5.113053737140886, 1.8300000071525564, -2.013112958154061),
-	new THREE.Euler(0, 1.9200000000000146, -0.005999999999999719)
+	new THREE.Euler(0, 1.9200000000000146, 0)
 ])
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
-
 const params = {
 	...defaultSSROptions,
 	...{
 		enabled: true,
-		resolutionScale: 0.75,
-		velocityResolutionScale: 0.5,
-		CLAMP_RADIUS: 1,
-		temporalResolve: true,
-		temporalResolveMix: 0.95,
-		temporalResolveCorrection: 0.15,
-		blurMix: 0.33,
+		resolutionScale: 1,
+		velocityResolutionScale: 1,
+		correctionRadius: 2,
+		blend: 0.95,
+		correction: 0.1,
+		blur: 0,
 		blurSharpness: 10,
-		blurKernelSize: 1,
-		rayDistance: 10,
+		blurKernel: 1,
+		distance: 10,
 		intensity: 1,
-		colorExponent: 1.75,
+		exponent: 1.75,
 		maxRoughness: 0.99,
 		jitter: 0,
-		jitterRough: 0.63,
-		jitterSpread: 3.6,
-		roughnessFadeOut: 1,
-		rayFadeOut: 1.03,
+		jitterRoughness: 2,
+		roughnessFade: 1,
+		fade: 1.03,
 		thickness: 3.5,
 		ior: 1.75,
-		rayFadeOut: 0,
-		MAX_STEPS: 5,
-		NUM_BINARY_SEARCH_STEPS: 6,
+		fade: 0,
+		steps: 5,
+		refineSteps: 6,
 		maxDepthDifference: 50,
-		ALLOW_MISSED_RAYS: true,
-		USE_MRT: true,
-		USE_NORMALMAP: true,
-		USE_ROUGHNESSMAP: true
+		missedRays: false
 	}
 }
 
@@ -112,7 +108,7 @@ const settings = {
 	envMapPosZ: 0,
 	envMapSizeX: 12,
 	envMapSizeY: 3.90714,
-	envMapSizeZ: 9,
+	envMapSizeZ: 8.5,
 	aoPower: 2,
 	aoSmoothing: 0.43,
 	aoMapGamma: 0.74,
@@ -158,14 +154,10 @@ gltflLoader.load(url, asset => {
 		collider.material.dispose()
 	}
 
+	let ceiling
+
 	asset.scene.traverse(c => {
 		if (c.material) {
-			if (c.name.includes("heli") || c.name.includes("plane")) {
-				c.material.roughness = 0.1
-				c.material.metalness = 1
-				c.material.color.multiplyScalar(0.075)
-			}
-
 			if (c.name !== "emissive") {
 				const lightMap = c.material.emissiveMap
 
@@ -188,12 +180,10 @@ gltflLoader.load(url, asset => {
 
 			if (c.material.name.includes("ceiling")) {
 				c.material.map.offset.setScalar(0)
-				const tex = new THREE.TextureLoader().load("OfficeCeiling002_1K_Emission.webp")
-				const emissiveMap = c.material.map.clone()
-				emissiveMap.source = tex.source
-				c.material.emissiveMap = emissiveMap
 				c.material.emissive.setHex(0xffb580)
 				c.material.roughness = 0.35
+
+				ceiling = c
 			}
 
 			if (c.material.name.includes("floor")) {
@@ -207,9 +197,10 @@ gltflLoader.load(url, asset => {
 			}
 
 			if (c.material.emissiveMap && c.material.normalMap) {
-				window.e = c.material
 				c.material.emissiveIntensity = 10
 			}
+
+			c.material.envMapIntensity = Math.PI
 		}
 
 		c.updateMatrixWorld()
@@ -276,6 +267,17 @@ gltflLoader.load(url, asset => {
 		composer.addPass(
 			new POSTPROCESSING.EffectPass(camera, fxaaEffect, ssrEffect, bloomEffect, vignetteEffect, lutEffect)
 		)
+
+		new THREE.TextureLoader().load("OfficeCeiling002_1K_Emission.webp", tex => {
+			const emissiveMap = ceiling.material.map.clone()
+			emissiveMap.source = tex.source
+			ceiling.material.emissiveMap = emissiveMap
+			ceiling.material.emissiveIntensity = 10
+
+			if (box) box.visible = false
+			scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(renderer, envMapPos, envMapSize, 1024)
+			if (box) box.visible = true
+		})
 	})
 
 	spawnPlayer()
@@ -289,7 +291,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = 29
+const loadFiles = 28
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
@@ -303,18 +305,9 @@ THREE.DefaultLoadingManager.onProgress = () => {
 	if (loadingEl) loadingEl.textContent = progress + "%"
 }
 
-const pmremGenerator = new THREE.PMREMGenerator(renderer)
-pmremGenerator.compileEquirectangularShader()
-
-new THREE.TextureLoader().load("envRoom.webp", tex => {
-	tex.mapping = THREE.EquirectangularReflectionMapping
-	tex.encoding = THREE.sRGBEncoding
-	scene.environment = tex
-})
-
 const useVideoBackground = () => {
 	for (const key of Object.keys(defaultParams)) params[key] = defaultParams[key]
-	params.temporalResolveCorrection = 0.1
+	params.correction = 0.1
 	if (gui) gui.pane.refresh()
 
 	if (emitterMesh.material._videoMap) {
@@ -337,28 +330,56 @@ const useVideoBackground = () => {
 
 const clock = new THREE.Clock()
 
-// const box = new THREE.Mesh(
+// box = new THREE.Mesh(
 // 	new THREE.BoxBufferGeometry(1, 1, 1),
 // 	new THREE.MeshStandardMaterial({ color: 0, roughness: 0.05 })
 // )
-// scene.add(box)
-// box.position.y = 1.5
+// // scene.add(box)
+// box.position.y = 1
 
 // let goRight = true
+
+// let mixer
+// let skinMesh
+
+// gltflLoader.load("skin.glb", asset => {
+// 	skinMesh = asset.scene
+// 	skinMesh.scale.multiplyScalar(1.3)
+// 	skinMesh.position.set(0, 0.2, 0)
+// 	skinMesh.rotation.y += Math.PI / 2 + Math.PI / 4
+// 	skinMesh.updateMatrixWorld()
+// 	skinMesh.traverse(c => {
+// 		if (c.material) {
+// 			c.material.roughness = 0.1
+// 			c.material.metalness = 1
+// 		}
+// 	})
+// 	scene.add(asset.scene)
+// 	mixer = new THREE.AnimationMixer(skinMesh)
+// 	const clips = asset.animations
+
+// 	const action = mixer.clipAction(clips[0])
+// 	action.play()
+// })
 
 const loop = () => {
 	const dt = clock.getDelta()
 	if (stats) stats.begin()
 
 	// const val = goRight ? 2 : -2
-	// box.position.z += val * dt * 0.875
+	// box.position.z += val * dt * 1.875
 	// if (Math.abs(Math.abs(val) < Math.abs(box.position.z))) {
 	// 	box.position.z = val
 	// 	goRight = !goRight
 	// }
 	// box.updateMatrixWorld()
 
-	// controls.update()
+	// if (skinMesh) {
+	// 	mixer.update(dt)
+	// 	skinMesh.updateMatrixWorld()
+	// 	// skinMesh = null
+	// }
+
 	updateFirstPersonMovement(dt)
 
 	composer.render()

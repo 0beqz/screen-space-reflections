@@ -23,8 +23,8 @@ export class MRTMaterial extends ShaderMaterial {
 				roughnessMap: new Uniform(null)
 			},
 			vertexShader: /* glsl */ `
-                 #ifdef USE_MRT
-                out vec2 vHighPrecisionZW;
+                #ifdef USE_MRT
+                 varying vec2 vHighPrecisionZW;
                 #endif
                 #define NORMAL
                 #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
@@ -83,7 +83,7 @@ export class MRTMaterial extends ShaderMaterial {
                 layout(location = 0) out vec4 gNormal;
                 layout(location = 1) out vec4 gDepth;
                 
-                in vec2 vHighPrecisionZW;
+                varying vec2 vHighPrecisionZW;
                 #endif
                 uniform float roughness;
                 void main() {
@@ -97,7 +97,7 @@ export class MRTMaterial extends ShaderMaterial {
                     if(roughness > 10.0e9){
                         roughnessFactor = 1.;
                     }else{
-                        #ifdef USE_ROUGHNESSMAP
+                        #ifdef useRoughnessMap
                             vec4 texelRoughness = texture2D( roughnessMap, vUv );
                             // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
                             roughnessFactor *= texelRoughness.g;

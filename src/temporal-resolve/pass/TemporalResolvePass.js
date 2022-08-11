@@ -3,31 +3,38 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
+	NearestFilter,
+	Quaternion,
 	RGBAFormat,
-	ShaderMaterial,
-	Uniform,
 	Vector2,
+	Vector3,
 	WebGLRenderTarget
 } from "three"
-import vertexShader from "../../material/shader/basicVertexShader.vert"
-import temporalResolve from "../shader/temporalResolve.frag"
+import { TemporalResolveMaterial } from "../material/TemporalResolveMaterial"
 import { VelocityPass } from "./VelocityPass"
 
 const zeroVec2 = new Vector2()
 
+// the following variables can be accessed by the custom compose shader:
+// "inputTexel", "accumulatedTexel", "inputColor", "accumulatedColor", "alpha", "velocityDisocclusion", "didReproject", "boxBlurredColor" (if using box blur)
+// the custom compose shader will write the final color to the variable "outputColor"
+
 export class TemporalResolvePass extends Pass {
 	velocityPass = null
 	velocityResolutionScale = 1
+	samples = 1
+	lastCameraTransform = {
+		position: new Vector3(),
+		quaternion: new Quaternion()
+	}
 
 	constructor(scene, camera, customComposeShader, options = {}) {
 		super("TemporalResolvePass")
 
 		this._scene = scene
+		this._camera = camera
 
-		const width = options.width || typeof window !== "undefined" ? window.innerWidth : 2000
-		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
-
-		this.renderTarget = new WebGLRenderTarget(width, height, {
+		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
 			type: HalfFloatType,
@@ -36,40 +43,20 @@ export class TemporalResolvePass extends Pass {
 
 		this.velocityPass = new VelocityPass(scene, camera)
 
-		const fragmentShader = temporalResolve.replace("#include <custom_compose_shader>", customComposeShader)
+		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
 
-		this.fullscreenMaterial = new ShaderMaterial({
-			type: "TemporalResolveMaterial",
-			uniforms: {
-				inputTexture: new Uniform(null),
-				accumulatedTexture: new Uniform(null),
-				velocityTexture: new Uniform(this.velocityPass.renderTarget.texture),
-				lastVelocityTexture: new Uniform(null),
-				depthTexture: new Uniform(null),
-				temporalResolveMix: new Uniform(0),
-				temporalResolveCorrection: new Uniform(0),
-				colorExponent: new Uniform(1),
-				invTexSize: new Uniform(new Vector2())
-			},
-			defines: {
-				CLAMP_RADIUS: 1
-			},
-			vertexShader,
-			fragmentShader
-		})
+		this.fullscreenMaterial.defines.correctionRadius = options.correctionRadius || 1
+		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
+		if (options.boxBlur) this.fullscreenMaterial.defines.boxBlur = ""
 
-		this.fullscreenMaterial.defines.DILATION = ""
-
-		if (!scene.userData.velocityTexture) {
-			scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
-		}
-
-		this.setupAccumulatedTexture(width, height)
+		this.setupFramebuffers(1, 1)
+		this.checkCanUseSharedVelocityTexture()
 	}
 
 	dispose() {
 		if (this._scene.userData.velocityTexture === this.velocityPass.renderTarget.texture) {
 			delete this._scene.userData.velocityTexture
+			delete this._scene.userData.lastVelocityTexture
 		}
 
 		this.renderTarget.dispose()
@@ -82,11 +69,15 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget.setSize(width, height)
 		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
 
+		this.velocityPass.renderTarget.texture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
+		this.velocityPass.renderTarget.texture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
+		this.velocityPass.renderTarget.texture.needsUpdate = true
+
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
-		this.setupAccumulatedTexture(width, height)
+		this.setupFramebuffers(width, height)
 	}
 
-	setupAccumulatedTexture(width, height) {
+	setupFramebuffers(width, height) {
 		if (this.accumulatedTexture) this.accumulatedTexture.dispose()
 		if (this.lastVelocityTexture) this.lastVelocityTexture.dispose()
 
@@ -100,8 +91,8 @@ export class TemporalResolvePass extends Pass {
 			height * this.velocityResolutionScale,
 			RGBAFormat
 		)
-		this.lastVelocityTexture.minFilter = LinearFilter
-		this.lastVelocityTexture.magFilter = LinearFilter
+		this.lastVelocityTexture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
+		this.lastVelocityTexture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
 		this.lastVelocityTexture.type = HalfFloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
@@ -110,8 +101,54 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.needsUpdate = true
 	}
 
+	checkCanUseSharedVelocityTexture() {
+		const canUseSharedVelocityTexture =
+			this._scene.userData.velocityTexture &&
+			this.velocityPass.renderTarget.texture !== this._scene.userData.velocityTexture
+
+		if (canUseSharedVelocityTexture) {
+			// let's use the shared one instead
+			if (this.velocityPass.renderTarget.texture === this.fullscreenMaterial.uniforms.velocityTexture.value) {
+				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this._scene.userData.lastVelocityTexture
+				this.fullscreenMaterial.uniforms.velocityTexture.value = this._scene.userData.velocityTexture
+				this.fullscreenMaterial.needsUpdate = true
+			}
+		} else {
+			// let's stop using the shared one (if used) and mark ours as the shared one instead
+			if (this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value) {
+				this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.renderTarget.texture
+				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
+				this.fullscreenMaterial.needsUpdate = true
+
+				if (!this._scene.userData.velocityTexture) {
+					this._scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
+					this._scene.userData.lastVelocityTexture = this.lastVelocityTexture
+				}
+			}
+		}
+
+		return this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value
+	}
+
+	checkNeedsResample() {
+		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
+		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
+
+		if (moveDist > 0.000001 || rotateDist > 0.000001) {
+			this.samples = 1
+
+			this.lastCameraTransform.position.copy(this._camera.position)
+			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
+		}
+	}
+
 	render(renderer) {
-		this.velocityPass.render(renderer)
+		this.samples++
+		this.checkNeedsResample()
+		this.fullscreenMaterial.uniforms.samples.value = this.samples
+
+		// const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
+		// if (!isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

@@ -77,6 +77,11 @@
   "resolved" "https://registry.npmjs.org/nanoid/-/nanoid-3.3.4.tgz"
   "version" "3.3.4"
 
+"pako@^1.0.5":
+  "integrity" "sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw=="
+  "resolved" "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz"
+  "version" "1.0.11"
+
 "path-parse@^1.0.7":
   "integrity" "sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw=="
   "resolved" "https://registry.npmjs.org/path-parse/-/path-parse-1.0.7.tgz"
@@ -137,10 +142,34 @@
   "resolved" "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz"
   "version" "1.0.0"
 
+"three-js-checker@1.0.x":
+  "integrity" "sha512-H5DBK2rGD7niBoJpeKAIzY20YsMyBfQ6ocigdRPp5Ihow7R5C7/ZWx5bbbfKkCTW1lKHYOQSwgbz55HNpKcTLA=="
+  "resolved" "https://registry.npmjs.org/three-js-checker/-/three-js-checker-1.0.2.tgz"
+  "version" "1.0.2"
+
+"three-js-debug-rendertarget@^2.130.0":
+  "integrity" "sha512-caSwJzjFYZmkebF8GNCspMETER9mp5UvzX98tfaw3bWVrAzEDq+ux8J9FaKpWsie1Y98jo/bwP+dEx+yjWi7UA=="
+  "resolved" "https://registry.npmjs.org/three-js-debug-rendertarget/-/three-js-debug-rendertarget-2.130.0.tgz"
+  "version" "2.130.0"
+  dependencies:
+    "three" "0.130.x"
+    "three-js-checker" "1.0.x"
+    "upng-js" "^2.1.0"
+
+"three.cubemap-to-equirectangular@^1.1.2":
+  "integrity" "sha512-PD+EQctdO2vU8qZTMibB/ZTuB0Sw4rk4PECxjznB0XQPPisyjYSfocLwAgFUnc3Y2kO7ZWUku0ATdV9IbFfKFw=="
+  "resolved" "https://registry.npmjs.org/three.cubemap-to-equirectangular/-/three.cubemap-to-equirectangular-1.1.2.tgz"
+  "version" "1.1.2"
+
 "three@^0.142.0", "three@>= 0.107.0 < 0.143.0":
   "integrity" "sha512-ESjPO+3geFr+ZUfVMpMnF/eVU2uJPOh0e2ZpMFqjNca1wApS9lJb7E4MjwGIczgt9iuKd8PEm6Pfgp2bJ92Xtg=="
   "resolved" "https://registry.npmjs.org/three/-/three-0.142.0.tgz"
   "version" "0.142.0"
+
+"three@0.130.x":
+  "integrity" "sha512-OSPPKcGvFSiGkG3jFrwwC76PBV/ZSrGxpBbg28bW8s9GU8r/y2spNGtEXHEb/CVqo0Ctf5Lx2rVaxQZB6OasaA=="
+  "resolved" "https://registry.npmjs.org/three/-/three-0.130.1.tgz"
+  "version" "0.130.1"
 
 "tslib@^2.4.0":
   "integrity" "sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ=="
@@ -151,6 +180,13 @@
   "integrity" "sha512-PGAp/LPQdHwzL7/iAW4lV1p9iPQTti7YMjMWO48CoYjvZRS59RmgQnhEGzKzqST1JnmOYmQUjTe8bdhlZRJs5A=="
   "resolved" "https://registry.npmjs.org/tweakpane/-/tweakpane-3.1.0.tgz"
   "version" "3.1.0"
+
+"upng-js@^2.1.0":
+  "integrity" "sha512-d3xzZzpMP64YkjP5pr8gNyvBt7dLk/uGI67EctzDuVp4lCZyVMo0aJO6l/VDlgbInJYDY6cnClLoBp29eKWI6g=="
+  "resolved" "https://registry.npmjs.org/upng-js/-/upng-js-2.1.0.tgz"
+  "version" "2.1.0"
+  dependencies:
+    "pako" "^1.0.5"
 
 "vite-plugin-glsl@^0.2.0":
   "integrity" "sha512-Sn8ceQHdL3zy8y3MrAKYc28/+R02H/DE/IOqoP7h/DfGypCvOXaU7Cm4pVPU+JMc0LYrK4SCaGrLa/gnCrqwIg=="

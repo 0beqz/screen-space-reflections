@@ -1,9 +1,15 @@
-﻿import * as THREE from "three"
+﻿/* eslint-disable camelcase */
+import { ShaderChunk } from "three"
+
+// source: https://stackoverflow.com/a/6969486/7626841
+function escapeRegExp(string) {
+	return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") // $& means the whole matched string
+}
 
 // credits for the box-projecting shader code go to codercat (https://codercat.tk)
 
 const worldposReplace = /* glsl */ `
-#if defined( USE_ENVMAP ) || defined( rayDistance ) || defined ( USE_SHADOWMAP )
+#if defined( USE_ENVMAP ) || defined ( USE_SHADOWMAP )
     vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
 
     #ifdef BOX_PROJECTED_ENV_MAP
@@ -12,7 +18,7 @@ const worldposReplace = /* glsl */ `
 #endif
 `
 
-const boxProjectDefinitions = /*glsl */ `
+const boxProjectDefinitions = /* glsl */ `
 #ifdef BOX_PROJECTED_ENV_MAP
     uniform vec3 envMapSize;
     uniform vec3 envMapPosition;
@@ -65,6 +71,15 @@ export function useBoxProjectedEnvMap(shader, envMapPosition, envMapSize) {
 		value: envMapSize
 	}
 
+	const line1 = new RegExp(
+		escapeRegExp("vec3 worldNormal = inverseTransformDirection ( normal , viewMatrix ) ;").replaceAll(" ", "\\s*"),
+		"g"
+	)
+	const line2 = new RegExp(
+		escapeRegExp("reflectVec = inverseTransformDirection ( reflectVec , viewMatrix ) ;").replaceAll(" ", "\\s*"),
+		"g"
+	)
+
 	// vertex shader
 	shader.vertexShader =
 		"varying vec3 vWorldPosition;\n" + shader.vertexShader.replace("#include <worldpos_vertex>", worldposReplace)
@@ -74,19 +89,15 @@ export function useBoxProjectedEnvMap(shader, envMapPosition, envMapSize) {
 		boxProjectDefinitions +
 		"\n" +
 		shader.fragmentShader
-			.replace("#include <envmap_physical_pars_fragment>", THREE.ShaderChunk.envmap_physical_pars_fragment)
+			.replace("#include <envmap_physical_pars_fragment>", ShaderChunk.envmap_physical_pars_fragment)
 			.replace(
-				"vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );",
-				`
-            vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );
-            ${getIBLIrradiance_patch}
-            `
+				line1,
+				`vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );
+                ${getIBLIrradiance_patch}`
 			)
 			.replace(
-				"reflectVec = inverseTransformDirection( reflectVec, viewMatrix );",
-				`
-            reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
-            ${getIBLRadiance_patch}
-            `
+				line2,
+				`reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
+                ${getIBLRadiance_patch}`
 			)
 }

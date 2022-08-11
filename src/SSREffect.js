@@ -1,6 +1,14 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { Quaternion, Uniform, Vector3 } from "three"
-import accumulatedCompose from "./material/shader/accumulatedCompose.frag"
+import {
+	CubeCamera,
+	LinearFilter,
+	PMREMGenerator,
+	ShaderChunk,
+	Texture,
+	Uniform,
+	Vector3,
+	WebGLCubeRenderTarget
+} from "three"
 import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
@@ -8,23 +16,27 @@ import trCompose from "./material/shader/trCompose.frag"
 import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 import { defaultSSROptions } from "./SSROptions"
 import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
-import temporalResolve from "./temporal-resolve/shader/temporalResolve.frag"
+import { generateHalton23Points } from "./utils/generateHalton23Points"
+import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
+import { setupEnvMap } from "./utils/Utils"
 
 const finalFragmentShader = finalSSRShader
 	.replace("#include <helperFunctions>", helperFunctions)
 	.replace("#include <boxBlur>", boxBlur)
 
 // all the properties for which we don't have to resample
-const noResetSamplesProperties = ["blurMix", "blurSharpness", "blurKernelSize"]
+const noResetSamplesProperties = ["blur", "blurSharpness", "blurKernel"]
+
+const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
+let pmremGenerator
 
 export class SSREffect extends Effect {
-	samples = 0
+	haltonSequence = generateHalton23Points(1024)
+	haltonIndex = 0
 	selection = new Selection()
 	lastSize
-	lastCameraTransform = {
-		position: new Vector3(),
-		quaternion: new Quaternion()
-	}
+	cubeCamera = new CubeCamera(0.001, 1000, defaultCubeRenderTarget)
+	usingBoxProjectedEnvMap = false
 
 	/**
 	 * @param {THREE.Scene} scene The scene of the SSR effect
@@ -35,12 +47,10 @@ export class SSREffect extends Effect {
 		super("SSREffect", finalFragmentShader, {
 			type: "FinalSSRMaterial",
 			uniforms: new Map([
-				["inputTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
-				["samples", new Uniform(0)],
-				["blurMix", new Uniform(0)],
+				["blur", new Uniform(0)],
 				["blurSharpness", new Uniform(0)],
-				["blurKernelSize", new Uniform(0)]
+				["blurKernel", new Uniform(0)]
 			]),
 			defines: new Map([["RENDER_MODE", "0"]])
 		})
@@ -48,23 +58,23 @@ export class SSREffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		options = { ...defaultSSROptions, ...options }
+		const trOptions = {
+			boxBlur: true,
+			dilation: true
+		}
+
+		options = { ...defaultSSROptions, ...options, ...trOptions }
 
 		// set up passes
 
 		// temporal resolve pass
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, "", options)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.samples = new Uniform(0)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.colorExponent = new Uniform(1)
-		this.temporalResolvePass.fullscreenMaterial.defines.EULER = 2.718281828459045
-		this.temporalResolvePass.fullscreenMaterial.defines.FLOAT_EPSILON = 0.00001
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
 		// reflections pass
 		this.reflectionsPass = new ReflectionsPass(this, options)
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
-		this.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.reflectionsPass.depthTexture
 
 		this.lastSize = {
 			width: options.width,
@@ -73,16 +83,12 @@ export class SSREffect extends Effect {
 			velocityResolutionScale: options.velocityResolutionScale
 		}
 
-		this.lastCameraTransform.position.copy(camera.position)
-		this.lastCameraTransform.quaternion.copy(camera.quaternion)
-
 		this.setSize(options.width, options.height)
 
 		this.makeOptionsReactive(options)
 	}
 
 	makeOptionsReactive(options) {
-		const dpr = window.devicePixelRatio
 		let needsUpdate = false
 
 		const reflectionPassFullscreenMaterialUniforms = this.reflectionsPass.fullscreenMaterial.uniforms
@@ -99,105 +105,72 @@ export class SSREffect extends Effect {
 					options[key] = value
 
 					if (!noResetSamplesProperties.includes(key)) {
-						this.samples = 0
-						this.setSize(options.width, options.height, true)
+						this.setSize(this.lastSize.width, this.lastSize.height, true)
 					}
 
 					switch (key) {
 						case "resolutionScale":
-							this.setSize(options.width, options.height)
+							this.setSize(this.lastSize.width, this.lastSize.height)
 							break
 
 						case "velocityResolutionScale":
 							this.temporalResolvePass.velocityResolutionScale = value
-							this.setSize(options.width, options.height, true)
+							this.setSize(this.lastSize.width, this.lastSize.height, true)
 							break
 
-						case "width":
-							if (value === undefined) return
-							this.setSize(value * dpr, options.height)
-							break
-
-						case "height":
-							if (value === undefined) return
-							this.setSize(options.width, value * dpr)
-							break
-
-						case "blurMix":
-							this.uniforms.get("blurMix").value = value
+						case "blur":
+							this.uniforms.get("blur").value = value
 							break
 
 						case "blurSharpness":
 							this.uniforms.get("blurSharpness").value = value
 							break
 
-						case "blurKernelSize":
-							this.uniforms.get("blurKernelSize").value = value
+						case "blurKernel":
+							this.uniforms.get("blurKernel").value = value
 							break
 
 						// defines
-						case "MAX_STEPS":
-							this.reflectionsPass.fullscreenMaterial.defines.MAX_STEPS = parseInt(value)
+						case "steps":
+							this.reflectionsPass.fullscreenMaterial.defines.steps = parseInt(value)
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "NUM_BINARY_SEARCH_STEPS":
-							this.reflectionsPass.fullscreenMaterial.defines.NUM_BINARY_SEARCH_STEPS = parseInt(value)
+						case "refineSteps":
+							this.reflectionsPass.fullscreenMaterial.defines.refineSteps = parseInt(value)
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "ALLOW_MISSED_RAYS":
+						case "missedRays":
 							if (value) {
-								this.reflectionsPass.fullscreenMaterial.defines.ALLOW_MISSED_RAYS = ""
+								this.reflectionsPass.fullscreenMaterial.defines.missedRays = ""
 							} else {
-								delete this.reflectionsPass.fullscreenMaterial.defines.ALLOW_MISSED_RAYS
+								delete this.reflectionsPass.fullscreenMaterial.defines.missedRays
 							}
 
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "CLAMP_RADIUS":
-							this.temporalResolvePass.fullscreenMaterial.defines.CLAMP_RADIUS = Math.round(value)
+						case "correctionRadius":
+							this.temporalResolvePass.fullscreenMaterial.defines.correctionRadius = Math.round(value)
 
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
-						case "temporalResolve":
-							const composeShader = value ? trCompose : accumulatedCompose
-							let fragmentShader = temporalResolve
-
-							// if we are not using temporal reprojection, then cut out the part that's doing the reprojection
-							if (!value) {
-								const removePart = fragmentShader.slice(
-									fragmentShader.indexOf("// REPROJECT_START"),
-									fragmentShader.indexOf("// REPROJECT_END") + "// REPROJECT_END".length
-								)
-								fragmentShader = temporalResolve.replace(removePart, "")
-							}
-
-							fragmentShader = fragmentShader.replace("#include <custom_compose_shader>", composeShader)
-
-							fragmentShader =
-								/* glsl */ `
-							uniform float samples;
-							uniform float temporalResolveMix;
-							` + fragmentShader
-
-							this.temporalResolvePass.fullscreenMaterial.fragmentShader = fragmentShader
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+						case "blend":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.blend.value = value
 							break
 
-						case "temporalResolveMix":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveMix.value = value
+						case "correction":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.correction.value = value
 							break
 
-						case "temporalResolveCorrection":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.temporalResolveCorrection.value = value
+						case "exponent":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.exponent.value = value
 							break
 
-						case "colorExponent":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.colorExponent.value = value
-							break
+						case "distance":
+							reflectionPassFullscreenMaterialUniforms.rayDistance.value = value
 
 						// must be a uniform
 						default:
@@ -236,16 +209,60 @@ export class SSREffect extends Effect {
 		}
 	}
 
-	checkNeedsResample() {
-		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
+	generateBoxProjectedEnvMapFallback(renderer, position = new Vector3(), size = new Vector3(), envMapSize = 512) {
+		this.cubeCamera.renderTarget.dispose()
+		this.cubeCamera.renderTarget = new WebGLCubeRenderTarget(envMapSize)
 
-		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.samples = 1
+		this.cubeCamera.position.copy(position)
+		this.cubeCamera.updateMatrixWorld()
+		this.cubeCamera.update(renderer, this._scene)
 
-			this.lastCameraTransform.position.copy(this._camera.position)
-			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
+		if (!pmremGenerator) {
+			pmremGenerator = new PMREMGenerator(renderer)
+			pmremGenerator.compileCubemapShader()
 		}
+		const envMap = pmremGenerator.fromCubemap(this.cubeCamera.renderTarget.texture).texture
+		envMap.minFilter = LinearFilter
+		envMap.magFilter = LinearFilter
+
+		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
+
+		useBoxProjectedEnvMap(reflectionsMaterial, position, size)
+		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader
+			.replace("vec3 worldPos", "worldPos")
+			.replace("varying vec3 vWorldPosition;", "vec3 worldPos;")
+
+		reflectionsMaterial.uniforms.envMapPosition.value.copy(position)
+		reflectionsMaterial.uniforms.envMapSize.value.copy(size)
+
+		setupEnvMap(reflectionsMaterial, envMap, envMapSize)
+
+		this.usingBoxProjectedEnvMap = true
+
+		return envMap
+	}
+
+	setIBLRadiance(iblRadiance, renderer) {
+		this._scene.traverse(c => {
+			if (c.material) {
+				const uniforms = renderer.properties.get(c.material)?.uniforms
+
+				if (uniforms && "disableIBLRadiance" in uniforms) {
+					uniforms.disableIBLRadiance.value = iblRadiance
+				}
+			}
+		})
+	}
+
+	deleteBoxProjectedEnvMapFallback() {
+		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
+		reflectionsMaterial.uniforms.envMap.value = null
+		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader.replace("worldPos = ", "vec3 worldPos = ")
+		delete reflectionsMaterial.defines.BOX_PROJECTED_ENV_MAP
+
+		reflectionsMaterial.needsUpdate = true
+
+		this.usingBoxProjectedEnvMap = false
 	}
 
 	dispose() {
@@ -256,17 +273,57 @@ export class SSREffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
-		this.samples++
-		this.checkNeedsResample()
+		if (!this.usingBoxProjectedEnvMap && this._scene.environment) {
+			const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
 
-		// update uniforms
-		this.uniforms.get("samples").value = this.samples
+			let envMap = null
+
+			// not sure if there is a cleaner way to find the internal texture of a CubeTexture (when used as scene environment)
+			this._scene.traverse(c => {
+				if (!envMap && c.material && !c.material.envMap) {
+					const properties = renderer.properties.get(c.material)
+
+					if ("envMap" in properties && properties.envMap instanceof Texture) envMap = properties.envMap
+				}
+			})
+
+			if (envMap) {
+				const envMapCubeUVHeight = this._scene.environment.image.height
+				setupEnvMap(reflectionsMaterial, envMap, envMapCubeUVHeight)
+			}
+		}
+
+		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
+
+		const [x, y] = this.haltonSequence[this.haltonIndex]
+
+		const { width, height } = this.lastSize
+
+		this.temporalResolvePass.velocityPass.render(renderer)
+
+		// jittering the view offset each frame reduces aliasing for the reflection
+		if (this._camera.setViewOffset) this._camera.setViewOffset(width, height, x, y, width, height)
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
 
 		// compose reflection of last and current frame into one reflection
-		this.temporalResolvePass.fullscreenMaterial.uniforms.samples.value = this.samples
 		this.temporalResolvePass.render(renderer)
+
+		this._camera.clearViewOffset()
+	}
+
+	static patchDirectEnvIntensity(envMapIntensity = 0) {
+		if (envMapIntensity === 0) {
+			ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+				"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {",
+				"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) { return vec3(0.0);"
+			)
+		} else {
+			ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+				"vec4 envMapColor = textureCubeUV( envMap, reflectVec, roughness );",
+				"vec4 envMapColor = textureCubeUV( envMap, reflectVec, roughness ) * " + envMapIntensity.toFixed(5) + ";"
+			)
+		}
 	}
 }

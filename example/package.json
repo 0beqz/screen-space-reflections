@@ -8,6 +8,7 @@
 		"preview": "vite preview"
 	},
 	"devDependencies": {
+		"three-js-debug-rendertarget": "^2.130.0",
 		"vite": "^3.0.0",
 		"vite-plugin-glsl": "^0.2.0"
 	},
@@ -16,6 +17,7 @@
 		"postprocessing": "^6.28.3",
 		"stats.js": "^0.17.0",
 		"three": "^0.142.0",
+		"three.cubemap-to-equirectangular": "^1.1.2",
 		"tweakpane": "^3.1.0"
 	}
 }
