@@ -38,7 +38,7 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
 // }
 
 #define Scale (vec3(0.8, 0.8, 0.8))
-#define K (19.19)
+#define K     (19.19)
 
 vec3 hash(vec3 a) {
     a = fract(a * Scale);
@@ -73,11 +73,4 @@ float fresnel_dielectric(vec3 Incoming, vec3 Normal, float eta) {
 
     float cosine = dot(Incoming, Normal);
     return min(1.0, 5.0 * fresnel_dielectric_cos(cosine, eta));
-}
-
-// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(vec3 rgb) {
-    // Algorithm from Chapter 10 of Graphics Shaders.
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(rgb, W);
 }
