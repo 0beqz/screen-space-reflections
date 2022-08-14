@@ -25,8 +25,12 @@ If you are using [react-three-fiber](https://github.com/pmndrs/react-three-fiber
 <br>
 
 ### Basic usage:
+This effect uses postprocessing.js. If you don't have it installed, install it like so:
+```
+npm i postprocessing
+```
 
-Install the package first:
+Then install this effect by running:
 
 ```
 npm i screen-space-reflections
@@ -36,6 +40,7 @@ Then add it to your code like so:
 
 ```javascript
 import { SSREffect } from "screen-space-reflections"
+import * as POSTPROCESSING from "postprocessing"
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 
@@ -134,8 +139,6 @@ const gui = new SSRDebugGUI(ssrEffect, options)
 
 That's it, you should now have the GUI you can see in the [example scene](https://screen-space-reflections.vercel.app/). The `options` parameter is optional for the SSRDebugGUI and will default to the default options if no `options` parameter is given.
 
-<br>
-
 ## Run Locally
 
 If you'd like to test this project and run it locally, run these commands:
@@ -149,20 +152,13 @@ npm run dev
 
 ## Features
 
-- Temporal Reprojection to re-use the last frame and thus reduce noise
+- Temporal Reprojection to re-use the last frames and thus reduce noise
+- Accumulative sampling to reduce noise over time
 - Jittering and blurring reflections to approximate rough reflections
 - Using three.js' WebGLMultipleRenderTarget (WebGL2 only) to improve performance when rendering scene normals, depth and roughness
 - Early out cases to compute only possible reflections and boost performance
 - Box Blur to reduce noise
-
-## What's new in v2
-
-- Introduced Temporal Reprojection to reduce noise for the reflections when moving the camera by reprojecting the last frame's reflections into the current one
-- Implemented accumulative sampling by saving and re-using the last frame's reflections to accumulate especially jittered reflections over frames
-- Made all SSR-related options (e.g. `thickness`, `ior`, ``,...) reactive so that you now just need to set `ssrEffect. = value` for example to update values
-- Fixed jittering so that it's actually correct from all angles (it used to be less intense the higher you were looking down at a reflection)
-- Changed the SSR implementation from a pass to an effect to improve performance
-- Optimizations regarding computation of required buffers and reflections
+- Feature to generate box-projected env maps as a fallback to reduce artifacts
 
 ## Tips
 
@@ -217,11 +213,11 @@ ssrEffect.setSize(window.innerWidth, window.innerHeight)
 ```
 
   </details>
-  <br>
 
-## Todos
+## Sponsoring
+If the project is useful for you and you'd like to sponsor my work:
 
-- [ ] Proper upsampling to still get quality reflections when using half-res buffers
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/0beqz)
 
 ## Credits
 
