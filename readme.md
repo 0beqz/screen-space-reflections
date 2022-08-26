@@ -90,32 +90,32 @@ const options = {
 <details>
   <summary>Description of the properties</summary>
 
-| Name                    | Type                 | Description                                                                                                                                                                                                                             |
-| ----------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
-| intensity               | <code>Number</code>  | intensity of the reflections                                                                                                                                                                                                            |
-| exponent                | <code>Number</code>  | exponent by which reflections will be potentiated when composing the current frame's reflections and the accumulated reflections into a final reflection; higher values will make reflections clearer by highlighting darker spots less |
-| distance                | <code>Number</code>  | maximum distance a reflection ray can travel to find what it reflects                                                                                                                                                                   |
-| fade                    | <code>Number</code>  | how much reflections will fade out by distance                                                                                                                                                                                          |
-| roughnessFade           | <code>Number</code>  | how intense reflections should be on rough spots; a higher value will make reflections fade out quicker on rough spots                                                                                                                  |
-| thickness               | <code>Number</code>  | maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance                                                              |
-| ior                     | <code>Number</code>  | Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies                                       |
-| maxRoughness            | <code>Number</code>  | maximum roughness a texel can have to have reflections calculated for it                                                                                                                                                                |
-| maxDepthDifference      | <code>Number</code>  | maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; higher values will result in better performance                                                               |     |
-| blend                   | <code>Number</code>  | a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look                                            |
-| correction              | <code>boolean</code> | how much pixels should be corrected when doing temporal resolving; higher values will result in less smearing but more noise                                                                                                            |
-| correctionRadius        | <code>boolean</code> | how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance                                                                          |
-| blur                    | <code>Number</code>  | how much the blurred reflections should be mixed with the raw reflections                                                                                                                                                               |
-| blurKernel              | <code>Number</code>  | kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts                                                                                                                         |
-| blurSharpness           | <code>Number</code>  | exponent of the Box Blur filter; higher values will result in more sharpness                                                                                                                                                            |
-| jitter                  | <code>Number</code>  | how intense jittering should be                                                                                                                                                                                                         |
-| jitterRoughness         | <code>Number</code>  | how intense jittering should be in relation to a material's roughness                                                                                                                                                                   |
-| steps                   | <code>Number</code>  | number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects)                                                                                                                                  |
-| refineSteps             | <code>Number</code>  | once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps                                    |
-| missedRays              | <code>boolean</code> | if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle                              |
-| useNormalMap            | <code>boolean</code> | if roughness maps should be taken account of when calculating reflections                                                                                                                                                               |
-| useRoughnessMap         | <code>boolean</code> | if normal maps should be taken account of when calculating reflections                                                                                                                                                                  |
-| resolutionScale         | <code>Number</code>  | resolution of the SSR effect, a resolution of 0.5 means the effect will be rendered at half resolution                                                                                                                                  |
-| velocityResolutionScale | <code>Number</code>  | resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution                                                                                                                               |
+| Name | Type | Description |
+|---|---|---|
+| intensity | <code>Number</code> | intensity of the reflections |
+| exponent | <code>Number</code> | exponent by which reflections will be potentiated when composing the current frame's reflections and the accumulated reflections into a final reflection; higher values will make reflections clearer by highlighting darker spots less |
+| distance | <code>Number</code> | maximum distance a reflection ray can travel to find what it reflects |
+| fade | <code>Number</code> | how much reflections will fade out by distance | 
+| roughnessFade | <code>Number</code> | how intense reflections should be on rough spots; a higher value will make reflections fade out quicker on rough spots |
+| thickness | <code>Number</code> | maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance |
+| ior | <code>Number</code> | Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies |
+| maxRoughness | <code>Number</code> | maximum roughness a texel can have to have reflections calculated for it |
+| maxDepthDifference | <code>Number</code> | maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; higher values will result in better performance |
+| blend | <code>Number</code> | a value between 0 and 1 to set how much the last frame's reflections should be blended in; higher values will result in less noisy reflections when moving the camera but a more smeary look |
+| correction | <code>boolean</code> | how much pixels should be corrected when doing temporal resolving; higher values will result in less smearing but more noise |
+| correctionRadius | <code>boolean</code> | how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance |
+| blur | <code>Number</code> | how much the blurred reflections should be mixed with the raw reflections |
+| blurKernel | <code>Number</code> | kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts |
+| blurSharpness | <code>Number</code> | exponent of the Box Blur filter; higher values will result in more sharpness |
+| jitter | <code>Number</code> | how intense jittering should be |
+| jitterRoughness | <code>Number</code> | how intense jittering should be in relation to a material's roughness |
+| steps | <code>Number</code> | number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects) |
+| refineSteps | <code>Number</code> | once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps |
+| missedRays | <code>boolean</code> | if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle |
+| useNormalMap | <code>boolean</code> | if roughness maps should be taken account of when calculating reflections |
+| useRoughnessMap | <code>boolean</code> | if normal maps should be taken account of when calculating reflections |
+| resolutionScale | <code>Number</code> | resolution of the SSR effect, a resolution of 0.5 means the effect will be rendered at half resolution |
+| velocityResolutionScale | <code>Number</code> | resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution |
 
 </details>
 
