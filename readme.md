@@ -1,3 +1,9 @@
+## ⚠️ NOTE: This repository was deprecated as all future development of it happens in the [realism-effects](https://github.com/0beqz/realism-effects) repository. This version does not work anymore with the latest three.js version. If you'd like to use the advanced SSR implementation, follow the [readme](https://github.com/0beqz/realism-effects#readme) of the new SSR repository.
+
+<br>
+<br>
+<br>
+
 # three.js Screen Space Reflections
 
 Implements performant Screen Space Reflections in three.js.
